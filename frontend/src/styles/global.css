@@ -1,0 +1,36 @@
+/* styles/global.css */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Font */
+@font-face {
+  font-family: 'Rokkitt';
+  src: url('../assets/fonts/Londrina_Sketch,Rokkitt/Rokkitt/Rokkitt-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Rokkitt';
+  src: url('../assets/fonts/Londrina_Sketch,Rokkitt/Rokkitt/Rokkitt-Italic-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: italic;
+}
+
+

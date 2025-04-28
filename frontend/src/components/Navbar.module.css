@@ -1,0 +1,531 @@
+/* Ẩn nút toggle menu mặc định */
+.menuToggle {
+  display: none; /* Ẩn nút menu mặc định */
+}
+
+.navbar {
+  background: linear-gradient(to right, #0b1f3a, #143a51);
+}
+/* Navbar.module.css */
+.nav {
+  position: sticky; /* Thay đổi từ fixed sang sticky */
+  top: 0; /* Đặt top: 0 để navbar dính vào đỉnh khi cuộn tới */
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  background: #f9f7f3;
+  box-shadow: 0 4px 6px -2px rgba(0, 0, 0, 0.1); /* Chỉ đổ bóng phía dưới */
+  padding: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hiệu ứng khi cuộn */
+.nav.scrolled {
+  background: rgba(255, 255, 255, 0.98);
+  padding: 5px 0;
+  transform: translateY(-5px);
+}
+
+.navList {
+  max-width: 1400px; /* Tăng chiều rộng tối đa */
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Phân bố không gian đều hơn */
+  padding: 0 50px;
+  height: 75px; /* Tăng chiều cao navbar */
+}
+
+/* Logo container */
+.navItem:first-child {
+  margin-right: auto; /* Đẩy logo sang trái */
+  padding-right: 30px;
+}
+
+/* Account container - giả sử là phần tử cuối */
+.navItem:last-child {
+  margin-left: auto; /* Đẩy tài khoản sang phải */
+  padding-left: 30px;
+}
+
+/* Các menu items ở giữa */
+.navItem:not(:first-child):not(:last-child) {
+  padding: 0 15px;
+}
+
+.navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 10px;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* color: #ffffff; */
+  text-decoration: none;
+  font-size: 12px; /* Giảm kích thước chữ */
+  font-weight: 500;
+  letter-spacing: 0.8px;
+  padding: 8px 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  text-transform: uppercase;
+}
+
+/* Hiệu ứng hover cho navLink */
+.navLink::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #d71920, #ff4d4d);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.navLink:hover::after {
+  width: 100%;
+}
+
+.navLink:hover {
+  color: #ff4d4d;
+  transform: translateY(-2px);
+}
+
+/* Logo styling */
+.logo {
+  padding-top: 5px;
+  height: 70px; /* Logo lớn hơn */
+  margin-right: 30px;
+  transition: all 0.4s ease;
+}
+
+.logo:hover {
+  transform: scale(1.08);
+}
+
+/* Submenu styling with improved effects */
+.subMenu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: #f9f7f3;
+  backdrop-filter: blur(10px);
+  min-width: 200px;
+  padding: 15px 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.5);
+}
+
+.navItem:hover .subMenu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.subMenuItem {
+  list-style: none;
+}
+
+.subMenuLink {
+  color: black;
+  text-decoration: none;
+  padding: 12px 25px;
+  display: block;
+  font-size: 11px; /* Giảm kích thước chữ submenu */
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+}
+
+.subMenuLink:hover {
+  background: rgba(215, 25, 32, 0.1);
+  color: #ff4d4d;
+  padding-left: 30px;
+}
+
+.avatar {
+  width: 32px; /* Kích thước nhỏ cho avatar */
+  height: 32px;
+  border-radius: 50%; /* Bo tròn */
+  object-fit: cover; /* Đảm bảo ảnh không bị méo */
+  margin-left: 8px; /* Khoảng cách với text */
+  border: 1px solid #ffffff; /* Viền trắng */
+  transition: transform 0.3s ease;
+}
+
+.avatar:hover {
+  transform: scale(1.1); /* Hiệu ứng hover phóng to nhẹ */
+  cursor: pointer;
+}
+
+/* Điều chỉnh container chứa avatar */
+.navItem:last-child {
+  margin-left: auto;
+  padding-left: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Khoảng cách giữa text và avatar */
+}
+
+.authLinks {
+  display: flex;
+  align-items: center;
+}
+
+.separator {
+  margin: 0 8px;
+  color: #555;
+}
+
+@media (max-width: 1024px) {
+  .navList {
+    gap: 15px;
+  }
+
+  .navLink {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+
+  .logo {
+    height: 40px;
+    margin-right: 20px;
+  }
+}
+
+.notificationContainer {
+  position: relative;
+  margin-left: 20px;
+}
+
+.notificationButton {
+  background: none;
+  border: none;
+  color: #333;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.3s ease;
+}
+
+.notificationButton:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.notificationBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #e74c3c;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notificationDropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  padding: 16px;
+}
+
+.notificationDropdown h3 {
+  margin: 0 0 16px;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.notificationList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notificationItem {
+  padding: 12px;
+  border-radius: 6px;
+  background-color: #f8fafc;
+  transition: background-color 0.3s ease;
+}
+
+.notificationItem:hover {
+  background-color: #f1f5f9;
+}
+
+.notificationTitle {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.notificationContent {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.notificationTime {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.noNotifications {
+  text-align: center;
+  color: #64748b;
+  padding: 16px;
+}
+
+/* Modal Styles */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  width: 500px;
+  max-width: 90%;
+  position: relative;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.closeButton {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.closeButton:hover {
+  color: #333;
+}
+
+.notificationDetail {
+  padding: 20px 0;
+}
+
+.notificationDetail h2 {
+  color: #2c3e50;
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+}
+
+.notificationInfo {
+  display: flex;
+  gap: 20px;
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.notificationType {
+  background: #e1f5fe;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #0288d1;
+}
+
+.notificationBody {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #333;
+}
+
+/* Make notification items clickable */
+.notificationItem {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.notificationItem:hover {
+  background-color: #f5f8fa;
+}
+.notificationBody {
+  white-space: pre-line; /* Preserve line breaks but collapse spaces */
+}
+
+.markdownStrong {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.markdownParagraph {
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.markdownList {
+  list-style-type: none;
+  padding-left: 0;
+  margin: 1rem 0;
+}
+
+.markdownListItem {
+  margin-bottom: 0.5rem;
+  padding-left: 20px;
+  position: relative;
+  color: #333;
+}
+
+.markdownListItem::before {
+  content: "-";
+  position: absolute;
+  left: 0;
+  color: #666;
+}
+
+.notificationDetail h2 {
+  color: #2c3e50;
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+}
+
+.notificationInfo {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+@media (max-width: 768px) {
+  .menuToggle {
+    display: block; /* Hiện nút menu */
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1001;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #333;
+  }
+
+  .nav {
+    width: 250px;
+    height: 100vh;
+    position: fixed;
+    left: -250px;
+    transition: left 0.3s ease;
+    background: #f9f7f3;
+  }
+
+  .nav.active {
+    left: 0;
+  }
+
+  .navList {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+    height: 100%;
+    gap: 10px;
+  }
+
+  .navItem {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .navLink {
+    width: 100%;
+    padding: 12px 15px;
+    font-size: 14px;
+  }
+
+  /* Xử lý submenu */
+  .subMenu {
+    position: static;
+    width: 100%;
+    background: transparent;
+    box-shadow: none;
+    padding: 0 0 0 20px;
+    display: none;
+  }
+
+  .navItem:hover .subMenu {
+    display: block;
+  }
+
+  .subMenuItem {
+    padding: 8px 0;
+  }
+
+  .subMenuLink {
+    padding: 8px 15px;
+    font-size: 13px;
+  }
+
+  /* Thêm nút toggle menu */
+  .menuToggle {
+    display: block;
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1001;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #333;
+  }
+
+  /* Logo adjustments */
+  .navItem:first-child {
+    margin: 0 0 20px 0;
+    padding: 0;
+  }
+
+  .logo {
+    height: 35px;
+  }
+
+  /* Account section adjustment */
+  .navItem:last-child {
+    margin-top: auto; /* Đẩy phần account xuống cuối */
+    padding: 0;
+  }
+}
