@@ -31,6 +31,7 @@ import {
     Menu as MenuIcon,
     AccountCircle,
     Logout,
+    Lock as LockIcon,
 } from '@mui/icons-material';
 
 /**
@@ -397,6 +398,30 @@ const Navbar = () => {
                             <AccountCircle fontSize="small" />
                         </ListItemIcon>
                         <ListItemText primary="Thông tin cá nhân" />
+                    </MenuItem>
+                    <MenuItem 
+                        onClick={() => {
+                            handleUserMenuClose();
+                            navigate('/users/me#change-password');
+                        }}
+                        sx={{
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                                transform: 'translateX(5px)',
+                            },
+                        }}
+                    >
+                        <ListItemIcon sx={{ 
+                            color: 'white',
+                            transition: 'transform 0.3s ease',
+                            '&:hover': {
+                                transform: 'scale(1.2)',
+                            },
+                        }}>
+                            <LockIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary="Đổi mật khẩu" />
                     </MenuItem>
                     <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
                     

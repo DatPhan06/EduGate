@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
-from ..schemas.user import User, UserCreate, UserUpdate, TokenData
+from ..schemas.user import User, UserCreate, UserUpdate, TokenData, ChangePassword
 from ..services import user_service, auth_service
 
 router = APIRouter(
@@ -73,4 +73,57 @@ def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
 
 @router.delete("/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db)):
-    return user_service.delete_user(db, user_id) 
+    return user_service.delete_user(db, user_id)
+
+@router.post("/change-password")
+async def change_password(
+    password_data: ChangePassword,
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    # Kiểm tra token
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    
+    # Lấy token từ header
+    token = authorization.split(" ")[1]
+    
+    try:
+        # Xác thực token và lấy email
+        email = auth_service.get_current_user_email(token)
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token"
+            )
+        
+        # Lấy thông tin user từ email
+        user = user_service.get_user_by_email(db, email)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Kiểm tra mật khẩu hiện tại
+        if not auth_service.verify_password(password_data.currentPassword, user.Password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect"
+            )
+        
+        # Cập nhật mật khẩu mới
+        hashed_password = auth_service.get_password_hash(password_data.newPassword)
+        user.Password = hashed_password
+        db.commit()
+        
+        return {"message": "Password changed successfully"}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        ) 

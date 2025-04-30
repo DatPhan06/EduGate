@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Box,
     Container,
@@ -20,11 +20,18 @@ import {
     CardHeader,
     IconButton,
     Tooltip,
+    Snackbar,
+    Slide,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Edit as EditIcon, Save as SaveIcon, Lock as LockIcon } from '@mui/icons-material';
+import { Edit as EditIcon, Save as SaveIcon, Lock as LockIcon, Close as CloseIcon } from '@mui/icons-material';
 import userService from '../../services/userService';
 import authService from '../../services/authService';
+
+// Animation for alert
+function SlideTransition(props) {
+    return <Slide {...props} direction="left" />;
+}
 
 const UserProfile = () => {
     const navigate = useNavigate();
@@ -32,6 +39,9 @@ const UserProfile = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
+    const [openAlert, setOpenAlert] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+    const [alertSeverity, setAlertSeverity] = useState('success');
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -47,9 +57,30 @@ const UserProfile = () => {
         newPassword: '',
         confirmPassword: '',
     });
+    const passwordSectionRef = useRef(null);
+
+    const showAlert = (message, severity = 'success') => {
+        setAlertMessage(message);
+        setAlertSeverity(severity);
+        setOpenAlert(true);
+    };
+
+    const handleCloseAlert = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setOpenAlert(false);
+    };
 
     useEffect(() => {
         fetchUserData();
+        
+        // Check for hash in URL
+        if (window.location.hash === '#change-password') {
+            setTimeout(() => {
+                passwordSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
     }, []);
 
     const fetchUserData = async () => {
@@ -127,19 +158,18 @@ const UserProfile = () => {
 
             if (response && response.data) {
                 setUser(response.data);
-                setSuccess('Cập nhật thông tin thành công');
-                setTimeout(() => setSuccess(null), 3000);
+                showAlert('Cập nhật thông tin thành công');
             }
         } catch (error) {
             console.error('Error updating profile:', error);
             if (error.response?.status === 401) {
-                setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại');
+                showAlert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại', 'error');
                 setTimeout(() => {
                     authService.logout();
                     navigate('/login');
                 }, 2000);
             } else {
-                setError(error.response?.data?.detail || 'Có lỗi xảy ra khi cập nhật thông tin');
+                showAlert(error.response?.data?.detail || 'Có lỗi xảy ra khi cập nhật thông tin', 'error');
             }
         } finally {
             setLoading(false);
@@ -149,7 +179,7 @@ const UserProfile = () => {
     const handleChangePassword = async (e) => {
         e.preventDefault();
         if (passwordData.newPassword !== passwordData.confirmPassword) {
-            setError('Mật khẩu mới không khớp');
+            showAlert('Mật khẩu mới không khớp', 'error');
             return;
         }
 
@@ -160,25 +190,24 @@ const UserProfile = () => {
                 newPassword: passwordData.newPassword,
             });
 
-            if (response && response.data) {
-                setSuccess('Đổi mật khẩu thành công');
+            if (response && response.message) {
+                showAlert('Đổi mật khẩu thành công');
                 setPasswordData({
                     currentPassword: '',
                     newPassword: '',
                     confirmPassword: '',
                 });
-                setTimeout(() => setSuccess(null), 3000);
             }
         } catch (error) {
             console.error('Error changing password:', error);
             if (error.response?.status === 401) {
-                setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại');
+                showAlert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại', 'error');
                 setTimeout(() => {
                     authService.logout();
                     navigate('/login');
                 }, 2000);
             } else {
-                setError(error.response?.data?.detail || 'Có lỗi xảy ra khi đổi mật khẩu');
+                showAlert(error.response?.data?.detail || 'Có lỗi xảy ra khi đổi mật khẩu', 'error');
             }
         } finally {
             setLoading(false);
@@ -353,7 +382,7 @@ const UserProfile = () => {
                 </Grid>
 
                 {/* Password Change Section */}
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={4} ref={passwordSectionRef}>
                     <Card elevation={3}>
                         <CardHeader
                             title="Đổi mật khẩu"
@@ -373,6 +402,7 @@ const UserProfile = () => {
                                             }
                                             required
                                             variant="outlined"
+                                            autoFocus={window.location.hash === '#change-password'}
                                         />
                                     </Grid>
                                     <Grid item xs={12}>
@@ -419,6 +449,49 @@ const UserProfile = () => {
                     </Card>
                 </Grid>
             </Grid>
+
+            <Snackbar
+                open={openAlert}
+                autoHideDuration={6000}
+                onClose={handleCloseAlert}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                TransitionComponent={SlideTransition}
+                sx={{
+                    '& .MuiAlert-root': {
+                        animation: 'slideIn 0.5s ease-out',
+                        '@keyframes slideIn': {
+                            '0%': {
+                                transform: 'translateX(100%)',
+                                opacity: 0,
+                            },
+                            '100%': {
+                                transform: 'translateX(0)',
+                                opacity: 1,
+                            },
+                        },
+                    },
+                }}
+            >
+                <Alert
+                    onClose={handleCloseAlert}
+                    severity={alertSeverity}
+                    variant="filled"
+                    sx={{
+                        width: '100%',
+                        boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                        '& .MuiAlert-icon': {
+                            animation: 'pulse 2s infinite',
+                            '@keyframes pulse': {
+                                '0%': { transform: 'scale(1)' },
+                                '50%': { transform: 'scale(1.1)' },
+                                '100%': { transform: 'scale(1)' },
+                            },
+                        },
+                    }}
+                >
+                    {alertMessage}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 };

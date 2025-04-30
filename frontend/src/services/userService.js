@@ -104,13 +104,12 @@ const userService = {
 
     changePassword: async (passwordData) => {
         try {
-            const response = await axios.post(`${API_URL}/auth/change-password`, passwordData, getAuthHeader());
+            const response = await axios.post(`${API_URL}/users/change-password`, passwordData, getAuthHeader());
             return response.data;
         } catch (error) {
             if (error.response?.status === 401) {
-                await authService.refreshToken();
-                const response = await axios.post(`${API_URL}/auth/change-password`, passwordData, getAuthHeader());
-                return response.data;
+                authService.logout();
+                window.location.href = '/login';
             }
             throw error;
         }
