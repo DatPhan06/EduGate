@@ -1,0 +1,16 @@
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
+from ..base import Base
+
+class Class(Base):
+    __tablename__ = "classes"
+
+    ClassID = Column(Integer, primary_key=True, index=True)
+    ClassName = Column(String)
+    AcademicYear = Column(String)
+    HomeroomTeacher = Column(Integer, ForeignKey("teachers.TeacherID"))
+
+    students = relationship("Student", back_populates="class_")
+    class_subjects = relationship("ClassSubject", back_populates="class_")
+    class_rnps = relationship("ClassRNP", back_populates="class_")
+    homeroom_teacher = relationship("Teacher", back_populates="homeroom_classes") 

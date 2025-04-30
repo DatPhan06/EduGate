@@ -10,7 +10,7 @@ class Message(Base):
     ConversationID = Column(Integer, ForeignKey("conversations.ConversationID"))
     Content = Column(String)
     SentAt = Column(DateTime, default=datetime.datetime.utcnow)
-    UserID = Column(Integer, ForeignKey("users.id"))
+    UserID = Column(Integer, ForeignKey("users.UserID"))
 
     conversation = relationship("Conversation", back_populates="messages")
     user = relationship("User", back_populates="messages") 

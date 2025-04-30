@@ -5,15 +5,15 @@ import datetime
 import enum
 
 class TargetScope(enum.Enum):
-    PUBLIC = "public"
+    GLOBAL = "global"
     PRIVATE = "private"
-    GROUP = "group"
+    CLASS = "class"
 
 class Event(Base):
     __tablename__ = "events"
 
     EventID = Column(Integer, primary_key=True, index=True)
-    Creator_ID = Column(Integer, ForeignKey("users.id"))
+    Creator_ID = Column(Integer, ForeignKey("users.UserID"))
     GroupID = Column(Integer, ForeignKey("groups.GroupID"), nullable=True)
     Title = Column(String, index=True)
     Content = Column(String)
