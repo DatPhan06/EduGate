@@ -9,7 +9,11 @@ import {
     Link,
     Paper,
     Alert,
-    Grid
+    Grid,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
 } from '@mui/material';
 import authService from '../../services/authService';
 
@@ -20,12 +24,14 @@ const Register = () => {
         LastName: '',
         Email: '',
         Password: '',
+        ConfirmPassword: '',
         PhoneNumber: '',
         DOB: '',
         PlaceOfBirth: '',
         Gender: null,
         Address: '',
-        Status: 'ACTIVE'
+        Status: 'ACTIVE',
+        role: 'parent'
     });
     const [error, setError] = useState('');
     const [validationErrors, setValidationErrors] = useState({});
@@ -63,6 +69,9 @@ const Register = () => {
         } else if (formData.Password.length < 6) {
             errors.Password = 'Mật khẩu phải có ít nhất 6 ký tự';
         }
+        if (formData.Password !== formData.ConfirmPassword) {
+            errors.ConfirmPassword = 'Mật khẩu không khớp';
+        }
         setValidationErrors(errors);
         return Object.keys(errors).length === 0;
     };
@@ -87,7 +96,8 @@ const Register = () => {
                 PlaceOfBirth: formData.PlaceOfBirth.trim() || null,
                 Gender: formData.Gender === '' ? null : formData.Gender,
                 Address: formData.Address.trim() || null,
-                Status: formData.Status
+                Status: formData.Status,
+                role: formData.role
             };
             
             await authService.register(formattedData);
@@ -158,7 +168,30 @@ const Register = () => {
                             </Grid>
                             <Grid item xs={12}>
                                 <TextField
-                                    required
+                                    fullWidth
+                                    label="Số điện thoại"
+                                    name="PhoneNumber"
+                                    value={formData.PhoneNumber}
+                                    onChange={handleChange}
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <FormControl fullWidth required>
+                                    <InputLabel>Vai trò</InputLabel>
+                                    <Select
+                                        name="role"
+                                        value={formData.role}
+                                        onChange={handleChange}
+                                        label="Vai trò"
+                                    >
+                                        <MenuItem value="parent">Phụ huynh</MenuItem>
+                                        <MenuItem value="teacher">Giáo viên</MenuItem>
+                                        <MenuItem value="student">Học sinh</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <TextField
                                     fullWidth
                                     label="Mật khẩu"
                                     name="Password"
@@ -172,10 +205,13 @@ const Register = () => {
                             <Grid item xs={12}>
                                 <TextField
                                     fullWidth
-                                    label="Số điện thoại"
-                                    name="PhoneNumber"
-                                    value={formData.PhoneNumber}
+                                    label="Xác nhận mật khẩu"
+                                    name="ConfirmPassword"
+                                    type="password"
+                                    value={formData.ConfirmPassword}
                                     onChange={handleChange}
+                                    error={!!validationErrors.ConfirmPassword}
+                                    helperText={validationErrors.ConfirmPassword}
                                 />
                             </Grid>
                             <Grid item xs={12}>

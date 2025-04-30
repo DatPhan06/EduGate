@@ -73,7 +73,7 @@ def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
 
 @router.delete("/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db)):
-    return user_service.delete_user(db, user_id)
+    return user_service.delete_user(db, user_id) 
 
 @router.post("/change-password")
 async def change_password(
