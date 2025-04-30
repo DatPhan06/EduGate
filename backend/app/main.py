@@ -5,7 +5,7 @@ from typing import List
 from .database import get_db
 from .models import *
 from .config import settings
-from .routers import user
+from .routers import auth, user
 from .database import engine, Base
 
 # Tạo bảng trong database
@@ -19,15 +19,16 @@ app = FastAPI(
 # Cấu hình CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 @app.get("/")
-def read_root():
+async def root():
     return {"message": "Welcome to EduGate API"}
 
 # Include routers
+app.include_router(auth.router)
 app.include_router(user.router)

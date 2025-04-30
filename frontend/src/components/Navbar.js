@@ -168,7 +168,7 @@ const Navbar = () => {
         },
     ];
 
-    return (
+  return (
         <AppBar 
             position="static" 
             elevation={0}
@@ -365,18 +365,20 @@ const Navbar = () => {
                             color: 'white',
                             textShadow: '0 2px 4px rgba(0,0,0,0.2)',
                         }}>
-                            {currentUser?.firstName} {currentUser?.lastName}
+                            {currentUser?.FirstName} {currentUser?.LastName}
                         </Typography>
                         <Typography variant="body2" sx={{ 
                             color: 'rgba(255, 255, 255, 0.7)',
                             textShadow: '0 1px 2px rgba(0,0,0,0.2)',
                         }} noWrap>
-                            {currentUser?.email}
+                            {currentUser?.Email}
                         </Typography>
                     </Box>
-                    <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
                     <MenuItem 
-                        onClick={handleLogout}
+                        onClick={() => {
+                            handleUserMenuClose();
+                            navigate('/users/me');
+                        }}
                         sx={{
                             transition: 'all 0.3s ease',
                             '&:hover': {
@@ -392,6 +394,29 @@ const Navbar = () => {
                                 transform: 'scale(1.2)',
                             },
                         }}>
+                            <AccountCircle fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary="Thông tin cá nhân" />
+                    </MenuItem>
+                    <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+                    
+                    <MenuItem 
+                        onClick={handleLogout}
+                        sx={{
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                                transform: 'translateX(5px)',
+                              },
+                            }}
+                          >
+                        <ListItemIcon sx={{ 
+                            color: 'white',
+                            transition: 'transform 0.3s ease',
+                            '&:hover': {
+                                transform: 'scale(1.2)',
+                            },
+                        }}>
                             <Logout fontSize="small" />
                         </ListItemIcon>
                         <ListItemText primary="Đăng xuất" />
@@ -399,7 +424,7 @@ const Navbar = () => {
                 </Menu>
             </Toolbar>
         </AppBar>
-    );
+  );
 };
 
 export default Navbar;

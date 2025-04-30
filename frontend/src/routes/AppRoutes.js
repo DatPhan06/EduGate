@@ -17,6 +17,7 @@ import Login from '../pages/Users/Login';
 import Register from '../pages/Users/Register';
 import Unauthorized from '../pages/Errors/Unauthorized';
 import NotFound from '../pages/Errors/NotFound';
+import UserProfile from '../pages/Users/UserProfile';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -59,6 +60,7 @@ const AppRoutes = () => {
                 <Route path="petitions" element={<Petitions />} />
                 <Route path="rewards" element={<Rewards />} />
                 <Route path="academic-results" element={<AcademicResults />} />
+                <Route path="users/me" element={<UserProfile />} />
 
                 {/* Admin Routes */}
                 <Route

@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
-from ..schemas.user import User, UserCreate, UserUpdate, UserLogin, Token
-from ..services import user_service
+from ..schemas.user import User, UserCreate, UserUpdate, TokenData
+from ..services import user_service, auth_service
 
 router = APIRouter(
     prefix="/users",
@@ -14,35 +14,44 @@ router = APIRouter(
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     return user_service.create_user(db, user)
 
-@router.post("/login", response_model=Token)
-async def login(user_data: UserLogin, db: Session = Depends(get_db)):
-    user = user_service.login_user(db, user_data.email, user_data.password)
-    access_token = user_service.create_access_token(data={"sub": user.Email})
-    return {"access_token": access_token, "token_type": "bearer"}
-
-@router.post("/logout")
-async def logout(authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    # Trong trường hợp sử dụng JWT đơn giản, chúng ta chỉ cần trả về thông báo thành công
-    # Token sẽ được xóa ở phía client
-    return {"message": "Successfully logged out"}
-
 @router.get("/me", response_model=User)
 async def get_current_user(
     authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
+    # Kiểm tra token
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
     
+    # Lấy token từ header
     token = authorization.split(" ")[1]
-    user = user_service.get_current_user(token, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid token")
     
-    return user
+    try:
+        # Xác thực token và lấy email
+        email = auth_service.get_current_user_email(token)
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token"
+            )
+        
+        # Lấy thông tin user từ email
+        user = user_service.get_user_by_email(db, email)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        return user
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials"
+        )
 
 @router.get("/", response_model=List[User])
 def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
