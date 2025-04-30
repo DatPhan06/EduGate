@@ -3,19 +3,11 @@ from fastapi import HTTPException, status, Depends
 from datetime import datetime, timedelta
 from ..models.user import User
 from ..schemas.user import UserCreate, UserUpdate, UserLogin, TokenData
-from passlib.context import CryptContext
 from jose import JWTError, jwt
 from typing import Optional
 from ..config import settings
 from ..services import auth_service
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -54,8 +46,8 @@ def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
 def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(User).offset(skip).limit(limit).all()
 
-def create_user(db: Session, user: UserCreate) -> User:
-    # Kiểm tra email đã tồn tại chưa
+def create_user(db: Session, user: UserCreate):
+    # Check if user already exists
     db_user = get_user_by_email(db, email=user.Email)
     if db_user:
         raise HTTPException(
@@ -66,7 +58,7 @@ def create_user(db: Session, user: UserCreate) -> User:
     # Hash password
     hashed_password = auth_service.get_password_hash(user.Password)
     
-    # Tạo user mới
+    # Create new user with role
     db_user = User(
         FirstName=user.FirstName,
         LastName=user.LastName,
@@ -77,7 +69,8 @@ def create_user(db: Session, user: UserCreate) -> User:
         PlaceOfBirth=user.PlaceOfBirth,
         Gender=user.Gender,
         Address=user.Address,
-        Status=user.Status
+        Status=user.Status,
+        role=user.role or 'student'  # Set default role if not provided
     )
     
     db.add(db_user)

@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Boolean
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from ..base import Base
 import datetime
 import enum
@@ -16,6 +17,15 @@ class UserStatus(enum.Enum):
     ACTIVE = "ACTIVE"
     INACTIVE = "INACTIVE"
     SUSPENDED = "SUSPENDED"
+
+    def __str__(self):
+        return self.value
+
+class UserRole(enum.Enum):
+    ADMIN = "admin"
+    TEACHER = "teacher"
+    PARENT = "parent"
+    STUDENT = "student"
 
     def __str__(self):
         return self.value
@@ -39,6 +49,7 @@ class User(Base):
     CreatedAt = Column(DateTime, default=datetime.datetime.utcnow)
     UpdatedAt = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     Status = Column(Enum(UserStatus, name='userstatus', values_callable=lambda x: [e.value for e in x]), default=UserStatus.ACTIVE)
+    role = Column(Enum(UserRole, name='userrole', values_callable=lambda x: [e.value for e in x]), default=UserRole.STUDENT)
 
     # Relationships
     events = relationship("Event", back_populates="creator")

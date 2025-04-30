@@ -19,6 +19,12 @@ class UserStatus(str, Enum):
     def __str__(self):
         return self.value
 
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    TEACHER = "teacher"
+    PARENT = "parent"
+    STUDENT = "student"
+
 class UserBase(BaseModel):
     FirstName: str
     LastName: str
@@ -32,6 +38,7 @@ class UserBase(BaseModel):
     Gender: Optional[Gender]
     Address: Optional[str] = None
     Status: UserStatus = UserStatus.ACTIVE
+    role: Optional[UserRole] = UserRole.STUDENT
 
     class Config:
         use_enum_values = True
@@ -43,13 +50,6 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-    class Config:
-        schema_extra = {
-            "example": {
-                "email": "user@example.com",
-                "password": "your_password"
-            }
-        }
 
 class UserUpdate(BaseModel):
     FirstName: Optional[str] = None
