@@ -1,9 +1,38 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBell } from "@fortawesome/free-solid-svg-icons";
+import { faBell, faUser } from "@fortawesome/free-solid-svg-icons";
 import styles from "./Navbar.module.css";
-import Markdown from "markdown-to-jsx";
+import authService from "../services/authService";
+import {
+    AppBar,
+    Toolbar,
+    Typography,
+    Button,
+    Box,
+    IconButton,
+    Menu,
+    MenuItem,
+    ListItemIcon,
+    ListItemText,
+    Avatar,
+    Tooltip,
+    Divider,
+    useMediaQuery,
+    useTheme,
+    keyframes,
+} from '@mui/material';
+import {
+    Message as MessageIcon,
+    Event as EventIcon,
+    Assignment as AssignmentIcon,
+    EmojiEvents as EmojiEventsIcon,
+    School as SchoolIcon,
+    Menu as MenuIcon,
+    AccountCircle,
+    Logout,
+    Lock as LockIcon,
+} from '@mui/icons-material';
 
 /**
  * Thành phần Navbar hiển thị thanh điều hướng của trang web.
@@ -64,376 +93,362 @@ import Markdown from "markdown-to-jsx";
  * @method handleCloseModal
  * @description Handles the event to close the notification modal.
  */
+
+// Animation keyframes
+const pulse = keyframes`
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+`;
+
+const slideIn = keyframes`
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+`;
+
 const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [selectedNotification, setSelectedNotification] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const token = localStorage.getItem("token");
-  const isLoggedIn = !!token;
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const navigate = useNavigate();
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+    const currentUser = authService.getCurrentUser();
 
-  // Fetch notifications
-  const fetchNotifications = async () => {
-    try {
-      // TODO: Implement notification fetching
-      setNotifications([]);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    }
-  };
-
-  useEffect(() => {
-    const fetchUserAndNotifications = async () => {
-      if (isLoggedIn) {
-        try {
-          // TODO: Implement user data fetching
-          setCurrentUser(null);
-          setNotifications([]);
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-        }
-      }
+    const handleMenuClick = (event) => {
+        setAnchorEl(event.currentTarget);
     };
 
-    fetchUserAndNotifications();
-  }, [isLoggedIn]);
+    const handleUserMenuClick = (event) => {
+        setUserMenuAnchor(event.currentTarget);
+    };
 
-  const toggleNotification = () => {
-    setIsNotificationOpen(!isNotificationOpen);
-  };
+    const handleMenuClose = () => {
+        setAnchorEl(null);
+    };
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
+    const handleUserMenuClose = () => {
+        setUserMenuAnchor(null);
+    };
 
-  // Handler for notification click
-  const handleNotificationClick = (notification) => {
-    setSelectedNotification(notification);
-    setIsModalOpen(true);
-  };
+    const handleNavigation = (path) => {
+        navigate(path);
+        handleMenuClose();
+    };
 
-  // Handler to close modal
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedNotification(null);
-  };
+    const handleLogout = () => {
+        authService.logout();
+        navigate('/login');
+        handleUserMenuClose();
+    };
+
+    const menuItems = [
+        {
+            text: 'Quản lý Tin nhắn',
+            icon: <MessageIcon />,
+            path: '/messages',
+        },
+        {
+            text: 'Quản lý Lịch sự kiện & Thời khóa biểu',
+            icon: <EventIcon />,
+            path: '/events',
+        },
+        {
+            text: 'Quản lý đơn kiến nghị',
+            icon: <AssignmentIcon />,
+            path: '/petitions',
+        },
+        {
+            text: 'Quản lý Khen thưởng / Kỷ luật',
+            icon: <EmojiEventsIcon />,
+            path: '/rewards',
+        },
+        {
+            text: 'Quản lý kết quả học tập',
+            icon: <SchoolIcon />,
+            path: '/academic-results',
+        },
+    ];
 
   return (
-    <>
-      <button className={styles.menuToggle} onClick={toggleMenu}>
-        {isMenuOpen ? "×" : "☰"}
-      </button>
-
-      <nav className={`${styles.nav} ${isMenuOpen ? styles.active : ""}`}>
-        <ul className={styles.navList}>
-          <li className={styles.navItem}>
-            <Link to="/">
-              <img
-                src="/images/vtcb_logo.png"
-                alt="Logo"
-                className={styles.logo}
-              />
-            </Link>
-          </li>
-
-          {/* Mục Đặt Vé */}
-          <li className={styles.navItem}>
-            <p className={styles.navLink}>ĐẶT VÉ</p>
-            <ul className={styles.subMenu}>
-              <li className={styles.subMenuItem}>
-                <Link to="/booking/book-ticket" className={styles.subMenuLink}>
-                  Mua Vé
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link
-                  to="/booking/manage-ticket"
-                  className={styles.subMenuLink}
-                >
-                  Quản Lý Vé
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link
-                  to="/booking/payment-guide"
-                  className={styles.subMenuLink}
-                >
-                  Hướng Dẫn
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link
-                  to="/booking/cancel-ticket"
-                  className={styles.subMenuLink}
-                >
-                  Điều kiện giá vé
-                </Link>
-              </li>
-            </ul>
-          </li>
-
-          {/* Mục Thông Tin */}
-          <li className={styles.navItem}>
-            <p className={styles.navLink}>THÔNG TIN HÀNH TRÌNH</p>
-            <ul className={styles.subMenu}>
-              <li className={styles.subMenuItem}>
-                <Link to="/info/ticket-schedule" className={styles.subMenuLink}>
-                  Lịch Bay
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link
-                  to="/info/special-services"
-                  className={styles.subMenuLink}
-                >
-                  Dịch Vụ Đặc Biệt
-                </Link>
-              </li>
-
-              <li className={styles.subMenuItem}>
-                <Link to="/info/check-in" className={styles.subMenuLink}>
-                  Hướng dẫn thủ Tục
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link
-                  to="/info/document-requirements"
-                  className={styles.subMenuLink}
-                >
-                  Yêu Cầu Giấy Tờ
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link to="/info/airport" className={styles.subMenuLink}>
-                  Thông tin sân Bay
-                </Link>
-              </li>
-            </ul>
-          </li>
-
-          {/* Mục Khám Phá */}
-          <li className={styles.navItem}>
-            <p className={styles.navLink}>KHÁM PHÁ</p>
-            <ul className={styles.subMenu}>
-              <li className={styles.subMenuItem}>
-                <Link to="/explore/destinations" className={styles.subMenuLink}>
-                  Điểm Đến
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link to="/explore/offers" className={styles.subMenuLink}>
-                  Ưu Đãi
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link to="/explore/flight-experience" className={styles.subMenuLink}>
-                  Tin tức
-                </Link>
-              </li>
-            </ul>
-          </li>
-
-          {/* Mục Hãng Hàng Không */}
-          <li className={styles.navItem}>
-            <p className={styles.navLink}>QAirline</p>
-            <ul className={styles.subMenu}>
-              <li className={styles.subMenuItem}>
-                <Link to="/info/general" className={styles.subMenuLink}>
-                  Thông Tin Chung
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link to="/qairline/about" className={styles.subMenuLink}>
-                  Giới Thiệu
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link
-                  to="/qairline/news"
-                  className={styles.subMenuLink}
-                >
-                  Trải nghiệm bay
-                </Link>
-              </li>
-            </ul>
-          </li>
-
-          {/* Mục Tài Khoản */}
-          <li className={`${styles.navItem} ${styles.account}`}>
-            {isLoggedIn ? (
-              <>
-                <p className={styles.navLink}>
-                  <img
-                    src="/images/user.png"
-                    alt="Avatar"
-                    className={styles.avatar}
-                  />
-                  Tài khoản
-                </p>
-                <ul className={styles.subMenu}>
-                  <li className={styles.subMenuItem}>
-                    <Link to="/account/profile" className={styles.subMenuLink}>
-                      Hồ Sơ
-                    </Link>
-                  </li>
-                  <li className={styles.subMenuItem}>
-                    <Link to="/account/settings" className={styles.subMenuLink}>
-                      Cài Đặt
-                    </Link>
-                  </li>
-                  <li className={styles.subMenuItem}>
-                    <Link to="/account/logout" className={styles.subMenuLink}>
-                      Đăng Xuất
-                    </Link>
-                  </li>
-                </ul>
-              </>
-            ) : (
-              <div className={styles.authLinks}>
-                <Link to="/account/signin" className={styles.navLink}>
-                  Đăng Nhập
-                </Link>
-                <span className={styles.separator}>|</span>
-                <Link to="/account/signup" className={styles.navLink}>
-                  Đăng Ký
-                </Link>
-              </div>
-            )}
-          </li>
-          <li>
-            {isLoggedIn && (
-              <div className={styles.notificationContainer}>
-                {" "}
-                <button
-                  className={styles.notificationButton}
-                  onClick={toggleNotification}
-                >
-                  {" "}
-                  <FontAwesomeIcon icon={faBell} />{" "}
-                  {notifications.length > 0 && (
-                    <span className={styles.notificationBadge}>
-                      {" "}
-                      {notifications.length}{" "}
-                    </span>
-                  )}{" "}
-                </button>{" "}
-                {isNotificationOpen && (
-                  <div className={styles.notificationDropdown}>
-                    <h3>Thông báo</h3>
-                    {notifications.length > 0 ? (
-                      <div className={styles.notificationList}>
-                        {notifications.map((notification) => (
-                          <div
-                            key={notification.notification_id}
-                            className={styles.notificationItem}
-                            onClick={() =>
-                              handleNotificationClick(notification)
-                            }
-                          >
-                            <div className={styles.notificationTitle}>
-                              {notification.title}
-                            </div>
-                            <div className={styles.notificationContent}>
-                              {notification.content.replace(
-                                /\*\*(.*?)\*\*/g,
-                                "$1"
-                              )}{" "}
-                            </div>
-                            <div className={styles.notificationTime}>
-                              {new Date(
-                                notification.created_at
-                              ).toLocaleDateString()}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className={styles.noNotifications}>
-                        Không có thông báo mới
-                      </p>
-                    )}
-                  </div>
-                )}
-                {/* Notification Detail Modal */}
-                {isModalOpen && selectedNotification && (
-                  <div
-                    className={styles.modalOverlay}
-                    onClick={handleCloseModal}
-                  >
-                    <div
-                      className={styles.modalContent}
-                      onClick={(e) => e.stopPropagation()}
+        <AppBar 
+            position="static" 
+            elevation={0}
+            sx={{ 
+                background: 'linear-gradient(135deg, #2c3e50 0%, #3498db 100%)',
+                color: 'white',
+                borderBottom: 'none',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                animation: `${slideIn} 0.5s ease-out`,
+            }}
+        >
+            <Toolbar sx={{ justifyContent: 'space-between' }}>
+                {/* Left side - Logo and Menu */}
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <IconButton
+                        edge="start"
+                        color="inherit"
+                        aria-label="menu"
+                        onClick={handleMenuClick}
+                        sx={{ 
+                            mr: 2,
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                                transform: 'rotate(90deg)',
+                                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            },
+                        }}
                     >
-                      <button
-                        className={styles.closeButton}
-                        onClick={handleCloseModal}
-                      >
-                        ×
-                      </button>
-                      <div className={styles.notificationDetail}>
-                        <h2>{selectedNotification.title}</h2>
-                        <div className={styles.notificationInfo}>
-                          <p className={styles.notificationTime}>
-                            {new Date(
-                              selectedNotification.created_at
-                            ).toLocaleString()}
-                          </p>
-                          {selectedNotification.type && (
-                            <p className={styles.notificationType}>
-                              Loại: {selectedNotification.type}
-                            </p>
-                          )}
-                        </div>
-                        <div className={styles.notificationBody}>
-                          <Markdown
-                            options={{
-                              forceBlock: true,
-                              overrides: {
-                                strong: {
-                                  component: "strong",
-                                  props: {
-                                    className: styles.markdownStrong,
-                                  },
+                        <MenuIcon />
+                    </IconButton>
+                    <Typography
+                        variant="h6"
+                        component="div"
+                        sx={{
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            background: 'linear-gradient(45deg, #fff 30%, #e0e0e0 90%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            animation: `${pulse} 2s infinite`,
+                            '&:hover': {
+                                animation: 'none',
+                                transform: 'scale(1.05)',
+                            },
+                        }}
+                        onClick={() => navigate('/')}
+                    >
+                        EduGate
+                    </Typography>
+                </Box>
+
+                {/* Center - Navigation Items (Desktop) */}
+                {!isMobile && (
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        {menuItems.map((item, index) => (
+                            <Box
+                                key={item.path}
+                                sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    cursor: 'pointer',
+                                    p: 1,
+                                    borderRadius: 1,
+                                    transition: 'all 0.3s ease',
+                                    animation: `${slideIn} 0.5s ease-out ${index * 0.1}s both`,
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                                        transform: 'translateY(-2px) scale(1.05)',
+                                        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+                                    },
+                                }}
+                                onClick={() => handleNavigation(item.path)}
+                            >
+                                <ListItemIcon sx={{ 
+                                    minWidth: 40, 
+                                    color: 'white',
+                                    transition: 'transform 0.3s ease',
+                                    '&:hover': {
+                                        transform: 'scale(1.2) rotate(5deg)',
+                                    },
+                                }}>
+                                    {item.icon}
+                                </ListItemIcon>
+                                <Typography variant="body2" sx={{ 
+                                    color: 'white',
+                                    transition: 'all 0.3s ease',
+                                    '&:hover': {
+                                        letterSpacing: '0.5px',
+                                    },
+                                }}>
+                                    {item.text}
+                                </Typography>
+                            </Box>
+                        ))}
+                    </Box>
+                )}
+
+                {/* Right side - User Menu */}
+                <Box>
+                    <Tooltip title="Tài khoản">
+                        <IconButton
+                            onClick={handleUserMenuClick}
+                            size="small"
+                            sx={{ 
+                                ml: 2,
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                    transform: 'scale(1.1)',
+                                    boxShadow: '0 0 15px rgba(255, 255, 255, 0.3)',
                                 },
-                                p: {
-                                  component: "p",
-                                  props: {
-                                    className: styles.markdownParagraph,
-                                  },
+                            }}
+                        >
+                            <Avatar sx={{ 
+                                width: 32, 
+                                height: 32, 
+                                bgcolor: 'rgba(255, 255, 255, 0.2)',
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                    transform: 'rotate(360deg)',
                                 },
-                                ul: {
-                                  component: "ul",
-                                  props: {
-                                    className: styles.markdownList,
-                                  },
+                            }}>
+                                <AccountCircle />
+                            </Avatar>
+                        </IconButton>
+                    </Tooltip>
+                </Box>
+
+                {/* Mobile Menu */}
+                <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleMenuClose}
+                    PaperProps={{
+                        sx: {
+                            mt: 1.5,
+                            minWidth: 200,
+                            background: 'linear-gradient(135deg, #2c3e50 0%, #3498db 100%)',
+                            color: 'white',
+                            animation: `${slideIn} 0.3s ease-out`,
+                        },
+                    }}
+                >
+                    {menuItems.map((item, index) => (
+                        <MenuItem
+                            key={item.path}
+                            onClick={() => handleNavigation(item.path)}
+                            sx={{
+                                transition: 'all 0.3s ease',
+                                animation: `${slideIn} 0.3s ease-out ${index * 0.1}s both`,
+                                '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                                    transform: 'translateX(5px)',
                                 },
-                                li: {
-                                  component: "li",
-                                  props: {
-                                    className: styles.markdownListItem,
-                                  },
+                            }}
+                        >
+                            <ListItemIcon sx={{ 
+                                color: 'white',
+                                transition: 'transform 0.3s ease',
+                                '&:hover': {
+                                    transform: 'scale(1.2)',
                                 },
+                            }}>
+                                {item.icon}
+                            </ListItemIcon>
+                            <ListItemText primary={item.text} />
+                        </MenuItem>
+                    ))}
+                </Menu>
+
+                {/* User Menu */}
+                <Menu
+                    anchorEl={userMenuAnchor}
+                    open={Boolean(userMenuAnchor)}
+                    onClose={handleUserMenuClose}
+                    PaperProps={{
+                        sx: {
+                            mt: 1.5,
+                            minWidth: 200,
+                            background: 'linear-gradient(135deg, #2c3e50 0%, #3498db 100%)',
+                            color: 'white',
+                            animation: `${slideIn} 0.3s ease-out`,
+                        },
+                    }}
+                >
+                    <Box sx={{ 
+                        p: 2,
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '4px 4px 0 0',
+                    }}>
+                        <Typography variant="subtitle1" noWrap sx={{ 
+                            color: 'white',
+                            textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        }}>
+                            {currentUser?.FirstName} {currentUser?.LastName}
+                        </Typography>
+                        <Typography variant="body2" sx={{ 
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                        }} noWrap>
+                            {currentUser?.Email}
+                        </Typography>
+                    </Box>
+                    <MenuItem 
+                        onClick={() => {
+                            handleUserMenuClose();
+                            navigate('/users/me');
+                        }}
+                        sx={{
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                                transform: 'translateX(5px)',
+                            },
+                        }}
+                    >
+                        <ListItemIcon sx={{ 
+                            color: 'white',
+                            transition: 'transform 0.3s ease',
+                            '&:hover': {
+                                transform: 'scale(1.2)',
+                            },
+                        }}>
+                            <AccountCircle fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary="Thông tin cá nhân" />
+                    </MenuItem>
+                    <MenuItem 
+                        onClick={() => {
+                            handleUserMenuClose();
+                            navigate('/users/me#change-password');
+                        }}
+                        sx={{
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                                transform: 'translateX(5px)',
+                            },
+                        }}
+                    >
+                        <ListItemIcon sx={{ 
+                            color: 'white',
+                            transition: 'transform 0.3s ease',
+                            '&:hover': {
+                                transform: 'scale(1.2)',
+                            },
+                        }}>
+                            <LockIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary="Đổi mật khẩu" />
+                    </MenuItem>
+                    <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+                    
+                    <MenuItem 
+                        onClick={handleLogout}
+                        sx={{
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                                transform: 'translateX(5px)',
                               },
                             }}
                           >
-                            {/* Remove extra spaces and tabs from notification content */}
-                            {selectedNotification.content
-                              .trim()
-                              .replace(/^\s+/gm, "")}
-                          </Markdown>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </li>
-        </ul>
-      </nav>
-    </>
+                        <ListItemIcon sx={{ 
+                            color: 'white',
+                            transition: 'transform 0.3s ease',
+                            '&:hover': {
+                                transform: 'scale(1.2)',
+                            },
+                        }}>
+                            <Logout fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary="Đăng xuất" />
+                    </MenuItem>
+                </Menu>
+            </Toolbar>
+        </AppBar>
   );
 };
 
