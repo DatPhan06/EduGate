@@ -1,29 +1,7 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, Union
+from typing import Optional
 from datetime import datetime
-from enum import Enum
-
-class Gender(str, Enum):
-    MALE = "MALE"
-    FEMALE = "FEMALE"
-    OTHER = "OTHER"
-
-    def __str__(self):
-        return self.value
-
-class UserStatus(str, Enum):
-    ACTIVE = "ACTIVE"
-    INACTIVE = "INACTIVE"
-    SUSPENDED = "SUSPENDED"
-
-    def __str__(self):
-        return self.value
-
-class UserRole(str, Enum):
-    ADMIN = "admin"
-    TEACHER = "teacher"
-    PARENT = "parent"
-    STUDENT = "student"
+from ..enums.user_enums import Gender, UserStatus, UserRole
 
 class UserBase(BaseModel):
     FirstName: str
@@ -49,7 +27,6 @@ class UserCreate(UserBase):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
-
 
 class UserUpdate(BaseModel):
     FirstName: Optional[str] = None
