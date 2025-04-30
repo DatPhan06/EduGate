@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
 from datetime import datetime, timedelta
 from ..models.user import User
 from ..schemas.user import UserCreate, UserUpdate
@@ -92,7 +92,34 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + timedelta(days=7)  # Token hết hạn sau 7 ngày
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt 
+    return encoded_jwt
+
+def login_user(db: Session, email: str, password: str):
+    user = get_user_by_email(db, email)
+    if not user or not pwd_context.verify(password, user.Password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password"
+        )
+    return user
+
+def get_current_user(token: str, db: Session) -> Optional[User]:
+    payload = verify_token(token)
+    if not payload:
+        return None
+    
+    email = payload.get("sub")
+    if not email:
+        return None
+    
+    return get_user_by_email(db, email)
+
+def verify_token(token: str) -> Optional[dict]:
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return payload
+    except JWTError:
+        return None 

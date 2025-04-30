@@ -1,43 +1,66 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, Union
 from datetime import datetime
 from enum import Enum
 
 class Gender(str, Enum):
-    MALE = "male"
-    FEMALE = "female"
-    OTHER = "other"
+    MALE = "MALE"
+    FEMALE = "FEMALE"
+    OTHER = "OTHER"
+
+    def __str__(self):
+        return self.value
 
 class UserStatus(str, Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    SUSPENDED = "suspended"
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    SUSPENDED = "SUSPENDED"
+
+    def __str__(self):
+        return self.value
 
 class UserBase(BaseModel):
     FirstName: str
     LastName: str
     Email: EmailStr
+    Street: Optional[str] = None
+    District: Optional[str] = None
+    City: Optional[str] = None
     PhoneNumber: Optional[str] = None
     DOB: Optional[datetime] = None
     PlaceOfBirth: Optional[str] = None
-    Gender: Optional[Gender] = None
+    Gender: Optional[Gender]
     Address: Optional[str] = None
     Status: UserStatus = UserStatus.ACTIVE
+
+    class Config:
+        use_enum_values = True
 
 class UserCreate(UserBase):
     Password: str
 
 class UserLogin(BaseModel):
-    Email: EmailStr
-    Password: str
+    email: EmailStr
+    password: str
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "email": "user@example.com",
+                "password": "your_password"
+            }
+        }
 
 class UserUpdate(BaseModel):
     FirstName: Optional[str] = None
     LastName: Optional[str] = None
+    Street: Optional[str] = None
+    District: Optional[str] = None
+    City: Optional[str] = None
     PhoneNumber: Optional[str] = None
     DOB: Optional[datetime] = None
     PlaceOfBirth: Optional[str] = None
-    Gender: Optional[Gender] = None
+    Gender: Optional[Gender]
     Address: Optional[str] = None
     Status: Optional[UserStatus] = None
 

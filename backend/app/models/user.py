@@ -5,14 +5,20 @@ import datetime
 import enum
 
 class Gender(enum.Enum):
-    MALE = "male"
-    FEMALE = "female"
-    OTHER = "other"
+    MALE = "MALE"
+    FEMALE = "FEMALE"
+    OTHER = "OTHER"
+
+    def __str__(self):
+        return self.value
 
 class UserStatus(enum.Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    SUSPENDED = "suspended"
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    SUSPENDED = "SUSPENDED"
+
+    def __str__(self):
+        return self.value
 
 class User(Base):
     __tablename__ = "users"
@@ -28,11 +34,11 @@ class User(Base):
     PhoneNumber = Column(String)
     DOB = Column(DateTime)
     PlaceOfBirth = Column(String)
-    Gender = Column(Enum(Gender))
+    Gender = Column(Enum(Gender, name='gender', values_callable=lambda x: [e.value for e in x]))
     Address = Column(String)
     CreatedAt = Column(DateTime, default=datetime.datetime.utcnow)
     UpdatedAt = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-    Status = Column(Enum(UserStatus), default=UserStatus.ACTIVE)
+    Status = Column(Enum(UserStatus, name='userstatus', values_callable=lambda x: [e.value for e in x]), default=UserStatus.ACTIVE)
 
     # Relationships
     events = relationship("Event", back_populates="creator")

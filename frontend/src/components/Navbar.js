@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBell } from "@fortawesome/free-solid-svg-icons";
+import { faBell, faUser } from "@fortawesome/free-solid-svg-icons";
 import styles from "./Navbar.module.css";
-import Markdown from "markdown-to-jsx";
+import authService from "../services/authService";
 
 /**
  * Thành phần Navbar hiển thị thanh điều hướng của trang web.
@@ -67,373 +67,106 @@ import Markdown from "markdown-to-jsx";
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [selectedNotification, setSelectedNotification] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const token = localStorage.getItem("token");
-  const isLoggedIn = !!token;
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const navigate = useNavigate();
+  const isLoggedIn = !!authService.getCurrentUser();
 
-  // Fetch notifications
-  const fetchNotifications = async () => {
-    try {
-      // TODO: Implement notification fetching
-      setNotifications([]);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    }
-  };
-
-  useEffect(() => {
-    const fetchUserAndNotifications = async () => {
-      if (isLoggedIn) {
-        try {
-          // TODO: Implement user data fetching
-          setCurrentUser(null);
-          setNotifications([]);
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-        }
-      }
-    };
-
-    fetchUserAndNotifications();
-  }, [isLoggedIn]);
-
-  const toggleNotification = () => {
-    setIsNotificationOpen(!isNotificationOpen);
+  const handleLogout = () => {
+    authService.logout();
+    navigate("/login");
   };
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  // Handler for notification click
-  const handleNotificationClick = (notification) => {
-    setSelectedNotification(notification);
-    setIsModalOpen(true);
+  const toggleNotification = () => {
+    setIsNotificationOpen(!isNotificationOpen);
   };
 
-  // Handler to close modal
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedNotification(null);
+  const toggleAccount = () => {
+    setIsAccountOpen(!isAccountOpen);
   };
 
   return (
-    <>
-      <button className={styles.menuToggle} onClick={toggleMenu}>
-        {isMenuOpen ? "×" : "☰"}
-      </button>
+    <nav className={styles.nav}>
+      <div className={styles.navContainer}>
+        <div className={styles.navLeft}>
+          <Link to="/" className={styles.logo}>
+            <img src="/images/logo.png" alt="EduGate Logo" />
+          </Link>
+        </div>
 
-      <nav className={`${styles.nav} ${isMenuOpen ? styles.active : ""}`}>
-        <ul className={styles.navList}>
-          <li className={styles.navItem}>
-            <Link to="/">
-              <img
-                src="/images/vtcb_logo.png"
-                alt="Logo"
-                className={styles.logo}
-              />
-            </Link>
-          </li>
+        <div className={styles.navCenter}>
+          <Link to="/" className={styles.navLink}>Trang chủ</Link>
+          <Link to="/courses" className={styles.navLink}>Khóa học</Link>
+          <Link to="/teachers" className={styles.navLink}>Giáo viên</Link>
+          <Link to="/about" className={styles.navLink}>Giới thiệu</Link>
+          <Link to="/contact" className={styles.navLink}>Liên hệ</Link>
+        </div>
 
-          {/* Mục Đặt Vé */}
-          <li className={styles.navItem}>
-            <p className={styles.navLink}>ĐẶT VÉ</p>
-            <ul className={styles.subMenu}>
-              <li className={styles.subMenuItem}>
-                <Link to="/booking/book-ticket" className={styles.subMenuLink}>
-                  Mua Vé
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link
-                  to="/booking/manage-ticket"
-                  className={styles.subMenuLink}
-                >
-                  Quản Lý Vé
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link
-                  to="/booking/payment-guide"
-                  className={styles.subMenuLink}
-                >
-                  Hướng Dẫn
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link
-                  to="/booking/cancel-ticket"
-                  className={styles.subMenuLink}
-                >
-                  Điều kiện giá vé
-                </Link>
-              </li>
-            </ul>
-          </li>
-
-          {/* Mục Thông Tin */}
-          <li className={styles.navItem}>
-            <p className={styles.navLink}>THÔNG TIN HÀNH TRÌNH</p>
-            <ul className={styles.subMenu}>
-              <li className={styles.subMenuItem}>
-                <Link to="/info/ticket-schedule" className={styles.subMenuLink}>
-                  Lịch Bay
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link
-                  to="/info/special-services"
-                  className={styles.subMenuLink}
-                >
-                  Dịch Vụ Đặc Biệt
-                </Link>
-              </li>
-
-              <li className={styles.subMenuItem}>
-                <Link to="/info/check-in" className={styles.subMenuLink}>
-                  Hướng dẫn thủ Tục
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link
-                  to="/info/document-requirements"
-                  className={styles.subMenuLink}
-                >
-                  Yêu Cầu Giấy Tờ
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link to="/info/airport" className={styles.subMenuLink}>
-                  Thông tin sân Bay
-                </Link>
-              </li>
-            </ul>
-          </li>
-
-          {/* Mục Khám Phá */}
-          <li className={styles.navItem}>
-            <p className={styles.navLink}>KHÁM PHÁ</p>
-            <ul className={styles.subMenu}>
-              <li className={styles.subMenuItem}>
-                <Link to="/explore/destinations" className={styles.subMenuLink}>
-                  Điểm Đến
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link to="/explore/offers" className={styles.subMenuLink}>
-                  Ưu Đãi
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link to="/explore/flight-experience" className={styles.subMenuLink}>
-                  Tin tức
-                </Link>
-              </li>
-            </ul>
-          </li>
-
-          {/* Mục Hãng Hàng Không */}
-          <li className={styles.navItem}>
-            <p className={styles.navLink}>QAirline</p>
-            <ul className={styles.subMenu}>
-              <li className={styles.subMenuItem}>
-                <Link to="/info/general" className={styles.subMenuLink}>
-                  Thông Tin Chung
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link to="/qairline/about" className={styles.subMenuLink}>
-                  Giới Thiệu
-                </Link>
-              </li>
-              <li className={styles.subMenuItem}>
-                <Link
-                  to="/qairline/news"
-                  className={styles.subMenuLink}
-                >
-                  Trải nghiệm bay
-                </Link>
-              </li>
-            </ul>
-          </li>
-
-          {/* Mục Tài Khoản */}
-          <li className={`${styles.navItem} ${styles.account}`}>
-            {isLoggedIn ? (
-              <>
-                <p className={styles.navLink}>
-                  <img
-                    src="/images/user.png"
-                    alt="Avatar"
-                    className={styles.avatar}
-                  />
-                  Tài khoản
-                </p>
-                <ul className={styles.subMenu}>
-                  <li className={styles.subMenuItem}>
-                    <Link to="/account/profile" className={styles.subMenuLink}>
-                      Hồ Sơ
-                    </Link>
-                  </li>
-                  <li className={styles.subMenuItem}>
-                    <Link to="/account/settings" className={styles.subMenuLink}>
-                      Cài Đặt
-                    </Link>
-                  </li>
-                  <li className={styles.subMenuItem}>
-                    <Link to="/account/logout" className={styles.subMenuLink}>
-                      Đăng Xuất
-                    </Link>
-                  </li>
-                </ul>
-              </>
-            ) : (
-              <div className={styles.authLinks}>
-                <Link to="/account/signin" className={styles.navLink}>
-                  Đăng Nhập
-                </Link>
-                <span className={styles.separator}>|</span>
-                <Link to="/account/signup" className={styles.navLink}>
-                  Đăng Ký
-                </Link>
-              </div>
-            )}
-          </li>
-          <li>
-            {isLoggedIn && (
+        <div className={styles.navRight}>
+          {isLoggedIn ? (
+            <>
               <div className={styles.notificationContainer}>
-                {" "}
-                <button
-                  className={styles.notificationButton}
-                  onClick={toggleNotification}
-                >
-                  {" "}
-                  <FontAwesomeIcon icon={faBell} />{" "}
-                  {notifications.length > 0 && (
-                    <span className={styles.notificationBadge}>
-                      {" "}
-                      {notifications.length}{" "}
-                    </span>
-                  )}{" "}
-                </button>{" "}
+                <button className={styles.notificationButton} onClick={toggleNotification}>
+                  <FontAwesomeIcon icon={faBell} />
+                </button>
                 {isNotificationOpen && (
                   <div className={styles.notificationDropdown}>
-                    <h3>Thông báo</h3>
-                    {notifications.length > 0 ? (
-                      <div className={styles.notificationList}>
-                        {notifications.map((notification) => (
-                          <div
-                            key={notification.notification_id}
-                            className={styles.notificationItem}
-                            onClick={() =>
-                              handleNotificationClick(notification)
-                            }
-                          >
-                            <div className={styles.notificationTitle}>
-                              {notification.title}
-                            </div>
-                            <div className={styles.notificationContent}>
-                              {notification.content.replace(
-                                /\*\*(.*?)\*\*/g,
-                                "$1"
-                              )}{" "}
-                            </div>
-                            <div className={styles.notificationTime}>
-                              {new Date(
-                                notification.created_at
-                              ).toLocaleDateString()}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className={styles.noNotifications}>
-                        Không có thông báo mới
-                      </p>
-                    )}
-                  </div>
-                )}
-                {/* Notification Detail Modal */}
-                {isModalOpen && selectedNotification && (
-                  <div
-                    className={styles.modalOverlay}
-                    onClick={handleCloseModal}
-                  >
-                    <div
-                      className={styles.modalContent}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        className={styles.closeButton}
-                        onClick={handleCloseModal}
-                      >
-                        ×
-                      </button>
-                      <div className={styles.notificationDetail}>
-                        <h2>{selectedNotification.title}</h2>
-                        <div className={styles.notificationInfo}>
-                          <p className={styles.notificationTime}>
-                            {new Date(
-                              selectedNotification.created_at
-                            ).toLocaleString()}
-                          </p>
-                          {selectedNotification.type && (
-                            <p className={styles.notificationType}>
-                              Loại: {selectedNotification.type}
-                            </p>
-                          )}
-                        </div>
-                        <div className={styles.notificationBody}>
-                          <Markdown
-                            options={{
-                              forceBlock: true,
-                              overrides: {
-                                strong: {
-                                  component: "strong",
-                                  props: {
-                                    className: styles.markdownStrong,
-                                  },
-                                },
-                                p: {
-                                  component: "p",
-                                  props: {
-                                    className: styles.markdownParagraph,
-                                  },
-                                },
-                                ul: {
-                                  component: "ul",
-                                  props: {
-                                    className: styles.markdownList,
-                                  },
-                                },
-                                li: {
-                                  component: "li",
-                                  props: {
-                                    className: styles.markdownListItem,
-                                  },
-                                },
-                              },
-                            }}
-                          >
-                            {/* Remove extra spaces and tabs from notification content */}
-                            {selectedNotification.content
-                              .trim()
-                              .replace(/^\s+/gm, "")}
-                          </Markdown>
-                        </div>
-                      </div>
+                    <div className={styles.notificationHeader}>
+                      <h3>Thông báo</h3>
+                    </div>
+                    <div className={styles.notificationContent}>
+                      <p>Không có thông báo mới</p>
                     </div>
                   </div>
                 )}
               </div>
-            )}
-          </li>
-        </ul>
-      </nav>
-    </>
+
+              <div className={styles.accountContainer}>
+                <button className={styles.accountButton} onClick={toggleAccount}>
+                  <FontAwesomeIcon icon={faUser} />
+                </button>
+                {isAccountOpen && (
+                  <div className={styles.accountDropdown}>
+                    <Link to="/profile" className={styles.dropdownItem}>Hồ sơ</Link>
+                    <Link to="/settings" className={styles.dropdownItem}>Cài đặt</Link>
+                    <button onClick={handleLogout} className={styles.dropdownItem}>Đăng xuất</button>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className={styles.authButtons}>
+              <Link to="/login" className={styles.loginButton}>Đăng nhập</Link>
+              <Link to="/register" className={styles.registerButton}>Đăng ký</Link>
+            </div>
+          )}
+        </div>
+
+        <button className={styles.menuButton} onClick={toggleMenu}>
+          <span className={styles.menuIcon}></span>
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      {isMenuOpen && (
+        <div className={styles.mobileMenu}>
+          <Link to="/" className={styles.mobileLink}>Trang chủ</Link>
+          <Link to="/courses" className={styles.mobileLink}>Khóa học</Link>
+          <Link to="/teachers" className={styles.mobileLink}>Giáo viên</Link>
+          <Link to="/about" className={styles.mobileLink}>Giới thiệu</Link>
+          <Link to="/contact" className={styles.mobileLink}>Liên hệ</Link>
+          {!isLoggedIn && (
+            <>
+              <Link to="/login" className={styles.mobileLink}>Đăng nhập</Link>
+              <Link to="/register" className={styles.mobileLink}>Đăng ký</Link>
+            </>
+          )}
+        </div>
+      )}
+    </nav>
   );
 };
 

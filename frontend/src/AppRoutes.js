@@ -1,13 +1,30 @@
-import React from "react";
-import { Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Login from './pages/Users/Login';
+import Register from './pages/Users/Register';
+import authService from './services/authService';
+import Home from './pages/Home';
 
-function AppRoutes() {
-  return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-    </Routes>
-  );
-}
+const PrivateRoute = ({ children }) => {
+    const user = authService.getCurrentUser();
+    return user ? children : <Navigate to="/login" />;
+};
+
+const AppRoutes = () => {
+    return (
+        <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route
+                path="/"
+                element={
+                    <PrivateRoute>
+                        <Home />
+                    </PrivateRoute>
+                }
+            />
+        </Routes>
+    );
+};
 
 export default AppRoutes;
