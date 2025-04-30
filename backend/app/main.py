@@ -3,11 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from .routers import *
 import os
 from dotenv import load_dotenv
+from .database import engine
+from .base import Base
+from .models import User, Course
+from .config import settings
 
 # Load biến môi trường từ file .env
 load_dotenv()
 
-app = FastAPI(title="Flight Booking System")
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.PROJECT_VERSION
+)
 
 # Cấu hình CORS
 app.add_middleware(
@@ -17,6 +24,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Tạo bảng trong database
+Base.metadata.create_all(bind=engine)
 
 # Bao gồm các router
 # app.include_router(flights_router)
@@ -38,5 +48,5 @@ app.add_middleware(
 
 
 @app.get("/")
-async def root():
-    return {"message": "Hello World"}
+def read_root():
+    return {"message": "Welcome to EduGate API"}
