@@ -8,3 +8,4 @@ from .models import (
     StudentRNP, RewardPunishment, ClassRNP, Petition
 )
 from .config import settings
+
