@@ -5,9 +5,9 @@ import datetime
 import enum
 
 class PetitionStatus(enum.Enum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
 
 class Petition(Base):
     __tablename__ = "petitions"
