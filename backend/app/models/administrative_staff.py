@@ -10,4 +10,5 @@ class AdministrativeStaff(Base):
     Position = Column(String)
 
     user = relationship("User", back_populates="administrative_staff")
-    department = relationship("Department", back_populates="administrative_staffs") 
+    department = relationship("Department", back_populates="administrative_staffs")
+    petitions = relationship("Petition", back_populates="admin") 
