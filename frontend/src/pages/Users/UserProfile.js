@@ -46,6 +46,7 @@ const UserProfile = () => {
     const [alertMessage, setAlertMessage] = useState('');
     const [alertSeverity, setAlertSeverity] = useState('success');
     const [activeTab, setActiveTab] = useState(0);
+    const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         FirstName: '',
         LastName: '',
@@ -60,6 +61,16 @@ const UserProfile = () => {
         Address: '',
         Status: '',
         role: '',
+        // Student specific fields
+        ClassID: '',
+        YtDate: '',
+        // Teacher specific fields
+        DepartmentID: '',
+        Graduate: '',
+        Degree: '',
+        Position: '',
+        // Parent specific fields
+        Occupation: '',
     });
     const [formErrors, setFormErrors] = useState({});
     const [passwordData, setPasswordData] = useState({
@@ -165,6 +176,14 @@ const UserProfile = () => {
                     Address: response.Address || '',
                     Status: response.Status || '',
                     role: response.role || '',
+                    // Role-specific fields
+                    ClassID: response.student?.ClassID || '',
+                    YtDate: response.student?.YtDate ? new Date(response.student.YtDate).toISOString().split('T')[0] : '',
+                    DepartmentID: response.teacher?.DepartmentID || response.administrative_staff?.DepartmentID || '',
+                    Graduate: response.teacher?.Graduate || '',
+                    Degree: response.teacher?.Degree || '',
+                    Position: response.teacher?.Position || response.administrative_staff?.Position || '',
+                    Occupation: response.parent?.Occupation || '',
                 });
             }
         } catch (error) {
@@ -214,12 +233,32 @@ const UserProfile = () => {
 
         try {
             setLoading(true);
-            await userService.updateUser(user.UserID, formData);
+            
+            // Prepare data for submission
+            const submitData = { ...formData };
+            
+            // Format empty and numeric fields properly
+            if (submitData.ClassID === '') submitData.ClassID = null;
+            if (submitData.DepartmentID === '') submitData.DepartmentID = null;
+            if (submitData.YtDate === '') submitData.YtDate = null;
+            if (submitData.Gender === '') submitData.Gender = null;
+            
+            // Convert numeric strings to numbers if not empty
+            if (submitData.ClassID !== null && submitData.ClassID !== '') {
+                submitData.ClassID = parseInt(submitData.ClassID, 10);
+            }
+            if (submitData.DepartmentID !== null && submitData.DepartmentID !== '') {
+                submitData.DepartmentID = parseInt(submitData.DepartmentID, 10);
+            }
+            
+            await userService.updateUser(user.UserID, submitData);
             showAlert('Cập nhật thông tin thành công');
+            setIsEditing(false);
             fetchUserData();
         } catch (error) {
             console.error('Error updating user:', error);
             if (error.response) {
+                console.error('Error response:', error.response.data);
                 showAlert(error.response.data?.detail || 'Có lỗi xảy ra khi cập nhật thông tin', 'error');
             } else {
                 showAlert('Không thể kết nối đến máy chủ', 'error');
@@ -264,6 +303,10 @@ const UserProfile = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const toggleEditMode = () => {
+        setIsEditing(!isEditing);
     };
 
     if (loading) {
@@ -380,6 +423,7 @@ const UserProfile = () => {
                                         error={!!formErrors.FirstName}
                                         helperText={formErrors.FirstName}
                                         required
+                                        disabled={!isEditing}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
@@ -392,6 +436,7 @@ const UserProfile = () => {
                                         error={!!formErrors.LastName}
                                         helperText={formErrors.LastName}
                                         required
+                                        disabled={!isEditing}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
@@ -413,6 +458,7 @@ const UserProfile = () => {
                                         name="Street"
                                         value={formData.Street}
                                         onChange={handleChange}
+                                        disabled={!isEditing}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
@@ -422,6 +468,7 @@ const UserProfile = () => {
                                         name="District"
                                         value={formData.District}
                                         onChange={handleChange}
+                                        disabled={!isEditing}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
@@ -431,6 +478,7 @@ const UserProfile = () => {
                                         name="City"
                                         value={formData.City}
                                         onChange={handleChange}
+                                        disabled={!isEditing}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
@@ -442,6 +490,7 @@ const UserProfile = () => {
                                         onChange={handleChange}
                                         error={!!formErrors.PhoneNumber}
                                         helperText={formErrors.PhoneNumber}
+                                        disabled={!isEditing}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
@@ -455,6 +504,7 @@ const UserProfile = () => {
                                         error={!!formErrors.DOB}
                                         helperText={formErrors.DOB}
                                         InputLabelProps={{ shrink: true }}
+                                        disabled={!isEditing}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
@@ -464,10 +514,11 @@ const UserProfile = () => {
                                         name="PlaceOfBirth"
                                         value={formData.PlaceOfBirth}
                                         onChange={handleChange}
+                                        disabled={!isEditing}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
-                                    <FormControl fullWidth>
+                                    <FormControl fullWidth disabled={!isEditing}>
                                         <InputLabel>Giới tính</InputLabel>
                                         <Select
                                             name="Gender"
@@ -490,22 +541,211 @@ const UserProfile = () => {
                                         rows={3}
                                         value={formData.Address}
                                         onChange={handleChange}
+                                        disabled={!isEditing}
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
                                     <Box display="flex" justifyContent="flex-end" mt={2}>
-                                        <Button
-                                            type="submit"
-                                            variant="contained"
-                                            color="primary"
-                                            size="large"
-                                            startIcon={<SaveIcon />}
-                                            disabled={loading}
-                                        >
-                                            {loading ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
-                                        </Button>
+                                        {!isEditing ? (
+                                            <Button
+                                                variant="contained"
+                                                color="primary"
+                                                size="large"
+                                                startIcon={<EditIcon />}
+                                                onClick={toggleEditMode}
+                                            >
+                                                Chỉnh sửa thông tin
+                                            </Button>
+                                        ) : (
+                                            <>
+                                                <Button
+                                                    variant="outlined"
+                                                    color="secondary"
+                                                    size="large"
+                                                    startIcon={<CloseIcon />}
+                                                    onClick={toggleEditMode}
+                                                    sx={{ mr: 2 }}
+                                                >
+                                                    Hủy
+                                                </Button>
+                                                <Button
+                                                    type="submit"
+                                                    variant="contained"
+                                                    color="primary"
+                                                    size="large"
+                                                    startIcon={<SaveIcon />}
+                                                    disabled={loading}
+                                                >
+                                                    {loading ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
+                                                </Button>
+                                            </>
+                                        )}
                                     </Box>
                                 </Grid>
+                                {/* Add role-specific information section */}
+                                {user && (
+                                    <Grid item xs={12}>
+                                        <Card elevation={3}>
+                                            <CardHeader
+                                                title="Thông tin vai trò"
+                                                subheader={`Thông tin liên quan đến vai trò ${
+                                                    user.role === 'admin' ? 'Quản trị viên' :
+                                                    user.role === 'teacher' ? 'Giáo viên' :
+                                                    user.role === 'parent' ? 'Phụ huynh' : 'Học sinh'
+                                                }`}
+                                            />
+                                            <CardContent>
+                                                <Grid container spacing={2}>
+                                                    {user.role === 'student' && (
+                                                        <>
+                                                            <Grid item xs={12} md={6}>
+                                                                <TextField
+                                                                    fullWidth
+                                                                    label="Lớp"
+                                                                    name="ClassID"
+                                                                    value={formData.ClassID}
+                                                                    onChange={handleChange}
+                                                                    disabled={!isEditing}
+                                                                    variant="outlined"
+                                                                    margin="normal"
+                                                                    error={!!formErrors.ClassID}
+                                                                    helperText={formErrors.ClassID}
+                                                                />
+                                                            </Grid>
+                                                            <Grid item xs={12} md={6}>
+                                                                <TextField
+                                                                    fullWidth
+                                                                    label="Ngày chuyển trường"
+                                                                    name="YtDate"
+                                                                    type="date"
+                                                                    value={formData.YtDate}
+                                                                    onChange={handleChange}
+                                                                    disabled={!isEditing}
+                                                                    variant="outlined"
+                                                                    margin="normal"
+                                                                    InputLabelProps={{ shrink: true }}
+                                                                    error={!!formErrors.YtDate}
+                                                                    helperText={formErrors.YtDate}
+                                                                />
+                                                            </Grid>
+                                                        </>
+                                                    )}
+                                                    
+                                                    {user.role === 'teacher' && (
+                                                        <>
+                                                            <Grid item xs={12} md={6}>
+                                                                <TextField
+                                                                    fullWidth
+                                                                    label="Phòng ban"
+                                                                    name="DepartmentID"
+                                                                    value={formData.DepartmentID}
+                                                                    onChange={handleChange}
+                                                                    disabled={!isEditing}
+                                                                    variant="outlined"
+                                                                    margin="normal"
+                                                                    error={!!formErrors.DepartmentID}
+                                                                    helperText={formErrors.DepartmentID}
+                                                                />
+                                                            </Grid>
+                                                            <Grid item xs={12} md={6}>
+                                                                <TextField
+                                                                    fullWidth
+                                                                    label="Trình độ học vấn"
+                                                                    name="Graduate"
+                                                                    value={formData.Graduate}
+                                                                    onChange={handleChange}
+                                                                    disabled={!isEditing}
+                                                                    variant="outlined"
+                                                                    margin="normal"
+                                                                    error={!!formErrors.Graduate}
+                                                                    helperText={formErrors.Graduate}
+                                                                />
+                                                            </Grid>
+                                                            <Grid item xs={12} md={6}>
+                                                                <TextField
+                                                                    fullWidth
+                                                                    label="Bằng cấp"
+                                                                    name="Degree"
+                                                                    value={formData.Degree}
+                                                                    onChange={handleChange}
+                                                                    disabled={!isEditing}
+                                                                    variant="outlined"
+                                                                    margin="normal"
+                                                                    error={!!formErrors.Degree}
+                                                                    helperText={formErrors.Degree}
+                                                                />
+                                                            </Grid>
+                                                            <Grid item xs={12} md={6}>
+                                                                <TextField
+                                                                    fullWidth
+                                                                    label="Chức vụ"
+                                                                    name="Position"
+                                                                    value={formData.Position}
+                                                                    onChange={handleChange}
+                                                                    disabled={!isEditing}
+                                                                    variant="outlined"
+                                                                    margin="normal"
+                                                                    error={!!formErrors.Position}
+                                                                    helperText={formErrors.Position}
+                                                                />
+                                                            </Grid>
+                                                        </>
+                                                    )}
+                                                    
+                                                    {user.role === 'parent' && (
+                                                        <Grid item xs={12} md={6}>
+                                                            <TextField
+                                                                fullWidth
+                                                                label="Nghề nghiệp"
+                                                                name="Occupation"
+                                                                value={formData.Occupation}
+                                                                onChange={handleChange}
+                                                                disabled={!isEditing}
+                                                                variant="outlined"
+                                                                margin="normal"
+                                                                error={!!formErrors.Occupation}
+                                                                helperText={formErrors.Occupation}
+                                                            />
+                                                        </Grid>
+                                                    )}
+
+                                                    {user.role === 'admin' && (
+                                                        <>
+                                                            <Grid item xs={12} md={6}>
+                                                                <TextField
+                                                                    fullWidth
+                                                                    label="Phòng ban"
+                                                                    name="DepartmentID"
+                                                                    value={formData.DepartmentID}
+                                                                    onChange={handleChange}
+                                                                    disabled={!isEditing}
+                                                                    variant="outlined"
+                                                                    margin="normal"
+                                                                    error={!!formErrors.DepartmentID}
+                                                                    helperText={formErrors.DepartmentID}
+                                                                />
+                                                            </Grid>
+                                                            <Grid item xs={12} md={6}>
+                                                                <TextField
+                                                                    fullWidth
+                                                                    label="Chức vụ"
+                                                                    name="Position"
+                                                                    value={formData.Position}
+                                                                    onChange={handleChange}
+                                                                    disabled={!isEditing}
+                                                                    variant="outlined"
+                                                                    margin="normal"
+                                                                    error={!!formErrors.Position}
+                                                                    helperText={formErrors.Position}
+                                                                />
+                                                            </Grid>
+                                                        </>
+                                                    )}
+                                                </Grid>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                )}
                             </Grid>
                         </form>
                     </Paper>

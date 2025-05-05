@@ -3,6 +3,7 @@ from fastapi import HTTPException, status, Depends
 from datetime import datetime, timedelta
 from ..models.user import User
 from ..schemas.user import UserCreate, UserUpdate, UserLogin, TokenData
+from ..enums.user_enums import UserRole, Gender, UserStatus
 from jose import JWTError, jwt
 from typing import Optional
 from ..config import settings
@@ -73,7 +74,42 @@ def create_user(db: Session, user: UserCreate):
         role=user.role or 'student'  # Set default role if not provided
     )
     
+    # First add and flush to get the UserID
     db.add(db_user)
+    db.flush()
+    
+    # Now create role-specific records with the generated UserID
+    if user.role == 'student':
+        from ..models.student import Student
+        db_user.student = Student(
+            StudentID=db_user.UserID,
+            ClassID=getattr(user, 'ClassID', None),
+            EnrollmentDate=datetime.utcnow(),
+            YtDate=getattr(user, 'YtDate', None)
+        )
+    elif user.role == 'teacher':
+        from ..models.teacher import Teacher
+        db_user.teacher = Teacher(
+            TeacherID=db_user.UserID,
+            DepartmentID=getattr(user, 'DepartmentID', None),
+            Graduate=getattr(user, 'Graduate', None),
+            Degree=getattr(user, 'Degree', None),
+            Position=getattr(user, 'Position', None)
+        )
+    elif user.role == 'parent':
+        from ..models.parent import Parent
+        db_user.parent = Parent(
+            ParentID=db_user.UserID,
+            Occupation=getattr(user, 'Occupation', None)
+        )
+    elif user.role == 'admin':
+        from ..models.administrative_staff import AdministrativeStaff
+        db_user.administrative_staff = AdministrativeStaff(
+            AdminID=db_user.UserID,
+            DepartmentID=getattr(user, 'DepartmentID', None),
+            Position=getattr(user, 'Position', None)
+        )
+    
     db.commit()
     db.refresh(db_user)
     return db_user
@@ -83,9 +119,76 @@ def update_user(db: Session, user_id: int, user: UserUpdate) -> Optional[User]:
     if not db_user:
         return None
     
-    update_data = user.dict(exclude_unset=True)
+    # Update the base user fields
+    update_data = user.dict(exclude_unset=True, exclude_none=True)
+    
+    # Handle Enum conversion for Gender and Status
+    if 'Gender' in update_data and update_data['Gender'] is not None:
+        try:
+            update_data['Gender'] = Gender(update_data['Gender'])
+        except ValueError:
+            # Invalid enum value, remove it
+            update_data.pop('Gender')
+    
+    if 'Status' in update_data and update_data['Status'] is not None:
+        try:
+            update_data['Status'] = UserStatus(update_data['Status'])
+        except ValueError:
+            # Invalid enum value, remove it
+            update_data.pop('Status')
+    
+    # Extract role-specific fields
+    student_fields = {}
+    teacher_fields = {}
+    parent_fields = {}
+    admin_fields = {}
+    
+    # Student fields
+    if 'ClassID' in update_data:
+        student_fields['ClassID'] = update_data.pop('ClassID')
+    if 'YtDate' in update_data:
+        student_fields['YtDate'] = update_data.pop('YtDate')
+        
+    # Teacher fields
+    if 'DepartmentID' in update_data and db_user.role == 'teacher':
+        teacher_fields['DepartmentID'] = update_data.pop('DepartmentID')
+    if 'Graduate' in update_data:
+        teacher_fields['Graduate'] = update_data.pop('Graduate')
+    if 'Degree' in update_data:
+        teacher_fields['Degree'] = update_data.pop('Degree')
+    if 'Position' in update_data and db_user.role == 'teacher':
+        teacher_fields['Position'] = update_data.pop('Position')
+        
+    # Parent fields
+    if 'Occupation' in update_data:
+        parent_fields['Occupation'] = update_data.pop('Occupation')
+        
+    # Admin fields
+    if 'DepartmentID' in update_data and db_user.role == 'admin':
+        admin_fields['DepartmentID'] = update_data.pop('DepartmentID')
+    if 'Position' in update_data and db_user.role == 'admin':
+        admin_fields['Position'] = update_data.pop('Position')
+    
+    # Update main user fields
     for key, value in update_data.items():
         setattr(db_user, key, value)
+    
+    # Update role-specific fields
+    if db_user.student and student_fields:
+        for key, value in student_fields.items():
+            setattr(db_user.student, key, value)
+    
+    if db_user.teacher and teacher_fields:
+        for key, value in teacher_fields.items():
+            setattr(db_user.teacher, key, value)
+    
+    if db_user.parent and parent_fields:
+        for key, value in parent_fields.items():
+            setattr(db_user.parent, key, value)
+    
+    if db_user.administrative_staff and admin_fields:
+        for key, value in admin_fields.items():
+            setattr(db_user.administrative_staff, key, value)
     
     db.commit()
     db.refresh(db_user)

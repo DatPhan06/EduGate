@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field, validator
+from typing import Optional, Union
 from datetime import datetime
 from ..enums.user_enums import Gender, UserStatus, UserRole
 
@@ -17,6 +17,19 @@ class UserBase(BaseModel):
     Address: Optional[str] = None
     Status: UserStatus = UserStatus.ACTIVE
     role: Optional[UserRole] = UserRole.STUDENT
+    
+    # Fields for Student
+    ClassID: Optional[int] = None
+    YtDate: Optional[datetime] = None
+    
+    # Fields for Teacher
+    DepartmentID: Optional[int] = None
+    Graduate: Optional[str] = None
+    Degree: Optional[str] = None
+    Position: Optional[str] = None
+    
+    # Fields for Parent
+    Occupation: Optional[str] = None
 
     class Config:
         use_enum_values = True
@@ -40,6 +53,22 @@ class UserUpdate(BaseModel):
     Gender: Optional[Gender]
     Address: Optional[str] = None
     Status: Optional[UserStatus] = None
+    
+    # Fields for Student
+    ClassID: Optional[int] = None
+    YtDate: Optional[datetime] = None
+    
+    # Fields for Teacher
+    DepartmentID: Optional[int] = None
+    Graduate: Optional[str] = None
+    Degree: Optional[str] = None
+    Position: Optional[str] = None
+    
+    # Fields for Parent
+    Occupation: Optional[str] = None
+
+    class Config:
+        use_enum_values = True
 
 class User(UserBase):
     UserID: int
