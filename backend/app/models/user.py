@@ -27,10 +27,9 @@ class User(Base):
     role = Column(Enum(UserRole, name='userrole', values_callable=lambda x: [e.value for e in x]), default=UserRole.STUDENT)
 
     # Relationships
-    events = relationship("Event", back_populates="creator")
+    access_permissions = relationship("AccessPermission", back_populates="user")
     messages = relationship("Message", back_populates="user")
     participations = relationship("Participation", back_populates="user")
-    user_groups = relationship("UserGroup", back_populates="user")
     administrative_staff = relationship("AdministrativeStaff", back_populates="user", uselist=False)
     teacher = relationship("Teacher", back_populates="user", uselist=False)
     student = relationship("Student", back_populates="user", uselist=False)

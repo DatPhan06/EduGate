@@ -2,10 +2,13 @@ from .base import Base
 from .database import engine, get_db
 from .models import (
     User, Event, Message, Conversation, Participation,
-    Group, UserGroup, Department, AdministrativeStaff,
+    Department, AdministrativeStaff,
     Teacher, Student, Parent, ParentStudent, Class,
     ClassSubject, Subject, Grade, GradeComponent,
-    StudentRNP, RewardPunishment, ClassRNP, Petition
+    RewardPunishment,
+    Petition,
+    AccessPermission, MessageFile, PostFile, ClassPost, DailyProgress,
+    PetitionFile, EventFile, SubjectSchedule
 )
 from .config import settings
 

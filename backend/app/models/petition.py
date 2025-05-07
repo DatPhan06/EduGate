@@ -19,7 +19,8 @@ class Petition(Base):
     Content = Column(String)
     Status = Column(Enum(PetitionStatus), default=PetitionStatus.PENDING)
     SubmittedAt = Column(DateTime, default=datetime.datetime.utcnow)
-    Notes = Column(String, nullable=True)
+    Response = Column(String, nullable=True)
 
     parent = relationship("Parent", back_populates="petitions")
-    admin = relationship("AdministrativeStaff", back_populates="petitions") 
+    admin = relationship("AdministrativeStaff", back_populates="petitions")
+    petition_files = relationship("PetitionFile", back_populates="petition", cascade="all, delete-orphan") 
