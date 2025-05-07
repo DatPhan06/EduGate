@@ -9,5 +9,6 @@ class Department(Base):
     DepartmentName = Column(String, unique=True)
     Description = Column(String)
 
-    administrative_staffs = relationship("AdministrativeStaff", back_populates="department")
-    teachers = relationship("Teacher", back_populates="department") 
+    teachers = relationship("Teacher", back_populates="department")
+    # Ensuring no administrative_staffs relationship is defined here
+    # administrative_staffs = relationship("AdministrativeStaff", back_populates="department") # This line should NOT exist or be commented out 

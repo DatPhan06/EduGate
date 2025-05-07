@@ -13,6 +13,5 @@ class Class(Base):
 
     students = relationship("Student", back_populates="class_")
     class_subjects = relationship("ClassSubject", back_populates="class_")
-    class_rnps = relationship("ClassRNP", back_populates="class_")
     homeroom_teacher = relationship("Teacher", foreign_keys=[HomeroomTeacherID], back_populates="homeroom_classes")
     class_posts = relationship("ClassPost", back_populates="class_") 
