@@ -1,25 +1,25 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from ..base import Base
 import datetime
-import enum
-
-class TargetScope(enum.Enum):
-    GLOBAL = "global"
-    PRIVATE = "private"
-    CLASS = "class"
 
 class Event(Base):
     __tablename__ = "events"
 
     EventID = Column(Integer, primary_key=True, index=True)
-    Creator_ID = Column(Integer, ForeignKey("users.UserID"))
-    GroupID = Column(Integer, ForeignKey("groups.GroupID"), nullable=True)
     Title = Column(String, index=True)
-    Content = Column(String)
+    Type = Column(String)
+    Content = Column(Text)
     EventDate = Column(DateTime)
     CreatedAt = Column(DateTime, default=datetime.datetime.utcnow)
-    TargetScope = Column(Enum(TargetScope))
+    AdminID = Column(Integer, ForeignKey("administrative_staffs.AdminID"))
 
-    creator = relationship("User", back_populates="events")
-    group = relationship("Group", back_populates="events") 
+    admin_creator = relationship("AdministrativeStaff", back_populates="created_events")
+    event_files = relationship("EventFile", back_populates="event", cascade="all, delete-orphan")
+
+    # Removed old relationships:
+    # Creator_ID = Column(Integer, ForeignKey("users.UserID"))
+    # GroupID = Column(Integer, ForeignKey("groups.GroupID"), nullable=True)
+    # TargetScope = Column(Enum(TargetScope))
+    # creator = relationship("User", back_populates="events")
+    # group = relationship("Group", back_populates="events") 

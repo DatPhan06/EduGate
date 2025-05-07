@@ -3,8 +3,6 @@ from .event import Event
 from .message import Message
 from .conversation import Conversation
 from .participation import Participation
-from .group import Group
-from .user_group import UserGroup
 from .department import Department
 from .administrative_staff import AdministrativeStaff
 from .teacher import Teacher
@@ -16,7 +14,13 @@ from .class_subject import ClassSubject
 from .subject import Subject
 from .grade import Grade
 from .grade_component import GradeComponent
-from .student_rnp import StudentRNP
 from .reward_punishment import RewardPunishment
-from .class_rnp import ClassRNP
 from .petition import Petition
+from .access_permission import AccessPermission
+from .message_file import MessageFile
+from .post_file import PostFile
+from .class_post import ClassPost
+from .daily_progress import DailyProgress
+from .petition_file import PetitionFile
+from .event_file import EventFile
+from .subject_schedule import SubjectSchedule

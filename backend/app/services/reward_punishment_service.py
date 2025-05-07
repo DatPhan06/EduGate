@@ -1,91 +1,44 @@
 from sqlalchemy.orm import Session
 from .. import models, schemas
 from typing import List
+import datetime
 
-def create_student_rnp(db: Session, rnp_data: schemas.StudentRewardPunishmentCreate):
+def create_reward_punishment(db: Session, rnp_data: schemas.RewardPunishmentCreate) -> models.RewardPunishment:
     """
-    Tạo khen thưởng/kỷ luật mới cho học sinh
+    Tạo bản ghi khen thưởng/kỷ luật mới.
+    Assumes rnp_data contains StudentID, AdminID, Title, Type, Description, Date, Semester, Week.
     """
-    # Kiểm tra học sinh tồn tại
-    student = db.query(models.Student).filter(models.Student.StudentID == rnp_data.student_id).first()
+    # Optional: Kiểm tra StudentID và AdminID tồn tại
+    student = db.query(models.Student).filter(models.Student.StudentID == rnp_data.StudentID).first()
     if not student:
-        raise ValueError(f"Student with ID {rnp_data.student_id} not found")
+        raise ValueError(f"Student with ID {rnp_data.StudentID} not found")
     
-    # Tạo bản ghi khen thưởng kỷ luật chung
-    reward_punishment = models.RewardPunishment(
-        Type=rnp_data.type,
-        Description=rnp_data.description,
-        Date=rnp_data.date,
-        IssuerID=rnp_data.issuer_id
-    )
-    db.add(reward_punishment)
-    db.commit()
-    db.refresh(reward_punishment)
-    
-    # Tạo liên kết với học sinh
-    student_rnp = models.StudentRNP(
-        RecordID=reward_punishment.RecordID,
-        StudentID=rnp_data.student_id
-    )
-    db.add(student_rnp)
-    db.commit()
-    db.refresh(student_rnp)
-    
-    return student_rnp
+    admin_staff = db.query(models.AdministrativeStaff).filter(models.AdministrativeStaff.AdminID == rnp_data.AdminID).first()
+    if not admin_staff:
+        raise ValueError(f"AdministrativeStaff with ID {rnp_data.AdminID} not found")
 
-def create_class_rnp(db: Session, rnp_data: schemas.ClassRewardPunishmentCreate):
-    """
-    Tạo khen thưởng/kỷ luật mới cho lớp học
-    """
-    # Kiểm tra lớp tồn tại
-    class_ = db.query(models.Class).filter(models.Class.ClassID == rnp_data.class_id).first()
-    if not class_:
-        raise ValueError(f"Class with ID {rnp_data.class_id} not found")
-    
-    # Tạo bản ghi khen thưởng kỷ luật chung
-    reward_punishment = models.RewardPunishment(
-        Type=rnp_data.type,
-        Description=rnp_data.description,
-        Date=rnp_data.date,
-        IssuerID=rnp_data.issuer_id
+    db_reward_punishment = models.RewardPunishment(
+        Title=rnp_data.Title,
+        Type=rnp_data.Type,
+        Description=rnp_data.Description,
+        Date=rnp_data.Date if rnp_data.Date else datetime.date.today(), # Example: use today if no date
+        Semester=rnp_data.Semester,
+        Week=rnp_data.Week,
+        StudentID=rnp_data.StudentID,
+        AdminID=rnp_data.AdminID
     )
-    db.add(reward_punishment)
+    db.add(db_reward_punishment)
     db.commit()
-    db.refresh(reward_punishment)
-    
-    # Tạo liên kết với lớp
-    class_rnp = models.ClassRNP(
-        RecordID=reward_punishment.RecordID,
-        ClassID=rnp_data.class_id
-    )
-    db.add(class_rnp)
-    db.commit()
-    db.refresh(class_rnp)
-    
-    return class_rnp
+    db.refresh(db_reward_punishment)
+    return db_reward_punishment
 
-def get_student_rnps(db: Session, student_id: int) -> List[models.StudentRNP]:
+def get_rewards_and_punishments_for_student(db: Session, student_id: int) -> List[models.RewardPunishment]:
     """
-    Lấy danh sách tất cả khen thưởng/kỷ luật của học sinh
+    Lấy danh sách tất cả khen thưởng/kỷ luật của học sinh.
     """
-    # Kiểm tra học sinh tồn tại
     student = db.query(models.Student).filter(models.Student.StudentID == student_id).first()
     if not student:
-        raise ValueError(f"Student with ID {student_id} not found")
+        # Or return empty list: return []
+        raise ValueError(f"Student with ID {student_id} not found") 
     
-    return db.query(models.StudentRNP).filter(
-        models.StudentRNP.StudentID == student_id
-    ).all()
-
-def get_class_rnps(db: Session, class_id: int) -> List[models.ClassRNP]:
-    """
-    Lấy danh sách tất cả khen thưởng/kỷ luật của lớp học
-    """
-    # Kiểm tra lớp tồn tại
-    class_ = db.query(models.Class).filter(models.Class.ClassID == class_id).first()
-    if not class_:
-        raise ValueError(f"Class with ID {class_id} not found")
-    
-    return db.query(models.ClassRNP).filter(
-        models.ClassRNP.ClassID == class_id
-    ).all()
+    return db.query(models.RewardPunishment).filter(models.RewardPunishment.StudentID == student_id).all()

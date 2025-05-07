@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey
 from sqlalchemy.orm import relationship
 from ..base import Base
 import datetime
@@ -19,5 +19,8 @@ class RewardPunishment(Base):
     Semester = Column(String)
     Week = Column(Integer)
 
-    student_rnps = relationship("StudentRNP", back_populates="reward_punishment")
-    class_rnps = relationship("ClassRNP", back_populates="reward_punishment") 
+    StudentID = Column(Integer, ForeignKey("students.StudentID"))
+    AdminID = Column(Integer, ForeignKey("administrative_staffs.AdminID"))
+
+    student = relationship("Student", back_populates="rewards_and_punishments")
+    administrative_staff = relationship("AdministrativeStaff", back_populates="issued_rewards_and_punishments") 

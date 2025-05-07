@@ -13,4 +13,5 @@ class Message(Base):
     UserID = Column(Integer, ForeignKey("users.UserID"))
 
     conversation = relationship("Conversation", back_populates="messages")
-    user = relationship("User", back_populates="messages") 
+    user = relationship("User", back_populates="messages")
+    message_files = relationship("MessageFile", back_populates="message") 
