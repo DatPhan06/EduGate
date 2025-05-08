@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
@@ -58,8 +58,14 @@ async def get_current_user(
         )
 
 @router.get("/", response_model=List[User])
-def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return user_service.get_users(db, skip, limit)
+def get_users(
+    skip: int = 0, 
+    limit: int = 100, 
+    role: Optional[UserRole] = Query(None, description="Filter users by role"),
+    search: Optional[str] = Query(None, description="Search users by name or email"),
+    db: Session = Depends(get_db)
+):
+    return user_service.get_users(db, skip=skip, limit=limit, role=role, search=search)
 
 @router.get("/{user_id}", response_model=User)
 def get_user(user_id: int, db: Session = Depends(get_db)):

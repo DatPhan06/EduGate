@@ -8,6 +8,7 @@ from jose import JWTError, jwt
 from typing import Optional
 from ..config import settings
 from ..services import auth_service
+from sqlalchemy import or_, func
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -44,8 +45,23 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
     return db.query(User).filter(User.UserID == user_id).first()
 
-def get_users(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(User).offset(skip).limit(limit).all()
+def get_users(db: Session, skip: int = 0, limit: int = 100, role: Optional[UserRole] = None, search: Optional[str] = None):
+    query = db.query(User)
+    
+    if role:
+        query = query.filter(User.role == role)
+        
+    if search:
+        search_term = f"%{search.lower()}%"
+        query = query.filter(
+            or_(
+                func.lower(User.FirstName + " " + User.LastName).like(search_term),
+                func.lower(User.Email).like(search_term),
+                # Add other searchable fields if needed
+            )
+        )
+        
+    return query.order_by(User.UserID).offset(skip).limit(limit).all()
 
 def create_user(db: Session, user: UserCreate):
     # Check if user already exists
