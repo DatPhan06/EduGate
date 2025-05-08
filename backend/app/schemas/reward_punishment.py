@@ -14,8 +14,9 @@ class RewardPunishmentCreate(RewardPunishmentBase):
 class RewardPunishmentRead(RewardPunishmentBase):
     RecordID: int
     
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 # Student RNP schemas
 class StudentRewardPunishmentCreate(RewardPunishmentBase):
@@ -29,8 +30,9 @@ class StudentRNPBase(BaseModel):
 class StudentRNPRead(StudentRNPBase):
     reward_punishment: RewardPunishmentRead
     
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 # Class RNP schemas
 class ClassRewardPunishmentCreate(RewardPunishmentBase):
@@ -44,5 +46,6 @@ class ClassRNPBase(BaseModel):
 class ClassRNPRead(ClassRNPBase):
     reward_punishment: RewardPunishmentRead
     
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }

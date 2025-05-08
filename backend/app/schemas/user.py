@@ -31,8 +31,9 @@ class UserBase(BaseModel):
     # Fields for Parent
     Occupation: Optional[str] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = {
+        "use_enum_values": True
+    }
 
 class UserCreate(UserBase):
     Password: str
@@ -67,16 +68,18 @@ class UserUpdate(BaseModel):
     # Fields for Parent
     Occupation: Optional[str] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = {
+        "use_enum_values": True
+    }
 
 class User(UserBase):
     UserID: int
     CreatedAt: datetime
     UpdatedAt: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class Token(BaseModel):
     access_token: str
