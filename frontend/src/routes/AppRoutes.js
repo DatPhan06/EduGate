@@ -20,6 +20,7 @@ import DailyLogPage from '../pages/DailyLog/DailyLogPage';
 import AcademicResultsPage from '../pages/AcademicResults/AcademicResultsPage';
 import ReportsPage from '../pages/Reports/ReportsPage';
 import PrincipalDashboardPage from '../pages/Principal/PrincipalDashboardPage';
+import ClassManagementPage from '../pages/ClassManagement/ClassManagementPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -74,6 +75,14 @@ const AppRoutes = () => {
                     element={
                         <ProtectedRoute roles={['admin']}>
                             <UserManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="class-management"
+                    element={
+                        <ProtectedRoute roles={['admin']}>
+                            <ClassManagementPage />
                         </ProtectedRoute>
                     }
                 />
