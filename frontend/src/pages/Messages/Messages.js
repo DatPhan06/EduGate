@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Typography, Grid, Paper, CircularProgress, Alert, Button, Fab } from '@mui/material';
+import { Box, Typography, Grid, Paper, CircularProgress, Alert, Button, Fab, useTheme, useMediaQuery } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import messageService from '../../services/messageService';
 import authService from '../../services/authService';
-import ConversationList from './ConversationList'; // Will be created
-import ChatView from './ChatView'; // Will be created
-import UserSelectionModal from './UserSelectionModal'; // Will be created
+import ConversationList from './ConversationList'; 
+import ChatView from './ChatView';
+import UserSelectionModal from './UserSelectionModal';
 import { useNavigate } from 'react-router-dom';
 
 const Messages = () => {
     const navigate = useNavigate();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Changed to 'sm' for a more common mobile breakpoint
+
     const [currentUser, setCurrentUser] = useState(null);
     const [conversations, setConversations] = useState([]);
     const [selectedConversation, setSelectedConversation] = useState(null);
@@ -65,67 +68,95 @@ const Messages = () => {
     };
 
     const handleConversationCreated = (newConversation) => {
-        // Add to list and select it
         setConversations(prev => [newConversation, ...prev.filter(c => c.ConversationID !== newConversation.ConversationID)]);
         setSelectedConversation(newConversation);
-        fetchConversations(); // Re-fetch to ensure list is up-to-date and sorted
+        fetchConversations();
     };
     
     const handleMessageSent = (updatedConversation) => {
-        // Update the conversation in the list, primarily its UpdatedAt and last_message
         setConversations(prevConvs => 
             prevConvs.map(c => c.ConversationID === updatedConversation.ConversationID ? updatedConversation : c)
-                     .sort((a, b) => new Date(b.UpdatedAt) - new Date(a.UpdatedAt)) // Re-sort
+                     .sort((a, b) => new Date(b.UpdatedAt) - new Date(a.UpdatedAt))
         );
-         // If the currently selected conversation is the one where message was sent, refresh its view
         if (selectedConversation && selectedConversation.ConversationID === updatedConversation.ConversationID) {
             setSelectedConversation(updatedConversation);
         }
-        // Optionally, re-fetch all conversations to get the absolute latest state from server
-        // fetchConversations(); 
     };
 
-
-    if (!currentUser && !error) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-                <CircularProgress />
-                <Typography sx={{ ml: 2 }}>Loading user information...</Typography>
-            </Box>
-        );
-    }
-    
-    if (error && !loadingConversations) { // Show error prominently if not loading
-        return (
-            <Box sx={{ p: 3 }}>
-                <Alert severity="error">{error}</Alert>
-                {error.includes("log in") && <Button onClick={() => navigate('/login')} sx={{mt: 2}}>Go to Login</Button>}
-            </Box>
-        );
-    }
-
+    const showConversationListPane = !isMobile || !selectedConversation;
+    const showChatViewPane = !isMobile || selectedConversation;
 
     return (
-        <Box sx={{ p: 2, height: 'calc(100vh - 64px - 48px)', display: 'flex', flexDirection: 'column' }}> {/* Adjust height based on Navbar/Footer */}
-            <Typography variant="h4" gutterBottom sx={{ mb: 2 }}>
+        <Box sx={{
+            height: 'calc(100vh - 64px - 48px)', // Assuming 64px for Navbar, 48px for Footer
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            width: '100%'
+        }}>
+            <Typography variant="h4" gutterBottom sx={{ p: 2, pb: 1 }}>
                 Messages
+                {isMobile && selectedConversation && (
+                    <Button
+                        onClick={() => setSelectedConversation(null)}
+                        sx={{ ml: 2, fontSize: '0.8rem' }}
+                    >
+                        Back to conversations
+                    </Button>
+                )}
             </Typography>
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-            <Grid container spacing={2} sx={{ flexGrow: 1, overflow: 'hidden' }}>
-                <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column', height: '100%'}}>
-                    <Paper sx={{ p: 2, flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-                        <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1}}>
+
+            {error && <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>}
+
+            <Grid container sx={{ flexGrow: 1, overflow: 'hidden', width: '100%' }}>
+                <Grid
+                    item
+                    xs={12}
+                    md={3}
+                    lg={3}
+                    sx={{
+                        display: showConversationListPane ? 'flex' : 'none',
+                        flexDirection: 'column',
+                        height: '100%',
+                        borderRight: !isMobile ? `1px solid ${theme.palette.divider}` : 'none'
+                    }}
+                >
+                    <Paper 
+                        elevation={0}
+                        square
+                        sx={{
+                            flexGrow: 1,
+                            overflowY: 'auto',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            height: '100%'
+                        }}
+                    >
+                        <Box sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            p: 2,
+                            borderBottom: `1px solid ${theme.palette.divider}`
+                        }}>
                             <Typography variant="h6">Conversations</Typography>
-                            <Fab color="primary" size="small" aria-label="add" onClick={handleOpenUserSelectionModal}>
+                            <Fab
+                                color="primary"
+                                size="small"
+                                aria-label="add"
+                                onClick={handleOpenUserSelectionModal}
+                            >
                                 <AddIcon />
                             </Fab>
                         </Box>
                         {loadingConversations ? (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexGrow: 1 }}>
                                 <CircularProgress />
                             </Box>
                         ) : conversations.length === 0 && !error ? (
-                             <Typography sx={{textAlign: 'center', mt: 2}}>No conversations yet. Start a new one!</Typography>
+                            <Typography sx={{ textAlign: 'center', p: 2 }}>
+                                No conversations yet. Start a new one!
+                            </Typography>
                         ) : (
                             <ConversationList
                                 conversations={conversations}
@@ -136,50 +167,75 @@ const Messages = () => {
                         )}
                     </Paper>
                 </Grid>
-                <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <Paper sx={{ p: 2, flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+
+                <Grid
+                    item
+                    xs={12} // Full width on mobile if visible
+                    md={9}  // 9/12 = 75% on medium screens and up
+                    lg={9}  // 9/12 = 75% on large screens
+                    sx={{
+                        display: showChatViewPane ? 'flex' : 'none',
+                        flexDirection: 'column',
+                        height: '100%',
+                        flexGrow: 1, // Ensure this item tries to grow
+                        minWidth: 0, // Allow shrinking below content size if necessary for flex calculation
+                    }}
+                >
+                    <Paper 
+                        elevation={0}
+                        square
+                        sx={{
+                            flexGrow: 1,
+                            overflowY: 'hidden',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            height: '100%',
+                            width: '100%' // Ensure Paper takes full width of the Grid item
+                        }}
+                    >
                         {selectedConversation ? (
                             <ChatView
-                                key={`${selectedConversation.ConversationID}-${selectedConversation.UpdatedAt}`} // Ensure ChatView re-mounts if UpdatedAt changes
+                                key={`${selectedConversation.ConversationID}-${selectedConversation.UpdatedAt}`}
                                 conversationId={selectedConversation.ConversationID}
                                 currentUser={currentUser}
                                 onMessageSent={(convId, newMsg) => {
-                                    // Fetch all conversations to get the latest state including sort order
                                     fetchConversations();
-                                    
-                                    // Optimistically update the local state for the sender for responsiveness
                                     const newTimestamp = newMsg.SentAt || new Date().toISOString();
-
                                     setConversations(prevConvs =>
                                         prevConvs.map(c =>
                                             c.ConversationID === convId
-                                            ? { ...c, UpdatedAt: newTimestamp, last_message: newMsg }
-                                            : c
+                                                ? { ...c, UpdatedAt: newTimestamp, last_message: newMsg }
+                                                : c
                                         ).sort((a, b) => new Date(b.UpdatedAt) - new Date(a.UpdatedAt))
                                     );
-
                                     if (selectedConversation && selectedConversation.ConversationID === convId) {
                                         setSelectedConversation(prevSelConv => ({
                                             ...prevSelConv,
                                             UpdatedAt: newTimestamp,
                                             last_message: newMsg,
-                                            // ChatView handles its own messages array internally through fetching,
-                                            // but we update UpdatedAt here to ensure its key changes.
                                         }));
                                     }
                                 }}
                             />
                         ) : (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                            <Box sx={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                height: '100%',
+                                p: 3,
+                                textAlign: 'center'
+                            }}>
                                 <Typography variant="h6" color="textSecondary">
-                                    Select a conversation to start chatting or create a new one.
+                                    {isMobile ? 'Select a conversation to start chatting.' : 'Select a conversation to start chatting or create a new one.'}
                                 </Typography>
                             </Box>
                         )}
                     </Paper>
                 </Grid>
             </Grid>
-            {currentUser && 
+
+            {currentUser &&
                 <UserSelectionModal
                     open={isUserSelectionModalOpen}
                     onClose={handleCloseUserSelectionModal}

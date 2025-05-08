@@ -8,7 +8,9 @@ import {
   CircularProgress, 
   Avatar, 
   Divider,
-  IconButton
+  IconButton,
+  useTheme, // Import useTheme
+  useMediaQuery // Import useMediaQuery
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import messageService from '../../services/messageService';
@@ -17,6 +19,9 @@ import moment from 'moment';
 const POLLING_INTERVAL = 5000; // Poll every 5 seconds
 
 const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceivedByPolling }) => {
+  const theme = useTheme(); // Add this
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Add this
+
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const messagesRef = useRef(messages); // Ref to keep track of messages for polling comparison
@@ -239,7 +244,12 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
   const messageGroups = groupMessagesByDate();
   
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      height: '100%',
+      width: '100%'
+    }}>
       {/* Conversation Header */}
       <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
         <Typography variant="h6" component="div">
@@ -256,9 +266,12 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
       <Box sx={{ 
         flexGrow: 1, 
         overflowY: 'auto', 
-        p: 2,
+        overflowX: 'hidden', // Add this to prevent horizontal scrollbar here
+        p: isMobile ? 0.5 : 1, // Overall padding for the messages area
         display: 'flex',
         flexDirection: 'column',
+        bgcolor: theme.palette.grey[50],
+        width: '100%'
       }}>
         {messages.length === 0 ? (
           <Box sx={{ 
@@ -274,7 +287,7 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
           </Box>
         ) : (
           messageGroups.map((group, groupIndex) => (
-            <Box key={`group-${groupIndex}`} sx={{ mb: 3 }}>
+            <Box key={`group-${groupIndex}`} sx={{ mb: 3, width: '100%' }}>
               {/* Date Divider */}
               <Box sx={{ 
                 display: 'flex', 
@@ -303,28 +316,36 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
                       display: 'flex',
                       flexDirection: isCurrentUser ? 'row-reverse' : 'row',
                       mb: 1.5,
-                      alignItems: 'flex-end'
+                      alignItems: 'flex-end',
+                      width: '100%',
+                      px: { xs: 1, sm: 2 }, // Padding for each message row
                     }}
                   >
                     {/* Avatar */}
                     {!isCurrentUser && (
                       <Avatar 
-                        sx={{ width: 32, height: 32, mr: 1 }}
+                        sx={{ width: 32, height: 32, mr: 1, flexShrink: 0 }}
                         alt={getParticipantName(message.UserID)}
-                      />
+                      >
+                        {getParticipantName(message.UserID)[0]}
+                      </Avatar>
                     )}
                     
                     {/* Message Bubble */}
                     <Paper
-                      elevation={0}
+                      elevation={1}
                       sx={{
                         p: 1.5,
-                        maxWidth: '70%',
+                        maxWidth: isMobile ? '80%' : '75%', // Bubble max width
+                        minWidth: '80px', // Ensure very short messages still have some width
+                        width: 'auto',
                         borderRadius: 2,
-                        bgcolor: isCurrentUser ? 'primary.light' : 'background.default',
+                        bgcolor: isCurrentUser ? 'primary.light' : 'background.paper',
                         color: isCurrentUser ? 'common.white' : 'text.primary',
                         borderTopLeftRadius: !isCurrentUser ? 0 : 2,
                         borderTopRightRadius: isCurrentUser ? 0 : 2,
+                        boxShadow: theme.shadows[1],
+                        wordBreak: 'break-word'
                       }}
                     >
                       {!isCurrentUser && (
@@ -347,7 +368,7 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
                     </Paper>
                     
                     {/* Spacer for sender's messages instead of avatar */}
-                    {isCurrentUser && <Box sx={{ width: 32, ml: 1 }} />}
+                    {isCurrentUser && <Box sx={{ width: 32, ml: 1, flexShrink: 0 }} />}
                   </Box>
                 );
               })}
@@ -362,35 +383,46 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
         component="form"
         onSubmit={handleSendMessage}
         sx={{ 
-          p: 2, 
+          p: isMobile ? 1 : 2, 
           borderTop: '1px solid rgba(0, 0, 0, 0.12)',
           display: 'flex',
-          alignItems: 'center'
+          alignItems: 'center',
+          backgroundColor: theme.palette.background.paper,
+          position: 'sticky',
+          bottom: 0,
+          width: '100%',
         }}
       >
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Type a message"
-          value={newMessage}
-          onChange={handleMessageChange}
-          disabled={sending}
-          size="small"
-          sx={{ mr: 1 }}
-          autoComplete="off"
-        />
-        <IconButton 
-          color="primary" 
-          type="submit"
-          disabled={!newMessage.trim() || sending}
-          sx={{ 
-            ml: 1,
-            width: 45,
-            height: 45
-          }}
-        >
-          {sending ? <CircularProgress size={24} /> : <SendIcon />}
-        </IconButton>
+        <Box sx={{ // Wrapper for input field and button to allow padding
+          display: 'flex', 
+          width: '100%', 
+          alignItems: 'center',
+          px: { xs: 0, sm: 1 } // Horizontal padding for the input area
+        }}>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Type a message"
+            value={newMessage}
+            onChange={handleMessageChange}
+            disabled={sending}
+            size="small"
+            sx={{ mr: 1 }}
+            autoComplete="off"
+          />
+          <IconButton 
+            color="primary" 
+            type="submit"
+            disabled={!newMessage.trim() || sending}
+            sx={{ 
+              ml: 1,
+              width: 45,
+              height: 45
+            }}
+          >
+            {sending ? <CircularProgress size={24} /> : <SendIcon />}
+          </IconButton>
+        </Box>
       </Box>
     </Box>
   );
