@@ -31,7 +31,7 @@ const ProtectedRoute = ({ children, roles = [] }) => {
 
     // Giả sử currentUser.role là một string. Nếu là mảng, cần điều chỉnh logic.
     // Hoặc nếu role trong token là một object hoặc một trường khác (ví dụ: currentUser.rolesArray)
-    const userRole = currentUser.role; // Ví dụ: "ADMIN", "TEACHER", "STUDENT", "PARENT", "PRINCIPAL"
+    const userRole = currentUser.role; // Ví dụ: "admin", "teacher", "student", "parent", "principal"
 
     if (roles.length > 0 && !roles.includes(userRole)) {
         return <Navigate to="/unauthorized" replace />;
@@ -72,7 +72,7 @@ const AppRoutes = () => {
                 <Route
                     path="user-management"
                     element={
-                        <ProtectedRoute roles={['ADMIN']}>
+                        <ProtectedRoute roles={['admin']}>
                             <UserManagementPage />
                         </ProtectedRoute>
                     }
@@ -80,7 +80,7 @@ const AppRoutes = () => {
                 <Route
                     path="principal-dashboard"
                     element={
-                        <ProtectedRoute roles={['PRINCIPAL', 'BGH']}>
+                        <ProtectedRoute roles={['principal', 'bgh']}>
                             <PrincipalDashboardPage />
                         </ProtectedRoute>
                     }

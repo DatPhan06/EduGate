@@ -212,13 +212,13 @@ const Navbar = ({ onLayoutChange }) => {
             text: 'Báo cáo & Thống kê',
             icon: <ReportsIcon />,
             path: '/reports-statistics',
-            roles: ['ADMIN', 'PRINCIPAL', 'BGH', 'TEACHER'],
+            roles: ['admin', 'principal', 'bgh', 'teacher'],
         },
         {
             text: 'Giám sát (BGH)',
             icon: <PrincipalIcon />,
             path: '/principal-dashboard',
-            roles: ['PRINCIPAL', 'BGH'],
+            roles: ['principal', 'bgh'],
         },
     ];
 
