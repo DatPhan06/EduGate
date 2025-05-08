@@ -15,9 +15,9 @@ router = APIRouter(
 
 @router.post("/", response_model=UserResponseSchema) # Responds with the created User object
 def create_student_endpoint(student_in: UserCreate, db: Session = Depends(get_db)):
-    if student_in.role and student_in.role != UserRole.STUDENT:
-        raise HTTPException(status_code=400, detail="Role must be Student for this endpoint.")
-    student_in.role = UserRole.STUDENT # Ensure role is student
+    # Explicitly check if the role provided is *not* STUDENT
+    # Pydantic should have already validated the value against the UserRole enum
+    student_in.role = UserRole.STUDENT
     
     # StudentCode and ClassID are expected in student_in (UserCreate schema)
     created_user = student_service.create_student(db=db, student_data=student_in)

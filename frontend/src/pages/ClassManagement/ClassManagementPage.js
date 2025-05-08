@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
     Box, 
     Typography, 
@@ -35,44 +35,45 @@ import {
     PersonAdd as PersonAddIcon,
     School as SchoolIcon
 } from '@mui/icons-material';
+import {
+    getClasses, createClass, updateClass, deleteClass,
+    getStudents, createStudent, updateStudent, deleteStudent,
+    getTeachers
+} from '../../services/classManagementService';
 
 const ClassManagementPage = () => {
     const [tabValue, setTabValue] = useState(0);
-    const [classes, setClasses] = useState([
-        { id: 1, name: 'Lớp 10A1', grade: '10', academicYear: '2023-2024', teacherId: 1, teacherName: 'Nguyễn Văn A', totalStudents: 30 },
-        { id: 2, name: 'Lớp 10A2', grade: '10', academicYear: '2023-2024', teacherId: 2, teacherName: 'Trần Thị B', totalStudents: 32 },
-        { id: 3, name: 'Lớp 11A1', grade: '11', academicYear: '2023-2024', teacherId: 3, teacherName: 'Lê Văn C', totalStudents: 28 },
-    ]);
-    
-    const [students, setStudents] = useState([
-        { id: 1, name: 'Học sinh 1', classId: 1, className: 'Lớp 10A1', studentId: 'HS001', parentName: 'Phụ huynh 1' },
-        { id: 2, name: 'Học sinh 2', classId: 1, className: 'Lớp 10A1', studentId: 'HS002', parentName: 'Phụ huynh 2' },
-        { id: 3, name: 'Học sinh 3', classId: 2, className: 'Lớp 10A2', studentId: 'HS003', parentName: 'Phụ huynh 3' },
-    ]);
+    const [classes, setClasses] = useState([]);
+    const [students, setStudents] = useState([]);
+    const [teachers, setTeachers] = useState([]);
 
-    const [teachers, setTeachers] = useState([
-        { id: 1, name: 'Nguyễn Văn A', specialization: 'Toán học' },
-        { id: 2, name: 'Trần Thị B', specialization: 'Vật lý' },
-        { id: 3, name: 'Lê Văn C', specialization: 'Hóa học' },
-    ]);
+    // Loading states
+    const [loadingClasses, setLoadingClasses] = useState(false);
+    const [loadingStudents, setLoadingStudents] = useState(false);
+    const [loadingTeachers, setLoadingTeachers] = useState(false);
 
     // Dialog states
     const [openClassDialog, setOpenClassDialog] = useState(false);
     const [openStudentDialog, setOpenStudentDialog] = useState(false);
-    const [dialogMode, setDialogMode] = useState('add'); // 'add' or 'edit'
+    const [dialogMode, setDialogMode] = useState('add');
     
     // Form states
     const [currentClass, setCurrentClass] = useState({ 
-        name: '', 
-        grade: '', 
-        academicYear: '', 
-        teacherId: '' 
+        ClassName: '',
+        GradeLevel: '',
+        AcademicYear: '',
+        HomeroomTeacherID: ''
     });
     
     const [currentStudent, setCurrentStudent] = useState({
-        name: '',
-        classId: '',
-        studentId: '',
+        FirstName: '',
+        LastName: '',
+        Email: '',
+        Password: '',
+        ClassID: '',
+        PhoneNumber: '',
+        DOB: null,
+        Gender: '',
         parentName: ''
     });
 
@@ -84,9 +85,89 @@ const ClassManagementPage = () => {
     });
     
     // Filter states
-    const [classFilter, setClassFilter] = useState('');
-    const [studentFilter, setStudentFilter] = useState('');
-    const [classIdFilter, setClassIdFilter] = useState('');
+    const [classSearchTerm, setClassSearchTerm] = useState('');
+    const [studentSearchTerm, setStudentSearchTerm] = useState('');
+    const [classIdFilterForStudents, setClassIdFilterForStudents] = useState('');
+
+    const showErrorSnackbar = (message) => {
+        setSnackbar({ open: true, message, severity: 'error' });
+    };
+
+    const showSuccessSnackbar = (message) => {
+        setSnackbar({ open: true, message, severity: 'success' });
+    };
+
+    // Fetch Teachers
+    const fetchTeachers = useCallback(async () => {
+        setLoadingTeachers(true);
+        try {
+            const data = await getTeachers();
+            // API returns: { id, name, specialization }
+            setTeachers(data.map(t => ({ ...t }))); 
+        } catch (error) {
+            showErrorSnackbar('Lỗi tải danh sách giáo viên!');
+        } finally {
+            setLoadingTeachers(false);
+        }
+    }, []);
+
+    // Fetch Classes
+    const fetchClasses = useCallback(async () => {
+        setLoadingClasses(true);
+        try {
+            const params = { search: classSearchTerm, limit: 100, skip: 0 }; 
+            const data = await getClasses(params);
+            setClasses(data.map(c => ({
+                id: c.ClassID,
+                name: c.ClassName,
+                grade: c.GradeLevel,
+                academicYear: c.AcademicYear,
+                teacherId: c.HomeroomTeacherID,
+                teacherName: c.teacherName,
+                totalStudents: c.totalStudents
+            })));
+        } catch (error) {
+            showErrorSnackbar('Lỗi tải danh sách lớp học!');
+            setClasses([]); // Clear classes on error
+        } finally {
+            setLoadingClasses(false);
+        }
+    }, [classSearchTerm]);
+
+    // Fetch Students
+    const fetchStudents = useCallback(async () => {
+        setLoadingStudents(true);
+        try {
+            const params = { 
+                search: studentSearchTerm, 
+                class_id_filter: classIdFilterForStudents ? Number(classIdFilterForStudents) : null,
+                limit: 100, 
+                skip: 0 
+            };
+            const data = await getStudents(params);
+            // Data from API is already shaped by StudentRead schema
+            // Frontend used s.studentId for display (like HS001), now API s.studentId is UserID
+            // The StudentRead schema has `id` (UserID) and `studentId` (also UserID)
+            setStudents(data.map(s => ({...s}))); 
+        } catch (error) {
+            showErrorSnackbar('Lỗi tải danh sách học sinh!');
+            setStudents([]); // Clear students on error
+        } finally {
+            setLoadingStudents(false);
+        }
+    }, [studentSearchTerm, classIdFilterForStudents]);
+
+    useEffect(() => {
+        fetchTeachers();
+    }, [fetchTeachers]);
+
+    useEffect(() => {
+        fetchClasses();
+    }, [fetchClasses]);
+
+    useEffect(() => {
+        fetchStudents();
+    }, [fetchStudents]);
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
@@ -96,9 +177,17 @@ const ClassManagementPage = () => {
     const handleOpenClassDialog = (mode, classData = null) => {
         setDialogMode(mode);
         if (mode === 'edit' && classData) {
-            setCurrentClass(classData);
+            // classData from table is like: { id, name, grade, academicYear, teacherId, ... }
+            // setCurrentClass expects: { ClassName, GradeLevel, AcademicYear, HomeroomTeacherID }
+            setCurrentClass({
+                id: classData.id, // Keep id for update operations
+                ClassName: classData.name,
+                GradeLevel: classData.grade,
+                AcademicYear: classData.academicYear,
+                HomeroomTeacherID: classData.teacherId ? String(classData.teacherId) : ''
+            });
         } else {
-            setCurrentClass({ name: '', grade: '', academicYear: '', teacherId: '' });
+            setCurrentClass({ ClassName: '', GradeLevel: '', AcademicYear: '', HomeroomTeacherID: '' });
         }
         setOpenClassDialog(true);
     };
@@ -112,49 +201,47 @@ const ClassManagementPage = () => {
         setCurrentClass(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSaveClass = () => {
-        if (dialogMode === 'add') {
-            const newClass = {
-                id: classes.length + 1,
-                ...currentClass,
-                teacherName: teachers.find(t => t.id === Number(currentClass.teacherId))?.name || '',
-                totalStudents: 0
-            };
-            setClasses([...classes, newClass]);
-            setSnackbar({
-                open: true,
-                message: 'Thêm lớp học thành công!',
-                severity: 'success'
-            });
-        } else {
-            const updatedClasses = classes.map(c => 
-                c.id === currentClass.id 
-                    ? {
-                        ...currentClass,
-                        teacherName: teachers.find(t => t.id === Number(currentClass.teacherId))?.name || ''
-                      } 
-                    : c
-            );
-            setClasses(updatedClasses);
-            setSnackbar({
-                open: true,
-                message: 'Cập nhật lớp học thành công!',
-                severity: 'success'
-            });
+    const handleSaveClass = async () => {
+        // Basic validation (can be enhanced with a library like Yup)
+        if (!currentClass.ClassName || !currentClass.GradeLevel || !currentClass.AcademicYear) {
+            showErrorSnackbar('Vui lòng điền đầy đủ thông tin bắt buộc cho lớp học.');
+            return;
         }
-        setOpenClassDialog(false);
+
+        const payload = {
+            ClassName: currentClass.ClassName,
+            GradeLevel: currentClass.GradeLevel,
+            AcademicYear: currentClass.AcademicYear,
+            HomeroomTeacherID: currentClass.HomeroomTeacherID ? Number(currentClass.HomeroomTeacherID) : null
+        };
+
+        try {
+        if (dialogMode === 'add') {
+                await createClass(payload);
+                showSuccessSnackbar('Thêm lớp học thành công!');
+        } else {
+                await updateClass(currentClass.id, payload);
+                showSuccessSnackbar('Cập nhật lớp học thành công!');
+            }
+            fetchClasses(); // Refresh class list
+            handleCloseClassDialog();
+        } catch (error) {
+            const errorMsg = error.response?.data?.detail || (dialogMode === 'add' ? 'Lỗi thêm lớp học!' : 'Lỗi cập nhật lớp học!');
+            showErrorSnackbar(errorMsg);
+        }
     };
 
-    const handleDeleteClass = (id) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa lớp học này?')) {
-            setClasses(classes.filter(c => c.id !== id));
-            // Also remove students from this class
-            setStudents(students.filter(s => s.classId !== id));
-            setSnackbar({
-                open: true,
-                message: 'Đã xóa lớp học!',
-                severity: 'success'
-            });
+    const handleDeleteClass = async (classId) => {
+        if (window.confirm('Bạn có chắc chắn muốn xóa lớp học này? Việc này cũng sẽ xóa học sinh liên quan (hoặc bỏ liên kết).')) {
+            try {
+                await deleteClass(classId);
+                showSuccessSnackbar('Đã xóa lớp học!');
+                fetchClasses(); // Refresh class list
+                fetchStudents(); // Refresh student list as students might be affected
+            } catch (error) {
+                const errorMsg = error.response?.data?.detail || 'Lỗi xóa lớp học!';
+                showErrorSnackbar(errorMsg);
+            }
         }
     };
 
@@ -162,9 +249,23 @@ const ClassManagementPage = () => {
     const handleOpenStudentDialog = (mode, studentData = null) => {
         setDialogMode(mode);
         if (mode === 'edit' && studentData) {
-            setCurrentStudent(studentData);
+            setCurrentStudent({
+                id: studentData.id, 
+                FirstName: studentData.name ? studentData.name.split(' ')[0] : '',
+                LastName: studentData.name ? studentData.name.split(' ').slice(1).join(' ') : '',
+                Email: studentData.Email || '',
+                Password: '', 
+                ClassID: studentData.classId ? String(studentData.classId) : (classIdFilterForStudents || ''),
+                PhoneNumber: studentData.PhoneNumber || '',
+                DOB: studentData.DOB ? new Date(studentData.DOB).toISOString().split('T')[0] : null, 
+                Gender: studentData.Gender || '',
+            });
         } else {
-            setCurrentStudent({ name: '', classId: classIdFilter || '', studentId: '', parentName: '' });
+            setCurrentStudent({
+                FirstName: '', LastName: '', Email: '', Password: '',
+                ClassID: classIdFilterForStudents || '',
+                PhoneNumber: '', DOB: null, Gender: '',
+            });
         }
         setOpenStudentDialog(true);
     };
@@ -174,117 +275,76 @@ const ClassManagementPage = () => {
     };
 
     const handleStudentChange = (e) => {
-        const { name, value } = e.target;
-        setCurrentStudent(prev => ({ ...prev, [name]: value }));
+        const { name, value, type } = e.target;
+        setCurrentStudent(prev => ({
+            ...prev,
+            [name]: type === 'date' && value === '' ? null : value
+        }));
     };
 
-    const handleSaveStudent = () => {
-        const selectedClass = classes.find(c => c.id === Number(currentStudent.classId));
-        
-        if (dialogMode === 'add') {
-            const newStudent = {
-                id: students.length + 1,
-                ...currentStudent,
-                classId: Number(currentStudent.classId),
-                className: selectedClass?.name || ''
-            };
-            setStudents([...students, newStudent]);
-            
-            // Update class total students
-            const updatedClasses = classes.map(c => 
-                c.id === Number(currentStudent.classId) 
-                    ? { ...c, totalStudents: c.totalStudents + 1 } 
-                    : c
-            );
-            setClasses(updatedClasses);
-            
-            setSnackbar({
-                open: true,
-                message: 'Thêm học sinh thành công!',
-                severity: 'success'
-            });
-        } else {
-            // Check if class has changed
-            const oldStudent = students.find(s => s.id === currentStudent.id);
-            const classChanged = oldStudent.classId !== Number(currentStudent.classId);
-            
-            const updatedStudents = students.map(s => 
-                s.id === currentStudent.id 
-                    ? {
-                        ...currentStudent,
-                        classId: Number(currentStudent.classId),
-                        className: selectedClass?.name || ''
-                      } 
-                    : s
-            );
-            setStudents(updatedStudents);
-            
-            // Update classes if student moved between classes
-            if (classChanged) {
-                const updatedClasses = classes.map(c => {
-                    if (c.id === oldStudent.classId) {
-                        return { ...c, totalStudents: c.totalStudents - 1 };
-                    } else if (c.id === Number(currentStudent.classId)) {
-                        return { ...c, totalStudents: c.totalStudents + 1 };
-                    }
-                    return c;
-                });
-                setClasses(updatedClasses);
-            }
-            
-            setSnackbar({
-                open: true,
-                message: 'Cập nhật học sinh thành công!',
-                severity: 'success'
-            });
+    const handleSaveStudent = async () => {
+        const { FirstName, LastName, Email, Password, ClassID, DOB, PhoneNumber, Gender } = currentStudent;
+
+        if (!FirstName || !LastName || !Email) {
+            showErrorSnackbar('Vui lòng điền Họ, Tên và Email.');
+            return;
         }
-        setOpenStudentDialog(false);
+        if (dialogMode === 'add' && !Password) {
+            showErrorSnackbar('Vui lòng nhập Mật khẩu cho học sinh mới.');
+            return;
+        }
+
+        const payload = {
+            FirstName,
+            LastName,
+            Email,
+            ClassID: ClassID ? Number(ClassID) : null,
+            DOB: DOB ? new Date(DOB).toISOString() : null,
+            PhoneNumber: PhoneNumber || null,
+            Gender: Gender || null,
+            role: 'student'
+        };
+        if (dialogMode === 'add') {
+            payload.Password = Password;
+        }
+
+        try {
+            if (dialogMode === 'add') {
+                await createStudent(payload);
+                showSuccessSnackbar('Thêm học sinh thành công!');
+            } else {
+                const updatePayload = { ...payload };
+                delete updatePayload.Password;
+                delete updatePayload.role;
+                await updateStudent(currentStudent.id, updatePayload);
+                showSuccessSnackbar('Cập nhật học sinh thành công!');
+            }
+            fetchStudents();
+            fetchClasses();
+            handleCloseStudentDialog();
+        } catch (error) {
+            const errorMsg = error.response?.data?.detail || (dialogMode === 'add' ? 'Lỗi thêm học sinh!' : 'Lỗi cập nhật học sinh!');
+            showErrorSnackbar(errorMsg);
+        }
     };
 
-    const handleDeleteStudent = (id) => {
+    const handleDeleteStudent = async (studentUserId) => {
         if (window.confirm('Bạn có chắc chắn muốn xóa học sinh này?')) {
-            const studentToDelete = students.find(s => s.id === id);
-            setStudents(students.filter(s => s.id !== id));
-            
-            // Update class total students
-            const updatedClasses = classes.map(c => 
-                c.id === studentToDelete.classId 
-                    ? { ...c, totalStudents: c.totalStudents - 1 } 
-                    : c
-            );
-            setClasses(updatedClasses);
-            
-            setSnackbar({
-                open: true,
-                message: 'Đã xóa học sinh!',
-                severity: 'success'
-            });
+            try {
+                await deleteStudent(studentUserId);
+                showSuccessSnackbar('Đã xóa học sinh!');
+                fetchStudents();
+                fetchClasses();
+            } catch (error) {
+                const errorMsg = error.response?.data?.detail || 'Lỗi xóa học sinh!';
+                showErrorSnackbar(errorMsg);
+            }
         }
     };
 
     const handleCloseSnackbar = () => {
         setSnackbar({ ...snackbar, open: false });
     };
-
-    // Filter handlers
-    const filteredClasses = classes.filter(c => 
-        c.name.toLowerCase().includes(classFilter.toLowerCase()) ||
-        c.grade.includes(classFilter) ||
-        c.academicYear.includes(classFilter) ||
-        c.teacherName.toLowerCase().includes(classFilter.toLowerCase())
-    );
-
-    const filteredStudents = students.filter(s => {
-        const matchesFilter = 
-            s.name.toLowerCase().includes(studentFilter.toLowerCase()) ||
-            s.studentId.toLowerCase().includes(studentFilter.toLowerCase()) ||
-            s.className.toLowerCase().includes(studentFilter.toLowerCase()) ||
-            s.parentName.toLowerCase().includes(studentFilter.toLowerCase());
-            
-        const matchesClass = classIdFilter ? s.classId === Number(classIdFilter) : true;
-        
-        return matchesFilter && matchesClass;
-    });
 
     return (
         <Box sx={{ p: 3 }}>
@@ -305,12 +365,12 @@ const ClassManagementPage = () => {
                 <Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                         <TextField 
-                            label="Tìm kiếm lớp" 
+                            label="Tìm kiếm lớp (Tên, Khối, Năm học, GVCN)" 
                             variant="outlined" 
                             size="small" 
-                            value={classFilter}
-                            onChange={(e) => setClassFilter(e.target.value)}
-                            sx={{ width: '300px' }}
+                            value={classSearchTerm}
+                            onChange={(e) => setClassSearchTerm(e.target.value)}
+                            sx={{ width: '400px' }}
                         />
                         <Button 
                             variant="contained" 
@@ -335,8 +395,10 @@ const ClassManagementPage = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {filteredClasses.length > 0 ? (
-                                    filteredClasses.map((classItem) => (
+                                {loadingClasses ? (
+                                    <TableRow><TableCell colSpan={7} align="center">Đang tải...</TableCell></TableRow>
+                                ) : classes.length > 0 ? (
+                                    classes.map((classItem) => (
                                         <TableRow key={classItem.id}>
                                             <TableCell>{classItem.id}</TableCell>
                                             <TableCell>{classItem.name}</TableCell>
@@ -348,7 +410,7 @@ const ClassManagementPage = () => {
                                                 <IconButton 
                                                     color="primary"
                                                     onClick={() => {
-                                                        setClassIdFilter(classItem.id.toString());
+                                                        setClassIdFilterForStudents(String(classItem.id));
                                                         setTabValue(1);
                                                     }}
                                                     title="Xem học sinh trong lớp"
@@ -389,23 +451,23 @@ const ClassManagementPage = () => {
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                         <Box sx={{ display: 'flex', gap: 2 }}>
                             <TextField 
-                                label="Tìm kiếm học sinh" 
+                                label="Tìm kiếm học sinh (Tên, Lớp)" 
                                 variant="outlined" 
                                 size="small" 
-                                value={studentFilter}
-                                onChange={(e) => setStudentFilter(e.target.value)}
+                                value={studentSearchTerm}
+                                onChange={(e) => setStudentSearchTerm(e.target.value)}
                                 sx={{ width: '300px' }}
                             />
                             <FormControl sx={{ width: '200px' }} size="small">
                                 <InputLabel>Lọc theo lớp</InputLabel>
                                 <Select
-                                    value={classIdFilter}
+                                    value={classIdFilterForStudents}
                                     label="Lọc theo lớp"
-                                    onChange={(e) => setClassIdFilter(e.target.value)}
+                                    onChange={(e) => setClassIdFilterForStudents(e.target.value)}
                                 >
                                     <MenuItem value="">Tất cả lớp</MenuItem>
                                     {classes.map((c) => (
-                                        <MenuItem key={c.id} value={c.id.toString()}>
+                                        <MenuItem key={c.id} value={String(c.id)}>
                                             {c.name}
                                         </MenuItem>
                                     ))}
@@ -421,11 +483,11 @@ const ClassManagementPage = () => {
                         </Button>
                     </Box>
 
-                    {classIdFilter && (
+                    {classIdFilterForStudents && classes.find(c => c.id === Number(classIdFilterForStudents)) && (
                         <Box sx={{ mb: 2 }}>
                             <Chip 
-                                label={`Lớp: ${classes.find(c => c.id === Number(classIdFilter))?.name || ''}`} 
-                                onDelete={() => setClassIdFilter('')}
+                                label={`Đang lọc học sinh theo lớp: ${classes.find(c => c.id === Number(classIdFilterForStudents))?.name || ''}`} 
+                                onDelete={() => setClassIdFilterForStudents('')}
                                 color="primary"
                             />
                         </Box>
@@ -435,22 +497,26 @@ const ClassManagementPage = () => {
                         <Table>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell>ID</TableCell>
-                                    <TableCell>Mã học sinh</TableCell>
+                                    <TableCell>ID (UserID)</TableCell>
                                     <TableCell>Họ và tên</TableCell>
                                     <TableCell>Lớp</TableCell>
+                                    <TableCell>Email</TableCell>
+                                    <TableCell>SĐT</TableCell>
                                     <TableCell>Phụ huynh</TableCell>
                                     <TableCell>Thao tác</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {filteredStudents.length > 0 ? (
-                                    filteredStudents.map((student) => (
+                                {loadingStudents ? (
+                                    <TableRow><TableCell colSpan={7} align="center">Đang tải...</TableCell></TableRow>
+                                ) : students.length > 0 ? (
+                                    students.map((student) => (
                                         <TableRow key={student.id}>
                                             <TableCell>{student.id}</TableCell>
-                                            <TableCell>{student.studentId}</TableCell>
                                             <TableCell>{student.name}</TableCell>
                                             <TableCell>{student.className}</TableCell>
+                                            <TableCell>{student.Email}</TableCell>
+                                            <TableCell>{student.PhoneNumber}</TableCell>
                                             <TableCell>{student.parentName}</TableCell>
                                             <TableCell>
                                                 <IconButton 
@@ -470,7 +536,7 @@ const ClassManagementPage = () => {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} align="center">
+                                        <TableCell colSpan={7} align="center">
                                             Không tìm thấy dữ liệu học sinh
                                         </TableCell>
                                     </TableRow>
@@ -492,8 +558,8 @@ const ClassManagementPage = () => {
                             <TextField
                                 fullWidth
                                 label="Tên lớp"
-                                name="name"
-                                value={currentClass.name}
+                                name="ClassName"
+                                value={currentClass.ClassName}
                                 onChange={handleClassChange}
                                 required
                             />
@@ -502,8 +568,8 @@ const ClassManagementPage = () => {
                             <TextField
                                 fullWidth
                                 label="Khối"
-                                name="grade"
-                                value={currentClass.grade}
+                                name="GradeLevel"
+                                value={currentClass.GradeLevel}
                                 onChange={handleClassChange}
                                 required
                             />
@@ -512,24 +578,25 @@ const ClassManagementPage = () => {
                             <TextField
                                 fullWidth
                                 label="Năm học"
-                                name="academicYear"
-                                value={currentClass.academicYear}
+                                name="AcademicYear"
+                                value={currentClass.AcademicYear}
                                 onChange={handleClassChange}
                                 required
                             />
                         </Grid>
                         <Grid item xs={12}>
-                            <FormControl fullWidth>
+                            <FormControl fullWidth required>
                                 <InputLabel>Giáo viên chủ nhiệm</InputLabel>
                                 <Select
-                                    name="teacherId"
-                                    value={currentClass.teacherId}
+                                    name="HomeroomTeacherID"
+                                    value={currentClass.HomeroomTeacherID}
                                     label="Giáo viên chủ nhiệm"
                                     onChange={handleClassChange}
                                 >
+                                    <MenuItem value=""><em>Không chọn</em></MenuItem>
                                     {teachers.map((teacher) => (
-                                        <MenuItem key={teacher.id} value={teacher.id.toString()}>
-                                            {teacher.name} - {teacher.specialization}
+                                        <MenuItem key={teacher.id} value={teacher.id}>
+                                            {teacher.name} {teacher.specialization ? `(${teacher.specialization})` : ''}
                                         </MenuItem>
                                     ))}
                                 </Select>
@@ -548,55 +615,61 @@ const ClassManagementPage = () => {
             {/* Student Dialog */}
             <Dialog open={openStudentDialog} onClose={handleCloseStudentDialog} maxWidth="sm" fullWidth>
                 <DialogTitle>
-                    {dialogMode === 'add' ? 'Thêm học sinh mới' : 'Chỉnh sửa học sinh'}
+                    {dialogMode === 'add' ? 'Thêm học sinh mới' : 'Chỉnh sửa thông tin học sinh'}
                 </DialogTitle>
                 <DialogContent>
                     <Grid container spacing={2} sx={{ mt: 1 }}>
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                label="Họ và tên"
-                                name="name"
-                                value={currentStudent.name}
-                                onChange={handleStudentChange}
-                                required
-                            />
+                        <Grid item xs={6}>
+                            <TextField fullWidth label="Họ" name="FirstName" value={currentStudent.FirstName} onChange={handleStudentChange} required />
                         </Grid>
                         <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="Mã học sinh"
-                                name="studentId"
-                                value={currentStudent.studentId}
-                                onChange={handleStudentChange}
-                                required
-                            />
+                            <TextField fullWidth label="Tên" name="LastName" value={currentStudent.LastName} onChange={handleStudentChange} required />
                         </Grid>
+                        <Grid item xs={12}>
+                            <TextField fullWidth label="Email" name="Email" value={currentStudent.Email} onChange={handleStudentChange} required type="email"/>
+                        </Grid>
+                        {dialogMode === 'add' && (
+                            <Grid item xs={12}>
+                                <TextField fullWidth label="Mật khẩu" name="Password" value={currentStudent.Password} onChange={handleStudentChange} required type="password"/>
+                            </Grid>
+                        )}
                         <Grid item xs={6}>
                             <FormControl fullWidth>
                                 <InputLabel>Lớp</InputLabel>
-                                <Select
-                                    name="classId"
-                                    value={currentStudent.classId}
-                                    label="Lớp"
-                                    onChange={handleStudentChange}
-                                >
+                                <Select name="ClassID" value={currentStudent.ClassID} label="Lớp" onChange={handleStudentChange}>
+                                    <MenuItem value=""><em>Không chọn / Thôi học</em></MenuItem>
                                     {classes.map((classItem) => (
-                                        <MenuItem key={classItem.id} value={classItem.id.toString()}>
+                                        <MenuItem key={classItem.id} value={classItem.id}>
                                             {classItem.name}
                                         </MenuItem>
                                     ))}
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid item xs={6}>
+                            <TextField fullWidth label="Số điện thoại" name="PhoneNumber" value={currentStudent.PhoneNumber || ''} onChange={handleStudentChange} />
+                        </Grid>
+                        <Grid item xs={6}>
                             <TextField
                                 fullWidth
-                                label="Phụ huynh"
-                                name="parentName"
-                                value={currentStudent.parentName}
+                                label="Ngày sinh"
+                                name="DOB" 
+                                type="date"
+                                value={currentStudent.DOB || ''}
                                 onChange={handleStudentChange}
+                                InputLabelProps={{ shrink: true }}
                             />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <FormControl fullWidth>
+                                <InputLabel>Giới tính</InputLabel>
+                                <Select name="Gender" value={currentStudent.Gender} label="Giới tính" onChange={handleStudentChange}>
+                                    <MenuItem value=""><em>Không chọn</em></MenuItem>
+                                    <MenuItem value="MALE">Nam</MenuItem>
+                                    <MenuItem value="FEMALE">Nữ</MenuItem>
+                                    <MenuItem value="OTHER">Khác</MenuItem>
+                                </Select>
+                            </FormControl>
                         </Grid>
                     </Grid>
                 </DialogContent>
