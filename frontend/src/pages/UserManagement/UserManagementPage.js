@@ -3,11 +3,13 @@ import {
     Box, Typography, Paper, Tab, Tabs, Button, TextField, Grid, CircularProgress, 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton,
     Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, Select, MenuItem,
-    Snackbar, Alert, Chip, Autocomplete, List, ListItem, ListItemText, ListItemSecondaryAction, Divider
+    Snackbar, Alert, Chip, Autocomplete, List, ListItem, ListItemText, ListItemSecondaryAction, Divider,
+    Tooltip
 } from '@mui/material';
 import {
     Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, PeopleAlt as PeopleAltIcon,
-    AdminPanelSettings as AdminIcon, School as SchoolIcon, Face as ParentIcon, Person as GenericUserIcon
+    AdminPanelSettings as AdminIcon, School as SchoolIcon, Face as ParentIcon, Person as GenericUserIcon,
+    UploadFile as UploadFileIcon, HelpOutline as HelpOutlineIcon
 } from '@mui/icons-material';
 import userService, {
     linkParentToStudent, unlinkParentFromStudent, getStudentParents, getParentStudents 
@@ -39,6 +41,10 @@ const UserManagementPage = () => {
     // Filter/Search state
     const [searchTerm, setSearchTerm] = useState('');
 
+    // State for Excel upload
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [uploading, setUploading] = useState(false);
+
     const roles = ['all', 'admin', 'teacher', 'student', 'parent'];
     const currentRoleFilter = roles[tabValue] === 'all' ? null : roles[tabValue];
 
@@ -51,6 +57,45 @@ const UserManagementPage = () => {
     };
     const handleCloseSnackbar = () => {
         setSnackbar({ ...snackbar, open: false });
+    };
+
+    // --- Excel Upload Handlers ---
+    const handleFileSelected = (event) => {
+        const file = event.target.files[0];
+        if (file && (file.type === 'application/vnd.ms-excel' || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+            setSelectedFile(file);
+            showSuccessSnackbar(`Đã chọn file: ${file.name}`);
+        } else {
+            setSelectedFile(null);
+            showErrorSnackbar('Vui lòng chọn file Excel (.xls hoặc .xlsx).');
+        }
+        // Reset input value to allow selecting the same file again if needed
+        event.target.value = null;
+    };
+
+    const handleUploadFile = async () => {
+        if (!selectedFile) {
+            showErrorSnackbar('Vui lòng chọn một file Excel để tải lên.');
+            return;
+        }
+        setUploading(true);
+        try {
+            const result = await userService.uploadUsersExcel(selectedFile);
+            let message = `${result.message}. Đã tạo thành công: ${result.created_count} người dùng.`;
+            if (result.errors && result.errors.length > 0) {
+                message += `\nLỗi: \n- ${result.errors.join('\n- ')}`;
+                showErrorSnackbar(message); // Show as error if there are any errors
+            } else {
+                showSuccessSnackbar(message);
+            }
+            fetchUsers(); // Refresh user list
+            setSelectedFile(null);
+        } catch (error) {
+            const errorDetail = error.response?.data?.detail || 'Lỗi tải lên file Excel.';
+            showErrorSnackbar(errorDetail);
+        } finally {
+            setUploading(false);
+        }
     };
 
     // --- Data Fetching ---
@@ -352,7 +397,7 @@ const UserManagementPage = () => {
         );
     };
 
-    return (
+  return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 3 }}>
                 <PeopleAltIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
@@ -386,6 +431,53 @@ const UserManagementPage = () => {
                 >
                     Thêm Người dùng
                 </Button>
+                {/* Excel Upload Button */}
+                <input
+                    accept=".xls,.xlsx"
+                    style={{ display: 'none' }}
+                    id="raised-button-file"
+                    type="file"
+                    onChange={handleFileSelected}
+                />
+                <label htmlFor="raised-button-file">
+                    <Button 
+                        variant="outlined" 
+                        component="span" 
+                        startIcon={<UploadFileIcon />} 
+                        sx={{ ml:1, mt: { xs: 1, sm: 0 } }}
+                        disabled={uploading}
+                    >
+                        {uploading ? <CircularProgress size={20} /> : 'Import Excel'}
+                    </Button>
+                </label>
+                <Tooltip title={
+                    <React.Fragment>
+                        <Typography color="inherit" variant="subtitle2">Định dạng file Excel:</Typography>
+                        <Typography variant="body2">
+                            - Các cột bắt buộc: <b>FirstName, LastName, Email, Password, role</b>.<br />
+                            - Cột <b>role</b> chấp nhận: student, teacher, parent, admin.<br />
+                            - Cột <b>DOB</b> (Ngày sinh): YYYY-MM-DD (ví dụ: 2000-12-25).<br />
+                            - Cột <b>Gender</b>: MALE, FEMALE, OTHER.<br />
+                            - <b>ClassID</b>: Chỉ cần thiết nếu role là 'student'.<br />
+                            - <b>DepartmentID</b>: Chỉ cần thiết nếu role là 'teacher' hoặc 'admin'.<br />
+                            - Các cột khác (PhoneNumber, Address, Degree, Occupation,...) là tùy chọn.
+                        </Typography>
+                    </React.Fragment>
+                }>
+                    <IconButton size="small" sx={{ ml: 0.5, mt: { xs: 1, sm: 0 } }} >
+                        <HelpOutlineIcon fontSize="small" />
+                    </IconButton>
+                </Tooltip>
+                {selectedFile && !uploading && (
+                     <Button 
+                        variant="contained" 
+                        color="success"
+                        onClick={handleUploadFile} 
+                        sx={{ ml:1, mt: { xs: 1, sm: 0 } }}
+                    >
+                        Tải lên: {selectedFile.name.substring(0,20)}{selectedFile.name.length > 20 ? '...' : ''}
+                    </Button>
+                )}
             </Box>
 
             {/* User Table */} 
@@ -547,8 +639,8 @@ const UserManagementPage = () => {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
-        </Box>
-    );
+    </Box>
+  );
 };
 
 export default UserManagementPage; 

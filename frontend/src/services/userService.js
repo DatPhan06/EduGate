@@ -237,6 +237,26 @@ const userService = {
             throw error;
         }
     },
+
+    // --- Function to upload users from Excel ---
+    uploadUsersExcel: async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            // Sử dụng api instance đã cấu hình sẵn (bao gồm cả auth header nếu cần)
+            // Endpoint là /users/upload_excel, không có / ở cuối
+            const response = await api.post(`${API_BASE_URL}/users/upload_excel`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            return response.data; // Should be { message, created_count, errors? }
+        } catch (error) {
+            console.error('Error uploading users Excel:', error.response ? error.response.data : error.message);
+            throw error; // Re-throw để component có thể xử lý
+        }
+    },
 };
 
 export default userService; 
