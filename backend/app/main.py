@@ -8,6 +8,7 @@ from .config import settings
 from .routers import auth, user, reward_punishment, petition, message
 from .routers import classes_router, students_router, teachers_router
 from .routers import departments_router
+from .routers import parent_student_router
 from .database import engine, Base
 
 # Tạo bảng trong database
@@ -44,3 +45,4 @@ app.include_router(classes_router.router)
 app.include_router(students_router.router)
 app.include_router(teachers_router.router)
 app.include_router(departments_router.router)
+app.include_router(parent_student_router.router)

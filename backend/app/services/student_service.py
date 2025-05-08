@@ -205,4 +205,10 @@ def delete_student(db: Session, student_user_id: int) -> bool:
     
     # Consider implications: what happens to student's grades, attendance, etc.?
     # For now, a direct deletion via user_service
-    return user_service.delete_user(db=db, user_id=student_user_id) 
+    return user_service.delete_user(db=db, user_id=student_user_id)
+
+# The following functions are removed as they are handled by parent_student_service.py
+# def get_linked_parents(db: Session, student_id: int) -> List[UserSchema]:
+# ...
+# def unlink_parent_student(db: Session, student_id: int, parent_id: int) -> bool:
+# ... 

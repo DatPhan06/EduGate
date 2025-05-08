@@ -3,23 +3,30 @@ import {
     Box, Typography, Paper, Tab, Tabs, Button, TextField, Grid, CircularProgress, 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton,
     Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, Select, MenuItem,
-    Snackbar, Alert, Chip
+    Snackbar, Alert, Chip, Autocomplete, List, ListItem, ListItemText, ListItemSecondaryAction, Divider
 } from '@mui/material';
 import {
     Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, PeopleAlt as PeopleAltIcon,
     AdminPanelSettings as AdminIcon, School as SchoolIcon, Face as ParentIcon, Person as GenericUserIcon
 } from '@mui/icons-material';
-import userService from '../../services/userService';
+import userService, {
+    linkParentToStudent, unlinkParentFromStudent, getStudentParents, getParentStudents 
+} from '../../services/userService';
 
 const UserManagementPage = () => {
     const [tabValue, setTabValue] = useState(0); // 0: All, 1: Admin, 2: Teacher, 3: Student, 4: Parent
     const [users, setUsers] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [classes, setClasses] = useState([]);
+    const [allParents, setAllParents] = useState([]); // For parent selection dropdown
+    const [linkedParents, setLinkedParents] = useState([]); // Parents linked to current student in dialog
+    const [selectedParentToLink, setSelectedParentToLink] = useState(null); // For Autocomplete
 
     // Loading states
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [loadingAuxData, setLoadingAuxData] = useState(false);
+    const [loadingParents, setLoadingParents] = useState(false);
+    const [linkingParent, setLinkingParent] = useState(false);
 
     // Dialog states
     const [openUserDialog, setOpenUserDialog] = useState(false);
@@ -47,17 +54,28 @@ const UserManagementPage = () => {
     };
 
     // --- Data Fetching ---
+    const fetchAllParents = useCallback(async () => {
+        setLoadingParents(true);
+        try {
+            const data = await userService.getUsers({ role: 'parent', limit: 1000 }); // Fetch all parents
+            setAllParents(data || []);
+        } catch (error) { /* handle error */ }
+        finally { setLoadingParents(false); }
+    }, []);
+
     const fetchAuxData = useCallback(async () => {
         setLoadingAuxData(true);
         try {
-            const [deptData, classData] = await Promise.all([
+            const [deptData, classData, parentData] = await Promise.all([
                 userService.getDepartments(),
-                userService.getClasses()
+                userService.getClasses(),
+                userService.getUsers({ role: 'parent', limit: 1000 }) // Fetch all parents here too
             ]);
             setDepartments(deptData || []);
             setClasses(classData.map(c => ({ id: c.ClassID, name: c.ClassName })) || []);
+            setAllParents(parentData || []);
         } catch (error) {
-            showErrorSnackbar('Lỗi tải dữ liệu phòng ban hoặc lớp học.');
+            showErrorSnackbar('Lỗi tải dữ liệu phòng ban, lớp học hoặc phụ huynh.');
         } finally {
             setLoadingAuxData(false);
         }
@@ -122,35 +140,40 @@ const UserManagementPage = () => {
         });
     };
 
-    const handleOpenDialog = (mode, user = null) => {
+    const handleOpenDialog = async (mode, user = null) => {
         setDialogMode(mode);
+        setLinkedParents([]); // Reset linked parents list
+
         if (mode === 'edit' && user) {
-            // Fetch full details? For now, assume list data is enough + add defaults
-            setCurrentUser({
+            // Basic user data
+            const userData = {
                 UserID: user.UserID,
-                FirstName: user.FirstName || '',
-                LastName: user.LastName || '',
-                Email: user.Email || '',
-                PhoneNumber: user.PhoneNumber || '',
-                DOB: user.DOB ? new Date(user.DOB).toISOString().split('T')[0] : null,
-                Gender: user.Gender || '',
-                Address: user.Address || '',
-                Street: user.Street || '',
-                District: user.District || '',
-                City: user.City || '',
-                Status: user.Status || 'ACTIVE',
-                role: user.role || '',
-                // Role specific - fill with defaults if not present in user object from list
-                ClassID: user.ClassID ?? '',
-                DepartmentID: user.DepartmentID ?? '',
-                Graduate: user.Graduate ?? '',
-                Degree: user.Degree ?? '',
-                Position: user.Position ?? '',
+                FirstName: user.FirstName || '', LastName: user.LastName || '', Email: user.Email || '',
+                PhoneNumber: user.PhoneNumber || '', DOB: user.DOB ? new Date(user.DOB).toISOString().split('T')[0] : null,
+                Gender: user.Gender || '', Address: user.Address || '', Street: user.Street || '',
+                District: user.District || '', City: user.City || '', Status: user.Status || 'ACTIVE',
+                role: user.role || '', ClassID: user.ClassID ?? '', DepartmentID: user.DepartmentID ?? '',
+                Graduate: user.Graduate ?? '', Degree: user.Degree ?? '', Position: user.Position ?? '',
                 Occupation: user.Occupation ?? ''
-            });
-        } else {
-            // Reset for adding a new user, default role to student
-            setCurrentUser({
+            };
+            setCurrentUser(userData);
+
+            // If editing a student, fetch their linked parents
+            if (user.role === 'student') {
+                try {
+                    setLoadingParents(true); // Use loadingParents for this specific fetch
+                    const parents = await userService.getStudentParents(user.UserID);
+                    setLinkedParents(parents || []);
+                } catch (error) {
+                    showErrorSnackbar('Lỗi tải danh sách phụ huynh liên kết.');
+                } finally {
+                    setLoadingParents(false);
+                }
+            }
+             // TODO: If editing a parent, fetch their linked students (optional)
+
+        } else { // Add mode
+             setCurrentUser({
                 FirstName: '', LastName: '', Email: '', Password: '', role: 'student', 
                 Status: 'ACTIVE', PhoneNumber: '', DOB: null, Gender: '',
                 Address: '', Street: '', District: '', City: '',
@@ -246,6 +269,42 @@ const UserManagementPage = () => {
                 showErrorSnackbar(error.response?.data?.detail || 'Lỗi xóa người dùng!');
             }
         }
+    };
+
+    // Handler to link selected parent to the current student in the dialog
+    const handleLinkParent = async () => {
+        if (!selectedParentToLink || !currentUser || currentUser.role !== 'student') {
+            showErrorSnackbar('Vui lòng chọn một phụ huynh hợp lệ để liên kết.');
+            return;
+        }
+        setLinkingParent(true);
+        try {
+            await userService.linkParentToStudent(currentUser.UserID, selectedParentToLink.UserID);
+            showSuccessSnackbar(`Đã liên kết phụ huynh ${selectedParentToLink.FirstName} ${selectedParentToLink.LastName}.`);
+            // Refresh linked parents list
+            const parents = await userService.getStudentParents(currentUser.UserID);
+            setLinkedParents(parents || []);
+            setSelectedParentToLink(null); // Reset autocomplete
+        } catch (error) {
+             showErrorSnackbar(error.response?.data?.detail || 'Lỗi liên kết phụ huynh.');
+        } finally {
+            setLinkingParent(false);
+        }
+    };
+
+    // Handler to unlink a parent
+    const handleUnlinkParent = async (parentUserId) => {
+         if (!currentUser || currentUser.role !== 'student') return;
+         if (window.confirm(`Bạn có chắc muốn bỏ liên kết phụ huynh ID: ${parentUserId}?`)) {
+             try {
+                 await userService.unlinkParentFromStudent(currentUser.UserID, parentUserId);
+                 showSuccessSnackbar('Đã bỏ liên kết phụ huynh.');
+                 // Refresh linked parents list
+                 setLinkedParents(prev => prev.filter(p => p.UserID !== parentUserId));
+             } catch (error) {
+                 showErrorSnackbar(error.response?.data?.detail || 'Lỗi bỏ liên kết phụ huynh.');
+             }
+         }
     };
 
     // --- Render Logic ---
@@ -423,6 +482,55 @@ const UserManagementPage = () => {
                             
                             {/* Role Specific Fields - Rendered dynamically */} 
                             {renderRoleSpecificFields()}
+
+                            {currentUser && currentUser.role === 'student' && dialogMode === 'edit' && (
+                                <Grid item xs={12}>
+                                    <Divider sx={{ my: 2 }}><Chip label="Quản lý Phụ huynh Liên kết" /></Divider>
+                                    <Typography variant="subtitle1" gutterBottom>Phụ huynh Hiện tại:</Typography>
+                                    {loadingParents ? (
+                                        <CircularProgress size={20} />
+                                    ) : linkedParents.length > 0 ? (
+                                        <List dense>
+                                            {linkedParents.map(parent => (
+                                                <ListItem key={parent.UserID} secondaryAction={
+                                                    <IconButton edge="end" aria-label="delete" size="small" onClick={() => handleUnlinkParent(parent.UserID)}>
+                                                        <DeleteIcon fontSize="small" color="error" />
+                                                    </IconButton>
+                                                }>
+                                                    <ListItemText primary={`${parent.FirstName} ${parent.LastName}`} secondary={parent.Email} />
+                                                </ListItem>
+                                            ))}
+                                        </List>
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary">Chưa có phụ huynh nào được liên kết.</Typography>
+                                    )}
+
+                                    <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>Thêm Liên kết Phụ huynh:</Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Autocomplete
+                                            options={allParents.filter(p => !linkedParents.some(lp => lp.UserID === p.UserID))} // Exclude already linked parents
+                                            getOptionLabel={(option) => `${option.FirstName} ${option.LastName} (${option.Email})`}
+                                            value={selectedParentToLink}
+                                            onChange={(event, newValue) => {
+                                                setSelectedParentToLink(newValue);
+                                            }}
+                                            isOptionEqualToValue={(option, value) => option.UserID === value.UserID}
+                                            renderInput={(params) => <TextField {...params} label="Chọn Phụ huynh" size="small" />}
+                                            sx={{ flexGrow: 1 }}
+                                            disabled={linkingParent}
+                                            size="small"
+                                        />
+                                        <Button 
+                                            variant="outlined" 
+                                            size="small" 
+                                            onClick={handleLinkParent}
+                                            disabled={!selectedParentToLink || linkingParent}
+                                        >
+                                            {linkingParent ? <CircularProgress size={20}/> : "Liên kết"}
+                                        </Button>
+                                    </Box>
+                                </Grid>
+                            )}
 
                         </Grid>
                     </DialogContent>

@@ -195,6 +195,48 @@ const userService = {
     // Note: Specific student/teacher creation might still use the dedicated endpoints 
     // if they offer different behaviour or response models than the generic user creation.
     // However, the generic createUser should work if the backend service handles roles correctly.
+
+    // --- Parent-Student Link Functions ---
+
+    linkParentToStudent: async (studentUserId, parentUserId) => {
+        try {
+            const payload = { parent_user_id: parentUserId };
+            const response = await api.post(`${API_BASE_URL}/students/${studentUserId}/parents`, payload);
+            return response.data; // e.g., {"message": "Parent linked successfully"}
+        } catch (error) {
+            console.error(`Error linking parent ${parentUserId} to student ${studentUserId}:`, error.response ? error.response.data : error.message);
+            throw error;
+        }
+    },
+
+    unlinkParentFromStudent: async (studentUserId, parentUserId) => {
+        try {
+            await api.delete(`${API_BASE_URL}/students/${studentUserId}/parents/${parentUserId}`);
+        } catch (error) {
+            console.error(`Error unlinking parent ${parentUserId} from student ${studentUserId}:`, error.response ? error.response.data : error.message);
+            throw error;
+        }
+    },
+
+    getStudentParents: async (studentUserId) => {
+        try {
+            const response = await api.get(`${API_BASE_URL}/students/${studentUserId}/parents`);
+            return response.data; // Should be List[ParentBasicInfo]
+        } catch (error) {
+            console.error(`Error fetching parents for student ${studentUserId}:`, error.response ? error.response.data : error.message);
+            throw error;
+        }
+    },
+
+    getParentStudents: async (parentUserId) => {
+        try {
+            const response = await api.get(`${API_BASE_URL}/parents/${parentUserId}/students`);
+            return response.data; // Should be List[StudentBasicInfo]
+        } catch (error) {
+            console.error(`Error fetching students for parent ${parentUserId}:`, error.response ? error.response.data : error.message);
+            throw error;
+        }
+    },
 };
 
 export default userService; 
