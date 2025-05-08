@@ -370,13 +370,13 @@ const UserManagementPage = () => {
                         </FormControl>
                     </Grid>
                 )}
-                {(role === 'teacher' || role === 'admin') && (
+                {role === 'teacher' && (
                     <Grid item xs={12} sm={6}>
-                        <FormControl fullWidth required={(role === 'teacher' && currentUser.DepartmentID === '') || (role === 'admin' && currentUser.DepartmentID === '')}>
+                        <FormControl fullWidth required={currentUser.DepartmentID === ''}>
                             <InputLabel>Phòng ban</InputLabel>
                             <Select name="DepartmentID" value={currentUser.DepartmentID || ''} label="Phòng ban" onChange={handleUserChange}>
                                 <MenuItem value=""><em>Không chọn</em></MenuItem>
-                                {departments.map((d) => <MenuItem key={d.DepartmentID} value={d.DepartmentID}>{d.Name}</MenuItem>)}
+                                {departments.map((d) => <MenuItem key={d.DepartmentID} value={d.DepartmentID}>{d.DepartmentName}</MenuItem>)}
                             </Select>
                         </FormControl>
                     </Grid>
@@ -387,7 +387,7 @@ const UserManagementPage = () => {
                         <Grid item xs={12} sm={6}><TextField fullWidth label="Bằng cấp" name="Degree" value={currentUser.Degree || ''} onChange={handleUserChange} /></Grid>
                     </>
                 )}
-                 {(role === 'teacher' || role === 'admin') && (
+                 {(role === 'admin') && (
                       <Grid item xs={12} sm={6}><TextField fullWidth label="Chức vụ" name="Position" value={currentUser.Position || ''} onChange={handleUserChange} /></Grid>
                  )}
                 {role === 'parent' && (

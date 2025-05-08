@@ -143,7 +143,6 @@ def create_user(db: Session, user: UserCreate):
         from ..models.administrative_staff import AdministrativeStaff
         db_user.administrative_staff = AdministrativeStaff(
             AdminID=db_user.UserID,
-            DepartmentID=getattr(user, 'DepartmentID', None),
             Position=getattr(user, 'Position', None)
         )
     
@@ -308,7 +307,8 @@ def create_users_from_excel(db: Session, file: UploadFile):
 
             department_id_str = user_data_dict.get("DepartmentID")
             department_id = None
-            if department_id_str and str(department_id_str).strip() and role_str in [UserRole.TEACHER.value, UserRole.ADMIN.value]:
+            # Chỉ gán DepartmentID nếu role là TEACHER
+            if department_id_str and str(department_id_str).strip() and role_str == UserRole.TEACHER.value:
                 try:
                     department_id = int(float(str(department_id_str).strip()))
                 except ValueError:
@@ -330,9 +330,10 @@ def create_users_from_excel(db: Session, file: UploadFile):
                 "Status": user_data_dict.get("Status", "ACTIVE"),
                 "role": role_str,
                 "ClassID": class_id,
-                "DepartmentID": department_id,
+                "DepartmentID": department_id, # Sẽ là None cho admin dựa vào logic ở trên
                 "Degree": user_data_dict.get("Degree") if role_str == UserRole.TEACHER.value else None,
                 "Graduate": user_data_dict.get("Graduate") if role_str == UserRole.TEACHER.value else None,
+                # Position vẫn có thể áp dụng cho admin và teacher
                 "Position": user_data_dict.get("Position") if role_str in [UserRole.TEACHER.value, UserRole.ADMIN.value] else None,
                 "Occupation": user_data_dict.get("Occupation") if role_str == UserRole.PARENT.value else None,
             }

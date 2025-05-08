@@ -1,8 +1,9 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+from .teacher_schema import TeacherBasicInfo
 
 class DepartmentBase(BaseModel):
-    Name: str
+    DepartmentName: str
     Description: Optional[str] = None
 
 class DepartmentCreate(DepartmentBase):
@@ -10,4 +11,5 @@ class DepartmentCreate(DepartmentBase):
 
 class DepartmentRead(DepartmentBase):
     DepartmentID: int
+    teachers: List[TeacherBasicInfo] = []
     model_config = {"from_attributes": True} 
