@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBell, faUser } from "@fortawesome/free-solid-svg-icons";
@@ -11,7 +11,6 @@ import {
     Button,
     Box,
     IconButton,
-    Menu,
     MenuItem,
     ListItemIcon,
     ListItemText,
@@ -21,6 +20,10 @@ import {
     useMediaQuery,
     useTheme,
     keyframes,
+    Drawer,
+    List,
+    ListItem,
+    ListItemButton,
 } from '@mui/material';
 import {
     Message as MessageIcon,
@@ -32,6 +35,11 @@ import {
     AccountCircle,
     Logout,
     Lock as LockIcon,
+    Home as HomeIcon,
+    People as PeopleIcon,
+    Book as DailyLogIcon,
+    Assessment as ReportsIcon,
+    SupervisorAccount as PrincipalIcon,
 } from '@mui/icons-material';
 
 /**
@@ -106,349 +114,471 @@ const slideIn = keyframes`
     to { transform: translateY(0); opacity: 1; }
 `;
 
-const Navbar = () => {
+const Navbar = ({ onLayoutChange }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const navigate = useNavigate();
-    const [anchorEl, setAnchorEl] = useState(null);
-    const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+    const [mobileOpen, setMobileOpen] = useState(false);
     const currentUser = authService.getCurrentUser();
 
-    const handleMenuClick = (event) => {
-        setAnchorEl(event.currentTarget);
+    const expandedDrawerWidth = 260;
+    const collapsedDrawerWidth = isMobile ? 0 : 60;
+    const [isDrawerHovered, setIsDrawerHovered] = useState(false);
+
+    const currentActualDrawerWidth = isMobile ? expandedDrawerWidth : (isDrawerHovered ? expandedDrawerWidth : collapsedDrawerWidth);
+
+    useEffect(() => {
+        if (onLayoutChange) {
+            const widthForMainLayout = isMobile ? 0 : currentActualDrawerWidth;
+            onLayoutChange(widthForMainLayout, isMobile);
+        }
+    }, [currentActualDrawerWidth, isMobile, onLayoutChange]);
+
+    const handleDrawerToggle = () => {
+        setMobileOpen(!mobileOpen);
     };
 
-    const handleUserMenuClick = (event) => {
-        setUserMenuAnchor(event.currentTarget);
-    };
-
-    const handleMenuClose = () => {
-        setAnchorEl(null);
-    };
-
-    const handleUserMenuClose = () => {
-        setUserMenuAnchor(null);
-    };
-
-    const handleNavigation = (path) => {
+    const handleNavigation = useCallback((path) => {
         navigate(path);
-        handleMenuClose();
-    };
+        if (isMobile) {
+            setMobileOpen(false);
+        }
+    }, [navigate, isMobile]);
 
-    const handleLogout = () => {
+    const handleLogout = useCallback(() => {
         authService.logout();
         navigate('/login');
-        handleUserMenuClose();
+        if (isMobile) {
+            setMobileOpen(false);
+        }
+    }, [navigate, isMobile]);
+
+    const handleDrawerMouseEnter = () => {
+        if (!isMobile) {
+            setIsDrawerHovered(true);
+        }
+    };
+
+    const handleDrawerMouseLeave = () => {
+        if (!isMobile) {
+            setIsDrawerHovered(false);
+        }
     };
 
     const menuItems = [
         {
-            text: 'Quản lý Tin nhắn',
+            text: 'Trang chủ',
+            icon: <HomeIcon />,
+            path: '/home',
+            roles: [],
+        },
+        {
+            text: 'Quản lý Người dùng',
+            icon: <PeopleIcon />,
+            path: '/user-management',
+            roles: ['admin'],
+        },
+        {
+            text: 'Tin nhắn',
             icon: <MessageIcon />,
-            path: '/messages',
+            path: '/messaging',
+            roles: [],
         },
         {
-            text: 'Quản lý Lịch sự kiện & Thời khóa biểu',
+            text: 'Lịch & Sự kiện',
             icon: <EventIcon />,
-            path: '/events',
+            path: '/event-schedule',
+            roles: [],
         },
         {
-            text: 'Quản lý đơn kiến nghị',
-            icon: <AssignmentIcon />,
-            path: '/petitions',
-        },
-        {
-            text: 'Quản lý Khen thưởng / Kỷ luật',
+            text: 'Khen thưởng/Kỷ luật',
             icon: <EmojiEventsIcon />,
-            path: '/rewards',
+            path: '/rewards-discipline',
+            roles: [],
         },
         {
-            text: 'Quản lý kết quả học tập',
+            text: 'Sổ liên lạc',
+            icon: <DailyLogIcon />,
+            path: '/daily-log',
+            roles: [],
+        },
+        {
+            text: 'Kết quả học tập',
             icon: <SchoolIcon />,
             path: '/academic-results',
+            roles: [],
+        },
+        {
+            text: 'Báo cáo & Thống kê',
+            icon: <ReportsIcon />,
+            path: '/reports-statistics',
+            roles: ['admin', 'principal', 'bgh', 'teacher'],
+        },
+        {
+            text: 'Giám sát (BGH)',
+            icon: <PrincipalIcon />,
+            path: '/principal-dashboard',
+            roles: ['principal', 'bgh'],
         },
     ];
 
-  return (
-        <AppBar 
-            position="static" 
-            elevation={0}
-            sx={{ 
-                background: 'linear-gradient(135deg, #2c3e50 0%, #3498db 100%)',
+    const userRole = currentUser?.role;
+    const accessibleMenuItems = menuItems.filter(item => 
+        item.roles.length === 0 || (userRole && item.roles.includes(userRole))
+    );
+
+    const userActionItems = [
+        {
+            text: 'Thông tin cá nhân',
+            icon: <AccountCircle fontSize="small" />,
+            action: () => handleNavigation('/profile'),
+        },
+
+        {
+            text: 'Đăng xuất',
+            icon: <Logout fontSize="small" />,
+            action: handleLogout,
+        },
+    ];
+
+    const drawerContent = (
+        <Box
+            onMouseEnter={handleDrawerMouseEnter}
+            onMouseLeave={handleDrawerMouseLeave}
+            sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                background: 'linear-gradient(180deg, #2c3e50 0%, #3498db 100%)',
                 color: 'white',
-                borderBottom: 'none',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-                animation: `${slideIn} 0.5s ease-out`,
+                paddingTop: '20px',
+                overflowX: 'hidden',
+                transition: theme.transitions.create('width', {
+                    easing: theme.transitions.easing.sharp,
+                    duration: theme.transitions.duration.enteringScreen,
+                }),
+                width: currentActualDrawerWidth,
             }}
         >
-            <Toolbar sx={{ justifyContent: 'space-between' }}>
-                {/* Left side - Logo and Menu */}
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <IconButton
-                        edge="start"
-                        color="inherit"
-                        aria-label="menu"
-                        onClick={handleMenuClick}
-                        sx={{ 
-                            mr: 2,
+            <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: isDrawerHovered || isMobile ? 'flex-start' : 'center',
+                mb: 3,
+                p: 2,
+                pl: isDrawerHovered || isMobile ? 2 : 0,
+                minHeight: '64px',
+            }}>
+                <IconButton 
+                    onClick={() => navigate('/')} 
+                    sx={{ 
+                        color: 'white', 
+                        display: isDrawerHovered || isMobile ? 'none' : 'inline-flex',
+                        p:1.5
+                    }}
+                >
+                    <SchoolIcon sx={{ fontSize: 32 }}/>
+                </IconButton>
+                <Typography
+                    variant="h5"
+                    component="div"
+                    sx={{
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        background: 'linear-gradient(45deg, #fff 30%, #e0e0e0 90%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        animation: `${pulse} 2s infinite`,
+                        display: isDrawerHovered || isMobile ? 'block' : 'none',
+                        ml: isDrawerHovered || isMobile ? 1 : 0,
+                        fontSize: '1.5rem',
+                        '&:hover': {
+                            animation: 'none',
+                            transform: 'scale(1.05)',
+                        },
+                    }}
+                    onClick={() => navigate('/')}
+                    noWrap
+                >
+                    EduGate
+                </Typography>
+            </Box>
+
+            <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.2)', mb: 2 }} />
+
+            <List sx={{ flexGrow: 1 }}>
+                {accessibleMenuItems.map((item, index) => (
+                    <ListItem key={item.path} disablePadding sx={{ display: 'block' }}>
+                        <ListItemButton
+                            onClick={() => handleNavigation(item.path)}
+                            title={item.text}
+                            sx={{
+                                minHeight: 48,
+                                justifyContent: isDrawerHovered || isMobile ? 'initial' : 'center',
+                                px: isDrawerHovered || isMobile ? 2.5 : 1.5,
+                                py: 1.5,
+                                transition: 'all 0.2s ease-in-out',
+                                animation: `${slideIn} 0.5s ease-out ${index * 0.1}s both`,
+                                '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                                    transform: isDrawerHovered || isMobile ? 'translateX(5px)' : 'scale(1.1)',
+                                    boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)',
+                                },
+                            }}
+                        >
+                            <ListItemIcon sx={{
+                                minWidth: 0,
+                                mr: isDrawerHovered || isMobile ? 3 : 'auto',
+                                justifyContent: 'center',
+                                color: 'white',
+                                fontSize: '1.2rem',
+                                transition: theme.transitions.create('margin', {
+                                    easing: theme.transitions.easing.sharp,
+                                    duration: theme.transitions.duration.enteringScreen,
+                                }),
+                                '&:hover': {
+                                    transform: 'scale(1.2)',
+                                },
+                                '& .MuiSvgIcon-root': {
+                                    fontSize: '1.4rem',
+                                }
+                            }}>
+                                {item.icon}
+                            </ListItemIcon>
+                            <ListItemText 
+                                primary={item.text} 
+                                primaryTypographyProps={{ 
+                                    variant: 'body1',
+                                    noWrap: true,
+                                    sx: { fontWeight: 'medium' }
+                                }}
+                                sx={{ 
+                                    opacity: isDrawerHovered || isMobile ? 1 : 0,
+                                    transition: theme.transitions.create('opacity', {
+                                        easing: theme.transitions.easing.sharp,
+                                        duration: theme.transitions.duration.enteringScreen,
+                                    }),
+                                    color: 'white',
+                                }}
+                            />
+                        </ListItemButton>
+                    </ListItem>
+                ))}
+            </List>
+
+            <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.2)', mt: 'auto' }} />
+
+            <Box sx={{
+                mt: 'auto',
+                transition: theme.transitions.create('padding', {
+                    easing: theme.transitions.easing.sharp,
+                    duration: theme.transitions.duration.enteringScreen,
+                }),
+            }}>
+                <Tooltip title={isDrawerHovered || isMobile ? "Tài khoản" : `${currentUser?.FirstName} ${currentUser?.LastName}`}>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            cursor: 'default',
+                            p: 1.5,
+                            px: isDrawerHovered || isMobile ? 1.5 : (collapsedDrawerWidth - 40)/2,
+                            borderRadius: 1,
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)', 
                             transition: 'all 0.3s ease',
+                            overflow: 'hidden',
+                            justifyContent: isDrawerHovered || isMobile ? 'flex-start' : 'center',
                             '&:hover': {
-                                transform: 'rotate(90deg)',
                                 backgroundColor: 'rgba(255, 255, 255, 0.2)',
                             },
                         }}
                     >
-                        <MenuIcon />
-                    </IconButton>
-                    <Typography
-                        variant="h6"
-                        component="div"
-                        sx={{
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            textShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                            background: 'linear-gradient(45deg, #fff 30%, #e0e0e0 90%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            animation: `${pulse} 2s infinite`,
-                            '&:hover': {
-                                animation: 'none',
-                                transform: 'scale(1.05)',
-                            },
-                        }}
-                        onClick={() => navigate('/')}
-                    >
-                        EduGate
-                    </Typography>
-                </Box>
-
-                {/* Center - Navigation Items (Desktop) */}
-                {!isMobile && (
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        {menuItems.map((item, index) => (
-                            <Box
-                                key={item.path}
-                                sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    cursor: 'pointer',
-                                    p: 1,
-                                    borderRadius: 1,
-                                    transition: 'all 0.3s ease',
-                                    animation: `${slideIn} 0.5s ease-out ${index * 0.1}s both`,
-                                    '&:hover': {
-                                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                                        transform: 'translateY(-2px) scale(1.05)',
-                                        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-                                    },
-                                }}
-                                onClick={() => handleNavigation(item.path)}
-                            >
-                                <ListItemIcon sx={{ 
-                                    minWidth: 40, 
-                                    color: 'white',
-                                    transition: 'transform 0.3s ease',
-                                    '&:hover': {
-                                        transform: 'scale(1.2) rotate(5deg)',
-                                    },
-                                }}>
-                                    {item.icon}
-                                </ListItemIcon>
-                                <Typography variant="body2" sx={{ 
-                                    color: 'white',
-                                    transition: 'all 0.3s ease',
-                                    '&:hover': {
-                                        letterSpacing: '0.5px',
-                                    },
-                                }}>
-                                    {item.text}
-                                </Typography>
-                            </Box>
-                        ))}
+                        <Avatar sx={{
+                            width: 40,
+                            height: 40,
+                            bgcolor: 'rgba(255, 255, 255, 0.2)',
+                            mr: isDrawerHovered || isMobile ? 1.5 : 0,
+                            transition: theme.transitions.create(['margin', 'transform'], {
+                                easing: theme.transitions.easing.sharp,
+                                duration: theme.transitions.duration.enteringScreen,
+                            }),
+                        }}>
+                            <AccountCircle />
+                        </Avatar>
+                        <Box sx={{
+                            overflow: 'hidden',
+                            opacity: isDrawerHovered || isMobile ? 1 : 0,
+                            width: isDrawerHovered || isMobile ? 'auto' : 0,
+                            transition: theme.transitions.create(['opacity', 'width'], {
+                                easing: theme.transitions.easing.sharp,
+                                duration: theme.transitions.duration.enteringScreen,
+                            }),
+                            ml: isDrawerHovered || isMobile ? 1 : 0,
+                        }}>
+                            <Typography variant="subtitle2" noWrap sx={{ color: 'white', fontWeight: 'medium' }}>
+                                {currentUser?.FirstName} {currentUser?.LastName}
+                            </Typography>
+                            <Typography variant="caption" noWrap sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                                {currentUser?.Email}
+                            </Typography>
+                        </Box>
                     </Box>
-                )}
+                </Tooltip>
 
-                {/* Right side - User Menu */}
-                <Box>
-                    <Tooltip title="Tài khoản">
-                        <IconButton
-                            onClick={handleUserMenuClick}
-                            size="small"
-                            sx={{ 
-                                ml: 2,
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                transition: 'all 0.3s ease',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                    transform: 'scale(1.1)',
-                                    boxShadow: '0 0 15px rgba(255, 255, 255, 0.3)',
-                                },
-                            }}
-                        >
-                            <Avatar sx={{ 
-                                width: 32, 
-                                height: 32, 
-                                bgcolor: 'rgba(255, 255, 255, 0.2)',
-                                transition: 'all 0.3s ease',
-                                '&:hover': {
-                                    transform: 'rotate(360deg)',
-                                },
-                            }}>
-                                <AccountCircle />
-                            </Avatar>
-                        </IconButton>
-                    </Tooltip>
-                </Box>
-
-                {/* Mobile Menu */}
-                <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl)}
-                    onClose={handleMenuClose}
-                    PaperProps={{
-                        sx: {
-                            mt: 1.5,
-                            minWidth: 200,
-                            background: 'linear-gradient(135deg, #2c3e50 0%, #3498db 100%)',
-                            color: 'white',
-                            animation: `${slideIn} 0.3s ease-out`,
-                        },
-                    }}
-                >
-                    {menuItems.map((item, index) => (
-                        <MenuItem
-                            key={item.path}
-                            onClick={() => handleNavigation(item.path)}
+                <Box sx={{
+                    overflow: 'hidden',
+                    height: isDrawerHovered || isMobile ? 'auto' : 0,
+                    opacity: isDrawerHovered || isMobile ? 1 : 0,
+                    transition: theme.transitions.create(['height', 'opacity'], {
+                        easing: theme.transitions.easing.sharp,
+                        duration: theme.transitions.duration.enteringScreen,
+                    }),
+                    mt:1,
+                }}>
+                    {userActionItems.map((item, index) => (
+                        <ListItemButton
+                            key={item.text}
+                            onClick={item.action}
                             sx={{
+                                py: 1,
+                                px: 2.5, 
+                                justifyContent: 'flex-start',
                                 transition: 'all 0.3s ease',
-                                animation: `${slideIn} 0.3s ease-out ${index * 0.1}s both`,
                                 '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                                    transform: 'translateX(5px)',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+                                    transform: 'translateX(3px)',
                                 },
                             }}
                         >
-                            <ListItemIcon sx={{ 
+                            <ListItemIcon sx={{
+                                minWidth: 36,
                                 color: 'white',
-                                transition: 'transform 0.3s ease',
-                                '&:hover': {
-                                    transform: 'scale(1.2)',
-                                },
+                                mr:1
                             }}>
                                 {item.icon}
                             </ListItemIcon>
-                            <ListItemText primary={item.text} />
-                        </MenuItem>
+                            <ListItemText 
+                                primary={item.text} 
+                                primaryTypographyProps={{ variant: 'body2', noWrap: true, sx: {color: 'white'} }}
+                            />
+                        </ListItemButton>
                     ))}
-                </Menu>
+                </Box>
+            </Box>
+        </Box>
+    );
 
-                {/* User Menu */}
-                <Menu
-                    anchorEl={userMenuAnchor}
-                    open={Boolean(userMenuAnchor)}
-                    onClose={handleUserMenuClose}
-                    PaperProps={{
-                        sx: {
-                            mt: 1.5,
-                            minWidth: 200,
-                            background: 'linear-gradient(135deg, #2c3e50 0%, #3498db 100%)',
-                            color: 'white',
+    return (
+        <Box sx={{ display: 'flex' }}>
+            {isMobile && (
+                 <AppBar 
+                    position="fixed"
+                    elevation={0}
+                    sx={{ 
+                        background: 'linear-gradient(135deg, #2c3e50 0%, #3498db 100%)',
+                        color: 'white',
+                        borderBottom: 'none',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                        width: { sm: `calc(100% - ${currentActualDrawerWidth}px)` },
+                        ml: { sm: `${currentActualDrawerWidth}px` },
+                    }}
+                >
+                    <Toolbar>
+                        <IconButton
+                            color="inherit"
+                            aria-label="open drawer"
+                            edge="start"
+                            onClick={handleDrawerToggle}
+                            sx={{ 
+                                mr: 2, 
+                                display: { sm: 'none' },
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                    transform: 'rotate(90deg)',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                },
+                            }}
+                        >
+                            <MenuIcon />
+                        </IconButton>
+                         <Typography
+                            variant="h6"
+                            component="div"
+                            onClick={() => navigate('/')}
+                             sx={{
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                background: 'linear-gradient(45deg, #fff 30%, #e0e0e0 90%)',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                animation: `${pulse} 2s infinite`,
+                                '&:hover': {
+                                    animation: 'none',
+                                    transform: 'scale(1.05)',
+                                },
+                            }}
+                        >
+                            EduGate
+                        </Typography>
+                    </Toolbar>
+                </AppBar>
+            )}
+
+            <Box
+                component="nav"
+                sx={{ 
+                    width: { sm: currentActualDrawerWidth },
+                    flexShrink: { sm: 0 },
+                    transition: theme.transitions.create('width', {
+                        easing: theme.transitions.easing.sharp,
+                        duration: theme.transitions.duration.enteringScreen,
+                    }),
+                }}
+                aria-label="mailbox folders"
+            >
+                <Drawer
+                    variant="temporary"
+                    open={isMobile && mobileOpen}
+                    onClose={handleDrawerToggle}
+                    ModalProps={{
+                        keepMounted: true,
+                    }}
+                    sx={{
+                        display: { xs: 'block', sm: 'none' },
+                        '& .MuiDrawer-paper': { 
+                            boxSizing: 'border-box', 
+                            width: expandedDrawerWidth,
+                            borderRight: 'none',
                             animation: `${slideIn} 0.3s ease-out`,
                         },
                     }}
                 >
-                    <Box sx={{ 
-                        p: 2,
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        borderRadius: '4px 4px 0 0',
-                    }}>
-                        <Typography variant="subtitle1" noWrap sx={{ 
-                            color: 'white',
-                            textShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                        }}>
-                            {currentUser?.FirstName} {currentUser?.LastName}
-                        </Typography>
-                        <Typography variant="body2" sx={{ 
-                            color: 'rgba(255, 255, 255, 0.7)',
-                            textShadow: '0 1px 2px rgba(0,0,0,0.2)',
-                        }} noWrap>
-                            {currentUser?.Email}
-                        </Typography>
-                    </Box>
-                    <MenuItem 
-                        onClick={() => {
-                            handleUserMenuClose();
-                            navigate('/users/me');
-                        }}
-                        sx={{
-                            transition: 'all 0.3s ease',
-                            '&:hover': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                                transform: 'translateX(5px)',
-                            },
-                        }}
-                    >
-                        <ListItemIcon sx={{ 
-                            color: 'white',
-                            transition: 'transform 0.3s ease',
-                            '&:hover': {
-                                transform: 'scale(1.2)',
-                            },
-                        }}>
-                            <AccountCircle fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary="Thông tin cá nhân" />
-                    </MenuItem>
-                    <MenuItem 
-                        onClick={() => {
-                            handleUserMenuClose();
-                            navigate('/users/me#change-password');
-                        }}
-                        sx={{
-                            transition: 'all 0.3s ease',
-                            '&:hover': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                                transform: 'translateX(5px)',
-                            },
-                        }}
-                    >
-                        <ListItemIcon sx={{ 
-                            color: 'white',
-                            transition: 'transform 0.3s ease',
-                            '&:hover': {
-                                transform: 'scale(1.2)',
-                            },
-                        }}>
-                            <LockIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary="Đổi mật khẩu" />
-                    </MenuItem>
-                    <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
-                    
-                    <MenuItem 
-                        onClick={handleLogout}
-                        sx={{
-                            transition: 'all 0.3s ease',
-                            '&:hover': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                                transform: 'translateX(5px)',
-                              },
-                            }}
-                          >
-                        <ListItemIcon sx={{ 
-                            color: 'white',
-                            transition: 'transform 0.3s ease',
-                            '&:hover': {
-                                transform: 'scale(1.2)',
-                            },
-                        }}>
-                            <Logout fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary="Đăng xuất" />
-                    </MenuItem>
-                </Menu>
-            </Toolbar>
-        </AppBar>
+                    {drawerContent}
+                </Drawer>
+                <Drawer
+                    variant="permanent"
+                    sx={{
+                        display: { xs: 'none', sm: 'block' },
+                        '& .MuiDrawer-paper': { 
+                            boxSizing: 'border-box', 
+                            width: currentActualDrawerWidth,
+                            borderRight: 'none',
+                            boxShadow: '2px 0 10px rgba(0,0,0,0.1)',
+                            overflowX: 'hidden',
+                            transition: theme.transitions.create('width', {
+                                easing: theme.transitions.easing.sharp,
+                                duration: theme.transitions.duration.enteringScreen,
+                            }),
+                        },
+                    }}
+                    open
+                >
+                    {drawerContent}
+                </Drawer>
+            </Box>
+        </Box>
   );
 };
 
