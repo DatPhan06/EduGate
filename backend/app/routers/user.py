@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Query, File, UploadFile
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from ..database import get_db
 from ..schemas.user import User, UserCreate, UserUpdate, TokenData, ChangePassword
 from ..schemas.parent import ParentCreate
@@ -11,7 +11,8 @@ from pydantic import BaseModel
 
 router = APIRouter(
     prefix="/users",
-    tags=["users"]
+    tags=["users"],
+    responses={404: {"description": "Not found"}},
 )
 
 @router.post("/register", response_model=User)
@@ -58,8 +59,14 @@ async def get_current_user(
         )
 
 @router.get("/", response_model=List[User])
-def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return user_service.get_users(db, skip, limit)
+def get_users(
+    skip: int = 0, 
+    limit: int = 100, 
+    role: Optional[UserRole] = Query(None, description="Filter users by role"),
+    search: Optional[str] = Query(None, description="Search users by name or email"),
+    db: Session = Depends(get_db)
+):
+    return user_service.get_users(db, skip=skip, limit=limit, role=role, search=search)
 
 @router.get("/{user_id}", response_model=User)
 def get_user(user_id: int, db: Session = Depends(get_db)):
@@ -199,3 +206,33 @@ async def create_parent_profile(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         ) 
+
+@router.post("/upload_excel", status_code=status.HTTP_201_CREATED)
+def upload_users_excel(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """
+    Uploads an Excel file to create multiple users.
+    Requires admin privileges.
+    The Excel file should have columns matching the UserCreate schema fields.
+    Required columns: FirstName, LastName, Email, Password, role.
+    Optional columns: PhoneNumber, DOB (YYYY-MM-DD or parsable date string), Gender, Address, Street, District, City, Status,
+                      ClassID (for students), DepartmentID (for teachers/admins), Degree, Graduate, Position, Occupation.
+    Returns a summary of successfully created users and any errors encountered.
+    """
+    if not file.filename.endswith(('.xls', '.xlsx')):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid file type. Only .xls and .xlsx files are allowed.")
+    
+    try:
+        results = user_service.create_users_from_excel(db=db, file=file)
+        if results["errors"]:
+            # Trả về 207 Multi-Status nếu có một số lỗi nhưng một số thành công
+            # Hoặc bạn có thể quyết định trả về 400 nếu có bất kỳ lỗi nào
+            # Ở đây, chúng ta sẽ trả về 201 với thông tin lỗi nếu có
+            return {"message": "User import partially successful", "created_count": results["success_count"], "errors": results["errors"]}
+        return {"message": "Users imported successfully", "created_count": results["success_count"]}
+    except HTTPException as e:
+        # Re-raise HTTPExceptions từ service
+        raise e
+    except Exception as e:
+        # Bắt các lỗi không mong muốn khác từ quá trình xử lý file
+        # logger.error(f"Unhandled error during Excel upload: {e}") # Cân nhắc logging
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An unexpected error occurred while processing the file: {str(e)}") 

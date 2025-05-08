@@ -20,6 +20,7 @@ import DailyLogPage from '../pages/DailyLog/DailyLogPage';
 import AcademicResultsPage from '../pages/AcademicResults/AcademicResultsPage';
 import ReportsPage from '../pages/Reports/ReportsPage';
 import PrincipalDashboardPage from '../pages/Principal/PrincipalDashboardPage';
+import ClassManagementPage from '../pages/ClassManagement/ClassManagementPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -61,7 +62,11 @@ const AppRoutes = () => {
                 <Route path="home" element={<Home />} />
                 <Route path="profile" element={<UserProfile />} />
                 
-                <Route path="messaging" element={<Messages />} />
+                <Route path="messaging" element={
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <Messages />
+                    </ProtectedRoute>
+                } />
                 <Route path="event-schedule" element={<EventSchedulePage />} />
                 <Route path="petitions" element={<Petitions />} />
                 <Route path="rewards-discipline" element={<RewardsDisciplinePage />} />
@@ -74,6 +79,14 @@ const AppRoutes = () => {
                     element={
                         <ProtectedRoute roles={['admin']}>
                             <UserManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="class-management"
+                    element={
+                        <ProtectedRoute roles={['admin']}>
+                            <ClassManagementPage />
                         </ProtectedRoute>
                     }
                 />

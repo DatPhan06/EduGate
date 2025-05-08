@@ -7,7 +7,8 @@ class Student(Base):
     __tablename__ = "students"
 
     StudentID = Column(Integer, ForeignKey("users.UserID"), primary_key=True)
-    ClassID = Column(Integer, ForeignKey("classes.ClassID"))
+    # StudentCode = Column(String, unique=True, index=True, nullable=True) # Removed field
+    ClassID = Column(Integer, ForeignKey("classes.ClassID"), nullable=True)
     EnrollmentDate = Column(DateTime, default=datetime.datetime.utcnow)
     YtDate = Column(DateTime, nullable=True)  # Assuming this is YUDate, please clarify
 

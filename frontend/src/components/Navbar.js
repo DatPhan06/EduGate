@@ -40,6 +40,7 @@ import {
     Book as DailyLogIcon,
     Assessment as ReportsIcon,
     SupervisorAccount as PrincipalIcon,
+    ClassOutlined as ClassIcon,
 } from '@mui/icons-material';
 
 /**
@@ -179,10 +180,16 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['admin'],
         },
         {
+            text: 'Quản lý Lớp học',
+            icon: <ClassIcon />,
+            path: '/class-management',
+            roles: ['admin'],
+        },
+        {
             text: 'Tin nhắn',
             icon: <MessageIcon />,
             path: '/messaging',
-            roles: [],
+            roles: ['teacher', 'parent', 'student'],
         },
         {
             text: 'Lịch & Sự kiện',

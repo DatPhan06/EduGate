@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status, Depends
 from datetime import datetime, timedelta
 from ..models.user import User
@@ -8,6 +8,15 @@ from jose import JWTError, jwt
 from typing import Optional
 from ..config import settings
 from ..services import auth_service
+from sqlalchemy import or_, func
+import pandas as pd
+from fastapi import UploadFile
+from io import BytesIO
+from sqlalchemy.exc import IntegrityError
+from ..models.student import Student
+from ..models.teacher import Teacher
+from ..models.parent import Parent
+from ..models.administrative_staff import AdministrativeStaff
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -44,8 +53,28 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
     return db.query(User).filter(User.UserID == user_id).first()
 
-def get_users(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(User).offset(skip).limit(limit).all()
+def get_users(db: Session, skip: int = 0, limit: int = 100, role: Optional[UserRole] = None, search: Optional[str] = None):
+    query = db.query(User).options(
+        joinedload(User.student),
+        joinedload(User.teacher),
+        joinedload(User.parent),
+        joinedload(User.administrative_staff)
+    )
+    
+    if role:
+        query = query.filter(User.role == role)
+        
+    if search:
+        search_term = f"%{search.lower()}%"
+        query = query.filter(
+            or_(
+                func.lower(User.FirstName + " " + User.LastName).like(search_term),
+                func.lower(User.Email).like(search_term),
+                # Add other searchable fields if needed
+            )
+        )
+        
+    return query.order_by(User.UserID).offset(skip).limit(limit).all()
 
 def create_user(db: Session, user: UserCreate):
     # Check if user already exists
@@ -80,7 +109,6 @@ def create_user(db: Session, user: UserCreate):
     
     # Now create role-specific records with the generated UserID
     if user.role == 'student':
-        from ..models.student import Student
         db_user.student = Student(
             StudentID=db_user.UserID,
             ClassID=getattr(user, 'ClassID', None),
@@ -88,25 +116,36 @@ def create_user(db: Session, user: UserCreate):
             YtDate=getattr(user, 'YtDate', None)
         )
     elif user.role == 'teacher':
-        from ..models.teacher import Teacher
+        teacher_department_id = getattr(user, 'DepartmentID', None)
+
+        # If DepartmentID is 0, treat it as None (no department assigned)
+        if teacher_department_id == 0:
+            teacher_department_id = None
+
+        # Validate if DepartmentID actually exists if it's not None
+        if teacher_department_id is not None:
+            department = db.query(Department).filter(Department.DepartmentID == teacher_department_id).first()
+            if not department:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Department with ID {teacher_department_id} not found."
+                )
+
         db_user.teacher = Teacher(
             TeacherID=db_user.UserID,
-            DepartmentID=getattr(user, 'DepartmentID', None),
+            DepartmentID=teacher_department_id,
             Graduate=getattr(user, 'Graduate', None),
             Degree=getattr(user, 'Degree', None),
             Position=getattr(user, 'Position', None)
         )
     elif user.role == 'parent':
-        from ..models.parent import Parent
         db_user.parent = Parent(
             ParentID=db_user.UserID,
             Occupation=getattr(user, 'Occupation', None)
         )
     elif user.role == 'admin':
-        from ..models.administrative_staff import AdministrativeStaff
         db_user.administrative_staff = AdministrativeStaff(
             AdminID=db_user.UserID,
-            DepartmentID=getattr(user, 'DepartmentID', None),
             Position=getattr(user, 'Position', None)
         )
     
@@ -220,4 +259,129 @@ def get_current_user(token: str, db: Session) -> Optional[User]:
     if not email:
         return None
     
-    return get_user_by_email(db, email) 
+    return get_user_by_email(db, email)
+
+def create_users_from_excel(db: Session, file: UploadFile):
+    results = {"success_count": 0, "errors": []}
+    try:
+        contents = file.file.read()
+        # Đọc cột PhoneNumber và ClassID, DepartmentID như string để tránh pandas nhận dạng sai
+        # ClassID và DepartmentID sẽ được chuyển thành int sau nếu có giá trị
+        df = pd.read_excel(BytesIO(contents), dtype={
+            'PhoneNumber': str, 
+            'ClassID': str,
+            'DepartmentID': str
+        })
+
+        # Xử lý các giá trị NaN/NaT thành None hoặc giá trị mặc định nếu cần
+        df = df.where(pd.notnull(df), None) # Chuyển NaN/NaT của pandas thành None của Python
+
+        for index, row in df.iterrows():
+            user_data_dict = row.to_dict()
+            
+            phone_number = user_data_dict.get("PhoneNumber")
+            if phone_number is not None:
+                phone_number = str(phone_number).strip() # Đảm bảo là string và loại bỏ khoảng trắng
+                if phone_number.lower() == 'nan' or phone_number == '': # Xử lý thêm trường hợp 'nan' string
+                    phone_number = None
+            
+            dob_val = user_data_dict.get("DOB")
+            dob_iso = None
+            if pd.notna(dob_val) and dob_val:
+                try:
+                    # Chuyển đổi sang datetime, sau đó lấy date và định dạng ISO
+                    dob_iso = pd.to_datetime(dob_val).date().isoformat()
+                except ValueError:
+                    results["errors"].append(f"Row {index + 2} (Email: {user_data_dict.get('Email')}, DOB: '{dob_val}'): Invalid date format.")
+                    continue # Bỏ qua dòng này nếu ngày không hợp lệ
+            
+            role_str = user_data_dict.get("role")
+            if role_str:
+                role_str = str(role_str).lower().strip()
+
+            class_id_str = user_data_dict.get("ClassID")
+            class_id = None
+            if class_id_str and str(class_id_str).strip() and role_str == UserRole.STUDENT.value:
+                try:
+                    class_id = int(float(str(class_id_str).strip())) # Chuyển qua float rồi int để xử lý "1.0"
+                except ValueError:
+                    results["errors"].append(f"Row {index + 2} (Email: {user_data_dict.get('Email')}, ClassID: '{class_id_str}'): Invalid ClassID format.")
+                    continue
+
+            department_id_str = user_data_dict.get("DepartmentID")
+            department_id = None
+            # Chỉ gán DepartmentID nếu role là TEACHER
+            if department_id_str and str(department_id_str).strip() and role_str == UserRole.TEACHER.value:
+                try:
+                    department_id = int(float(str(department_id_str).strip()))
+                except ValueError:
+                    results["errors"].append(f"Row {index + 2} (Email: {user_data_dict.get('Email')}, DepartmentID: '{department_id_str}'): Invalid DepartmentID format.")
+                    continue
+
+            user_payload = {
+                "FirstName": user_data_dict.get("FirstName"),
+                "LastName": user_data_dict.get("LastName"),
+                "Email": user_data_dict.get("Email"),
+                "Password": user_data_dict.get("Password"),
+                "PhoneNumber": phone_number,
+                "DOB": dob_iso,
+                "Gender": user_data_dict.get("Gender"),
+                "Address": user_data_dict.get("Address"),
+                "Street": user_data_dict.get("Street"),
+                "District": user_data_dict.get("District"),
+                "City": user_data_dict.get("City"),
+                "Status": user_data_dict.get("Status", "ACTIVE"),
+                "role": role_str,
+                "ClassID": class_id,
+                "DepartmentID": department_id, # Sẽ là None cho admin dựa vào logic ở trên
+                "Degree": user_data_dict.get("Degree") if role_str == UserRole.TEACHER.value else None,
+                "Graduate": user_data_dict.get("Graduate") if role_str == UserRole.TEACHER.value else None,
+                # Position vẫn có thể áp dụng cho admin và teacher
+                "Position": user_data_dict.get("Position") if role_str in [UserRole.TEACHER.value, UserRole.ADMIN.value] else None,
+                "Occupation": user_data_dict.get("Occupation") if role_str == UserRole.PARENT.value else None,
+            }
+
+            if not all([user_payload["FirstName"], user_payload["LastName"], user_payload["Email"], user_payload["Password"], user_payload["role"]]):
+                results["errors"].append(f"Row {index + 2} (Email: {user_payload.get('Email', 'N/A')}): Missing required fields (FirstName, LastName, Email, Password, role).")
+                continue
+            
+            try:
+                user_payload["role"] = UserRole(user_payload["role"]) # role đã được lower() và strip()
+            except ValueError:
+                results["errors"].append(f"Row {index + 2} (Email: {user_payload.get('Email', 'N/A')}): Invalid role '{user_payload['role']}'.")
+                continue
+
+            try:
+                user_create_schema = UserCreate(**user_payload)
+                create_user(db=db, user=user_create_schema)
+                results["success_count"] += 1
+            except HTTPException as e:
+                db.rollback()
+                results["errors"].append(f"Row {index + 2} (Email: {user_payload.get('Email', 'N/A')}): {e.detail}")
+            except IntegrityError as e:
+                db.rollback()
+                results["errors"].append(f"Row {index + 2} (Email: {user_payload.get('Email', 'N/A')}): Database integrity error - {e.orig}")
+            except Exception as e:
+                db.rollback()
+                error_detail = str(e)
+                if hasattr(e, 'errors') and callable(e.errors):
+                    try:
+                        pydantic_errors = e.errors()
+                        error_messages = []
+                        for error in pydantic_errors:
+                            field = " -> ".join(map(str, error['loc']))
+                            msg = error['msg']
+                            error_messages.append(f"Field '{field}': {msg}")
+                        error_detail = "; ".join(error_messages)
+                    except Exception: # noqa
+                        pass # Giữ lại str(e) mặc định
+                results["errors"].append(f"Row {index + 2} (Email: {user_payload.get('Email', 'N/A')}): An unexpected error occurred - {error_detail}")
+
+    except pd.errors.EmptyDataError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The uploaded Excel file is empty.")
+    except Exception as e:
+        # Log a generic error for debugging
+        # logger.error(f"Error processing Excel file: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to process Excel file: {str(e)}")
+    
+    return results 
