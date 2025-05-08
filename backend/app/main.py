@@ -5,7 +5,7 @@ from typing import List
 from .database import get_db
 from .models import *
 from .config import settings
-from .routers import auth, user, reward_punishment, petition
+from .routers import auth, user, reward_punishment, petition, message
 from .database import engine, Base
 
 # Tạo bảng trong database
@@ -34,3 +34,4 @@ app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(reward_punishment.router) 
 app.include_router(petition.router)
+app.include_router(message.router)

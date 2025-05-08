@@ -12,4 +12,4 @@ class Conversation(Base):
     NumOfParticipation = Column(Integer, default=0)
 
     messages = relationship("Message", back_populates="conversation")
-    participations = relationship("Participation", back_populates="conversation") 
+    participations = relationship("Participation", back_populates="conversation")

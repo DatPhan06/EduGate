@@ -11,8 +11,9 @@ class UserPetition(BaseModel):
     LastName: str
     Email: str
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class PetitionBase(BaseModel):
     Title: str
@@ -20,22 +21,25 @@ class PetitionBase(BaseModel):
     Status: PetitionStatus = PetitionStatus.PENDING
     Notes: Optional[str] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = {
+        "use_enum_values": True
+    }
 
 class PetitionCreate(BaseModel):
     Title: str
     Content: str
 
-    class Config:
-        use_enum_values = True
+    model_config = {
+        "use_enum_values": True
+    }
 
 class PetitionUpdate(BaseModel):
     Status: PetitionStatus
     Notes: Optional[str] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = {
+        "use_enum_values": True
+    }
 
 class PetitionInDB(PetitionBase):
     PetitionID: int
@@ -43,8 +47,9 @@ class PetitionInDB(PetitionBase):
     AdminID: Optional[int] = None
     SubmittedAt: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class PetitionResponse(PetitionBase):
     PetitionID: int
@@ -55,8 +60,9 @@ class PetitionResponse(PetitionBase):
     Notes: Optional[str] = None
     parent: User
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class PetitionListResponse(BaseModel):
     items: List[PetitionResponse]

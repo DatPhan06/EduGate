@@ -9,3 +9,13 @@ from .reward_punishment import (
     ClassRNPBase,
     ClassRNPRead
 )
+from .message import (
+    UserSimple,
+    MessageBase,
+    MessageCreate,
+    MessageRead,
+    ConversationBase,
+    ConversationCreate,
+    ConversationRead,
+    ConversationPreview
+)
