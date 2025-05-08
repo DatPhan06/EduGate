@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from ..enums.user_enums import UserStatus # Gender is in UserPersonalDetails
+from ..enums.user_enums import UserStatus, Gender # Gender is in UserPersonalDetails
 from .common_schema import UserContactDetails, UserPersonalDetails, UserAddressDetails
 
 # Specific student info parts

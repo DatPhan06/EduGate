@@ -36,9 +36,10 @@ def _get_student_details_query(db: Session):
 
 def _format_student_read(row) -> StudentRead:
     student_name = f"{row.student_first_name or ''} {row.student_last_name or ''}".strip()
-    parent_name = None
-    if row.parent_first_name or row.parent_last_name:
-        parent_name = f"{row.parent_first_name or ''} {row.parent_last_name or ''}".strip()
+    # Bỏ parent_name
+    # parent_name = None
+    # if row.parent_first_name or row.parent_last_name:
+    #     parent_name = f"{row.parent_first_name or ''} {row.parent_last_name or ''}".strip()
     
     return StudentRead(
         id=row.id,
@@ -58,21 +59,14 @@ def _format_student_read(row) -> StudentRead:
         YtDate=getattr(row, 'YtDate', None),
         classId=row.classId,
         className=row.className,
-        classGrade=getattr(row, 'classGrade', None),
-        parentName=parent_name
+        classGrade=getattr(row, 'classGrade', None)
+        # Bỏ parentName=parent_name
     )
 
 def get_students(db: Session, skip: int = 0, limit: int = 100, search: Optional[str] = None, class_id_filter: Optional[int] = None) -> List[StudentRead]:
-    # Define StudentUser alias for use in this function scope, particularly for order_by and search filter
     StudentUser = aliased(User, name="student_user_alias")
     
-    # Initial query construction. We need to join Student with the aliased StudentUser here
-    # if we want to use StudentUser consistently for filtering and ordering.
-    # The _get_student_details_query can remain as is, or be adapted.
-    # For simplicity, let's adapt _get_student_details_query to accept the alias or reconstruct query here.
-
-    # Reconstructing the base of the query here for clarity with the consistent StudentUser alias
-    ParentUser = aliased(User, name="parent_user_main_alias")
+    # Bỏ join với Parent và ParentStudent ở đây
     query = db.query(
         StudentUser.UserID.label("id"),
         StudentUser.UserID.label("studentId"),
@@ -92,23 +86,21 @@ def get_students(db: Session, skip: int = 0, limit: int = 100, search: Optional[
         Student.YtDate.label("YtDate"),
         Student.ClassID.label("classId"),
         Class.GradeLevel.label("classGrade"),
-        Class.ClassName.label("className"),
-        ParentUser.FirstName.label("parent_first_name"),
-        ParentUser.LastName.label("parent_last_name")
+        Class.ClassName.label("className")
+        # Bỏ parent_first_name, parent_last_name
     ).select_from(Student)\
     .join(StudentUser, Student.StudentID == StudentUser.UserID)\
-    .outerjoin(Class, Student.ClassID == Class.ClassID)\
-    .outerjoin(ParentStudent, Student.StudentID == ParentStudent.StudentID)\
-    .outerjoin(Parent, ParentStudent.ParentID == Parent.ParentID)\
-    .outerjoin(ParentUser, Parent.ParentID == ParentUser.UserID)
+    .outerjoin(Class, Student.ClassID == Class.ClassID)
+    # Bỏ các join liên quan đến Parent/ParentStudent
+    # .outerjoin(ParentStudent, Student.StudentID == ParentStudent.StudentID)\
+    # .outerjoin(Parent, ParentStudent.ParentID == Parent.ParentID)\
+    # .outerjoin(ParentUser, Parent.ParentID == ParentUser.UserID)
 
     if class_id_filter is not None:
         query = query.filter(Student.ClassID == class_id_filter)
 
     if search:
         search_term = f"%{search.lower()}%"
-        # StudentUser is already defined in this scope
-        # ParentUser for search (if different logic is needed) could be aliased again or use the existing one.
         query = query.filter(
             (func.lower(StudentUser.FirstName + " " + StudentUser.LastName).like(search_term)) |
             (func.lower(Class.ClassName).like(search_term))
@@ -118,10 +110,9 @@ def get_students(db: Session, skip: int = 0, limit: int = 100, search: Optional[
     return [_format_student_read(row) for row in results]
 
 def get_student_by_id(db: Session, student_user_id: int) -> Optional[StudentRead]:
-    # Define aliases consistent with get_students for fetching single student details
     StudentUser = aliased(User, name="student_user_single_alias")
-    ParentUser = aliased(User, name="parent_user_single_alias")
-
+    
+    # Bỏ join với Parent và ParentStudent
     query = db.query(
         StudentUser.UserID.label("id"),
         StudentUser.UserID.label("studentId"),
@@ -141,16 +132,11 @@ def get_student_by_id(db: Session, student_user_id: int) -> Optional[StudentRead
         Student.YtDate.label("YtDate"),
         Student.ClassID.label("classId"),
         Class.GradeLevel.label("classGrade"),
-        Class.ClassName.label("className"),
-        ParentUser.FirstName.label("parent_first_name"),
-        ParentUser.LastName.label("parent_last_name")
+        Class.ClassName.label("className")
+        # Bỏ parent_first_name, parent_last_name
     ).select_from(Student)\
     .join(StudentUser, Student.StudentID == StudentUser.UserID)\
-    .outerjoin(Class, Student.ClassID == Class.ClassID)\
-    .outerjoin(ParentStudent, Student.StudentID == ParentStudent.StudentID)\
-    .outerjoin(Parent, ParentStudent.ParentID == Parent.ParentID)\
-    .outerjoin(ParentUser, Parent.ParentID == ParentUser.UserID)\
-    .filter(StudentUser.UserID == student_user_id)
+    .outerjoin(Class, Student.ClassID == Class.ClassID).filter(StudentUser.UserID == student_user_id)
     
     row = query.first()
     return _format_student_read(row) if row else None

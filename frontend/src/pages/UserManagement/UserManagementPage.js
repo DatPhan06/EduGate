@@ -189,7 +189,9 @@ const UserManagementPage = () => {
 
     const handleOpenDialog = async (mode, user = null) => {
         setDialogMode(mode);
-        setLinkedParents([]); // Reset linked parents list
+        setLinkedParents([]); // Reset linked parents list (cho student)
+        // Reset linked students list (cho parent) - cần thêm state này
+        // Ví dụ: setLinkedStudents([]);
 
         if (mode === 'edit' && user) {
             // Basic user data
@@ -205,7 +207,6 @@ const UserManagementPage = () => {
             };
             setCurrentUser(userData);
 
-            // If editing a student, fetch their linked parents
             if (user.role === 'student') {
                 try {
                     setLoadingParents(true); // Use loadingParents for this specific fetch
@@ -215,6 +216,23 @@ const UserManagementPage = () => {
                     showErrorSnackbar('Lỗi tải danh sách phụ huynh liên kết.');
                 } finally {
                     setLoadingParents(false);
+                }
+            }
+            // Thêm logic fetch linked students cho parent
+            if (user.role === 'parent') {
+                try {
+                    // Có thể cần thêm state loading riêng, ví dụ setLoadingStudentsForParent
+                    setLoadingAuxData(true); // Tạm dùng state loading chung
+                    const students = await userService.getParentStudents(user.UserID);
+                    // Gắn danh sách học sinh vào currentUser (cần đảm bảo currentUser có thể chứa mảng này)
+                    // Cách tốt hơn là dùng state riêng ví dụ: setLinkedStudents(students || []);
+                    // Tạm thời lưu trực tiếp vào currentUser để demo
+                     setCurrentUser(prev => ({ ...prev, linkedStudents: students || [] }));
+                } catch (error) {
+                    showErrorSnackbar('Lỗi tải danh sách học sinh liên kết cho phụ huynh.');
+                     setCurrentUser(prev => ({ ...prev, linkedStudents: [] }));
+                } finally {
+                    setLoadingAuxData(false);
                 }
             }
              // TODO: If editing a parent, fetch their linked students (optional)
@@ -354,6 +372,25 @@ const UserManagementPage = () => {
          }
     };
 
+    // Handler to unlink a student from the current parent in the edit dialog
+    const handleUnlinkStudent = async (studentUserId) => {
+        if (!currentUser || currentUser.role !== 'parent') return;
+        if (window.confirm(`Bạn có chắc muốn bỏ liên kết học sinh ID: ${studentUserId} khỏi phụ huynh này?`)) {
+            try {
+                // Gọi API unlink (studentId, parentId)
+                await userService.unlinkParentFromStudent(studentUserId, currentUser.UserID);
+                showSuccessSnackbar('Đã bỏ liên kết học sinh.');
+                // Refresh linked students list trong state currentUser
+                setCurrentUser(prev => ({
+                    ...prev,
+                    linkedStudents: prev.linkedStudents.filter(s => s.UserID !== studentUserId)
+                }));
+            } catch (error) {
+                showErrorSnackbar(error.response?.data?.detail || 'Lỗi bỏ liên kết học sinh.');
+            }
+        }
+    };
+
     // --- User Details View Dialog Handlers ---
     const handleOpenUserDetailsDialog = async (user) => {
         const determinedClassName = (user.ClassID && classes.find(c => c.id === Number(user.ClassID))?.name) || '';
@@ -389,6 +426,19 @@ const UserManagementPage = () => {
                 setSelectedUserForView(prev => ({ ...prev, linkedParents: [] })); 
             } finally {
                 setLoadingParents(false);
+            }
+        }
+        // Thêm logic fetch linked students cho parent
+        if (user.role === 'parent') {
+            try {
+                setLoadingAuxData(true); // Tạm dùng state loading chung
+                const students = await userService.getParentStudents(user.UserID);
+                setSelectedUserForView(prev => ({ ...prev, linkedStudents: students || [] }));
+            } catch (error) {
+                showErrorSnackbar('Lỗi tải danh sách học sinh liên kết cho phụ huynh.');
+                setSelectedUserForView(prev => ({ ...prev, linkedStudents: [] }));
+            } finally {
+                setLoadingAuxData(false);
             }
         }
         setOpenUserDetailsDialog(true);
@@ -674,6 +724,38 @@ const UserManagementPage = () => {
                                 </Grid>
                             )}
 
+                            {/* Linked Students for Parent - Edit Mode */}
+                            {dialogMode === 'edit' && currentUser && currentUser.role === 'parent' && (
+                                <Grid item xs={12}>
+                                     <Grid item xs={12}><Typography variant="caption" color="textSecondary">Debug LinkedStudents (Edit): Count={currentUser.linkedStudents?.length}, IsArray={Array.isArray(currentUser.linkedStudents)}</Typography></Grid>
+                                    <Divider sx={{ my: 2 }}><Chip label="Quản lý Học sinh Liên kết" /></Divider>
+                                    <Typography variant="subtitle1" gutterBottom>Học sinh Hiện tại:</Typography>
+                                    {loadingAuxData ? (
+                                        <CircularProgress size={20} />
+                                    ) : currentUser.linkedStudents && currentUser.linkedStudents.length > 0 ? (
+                                        <List dense>
+                                            {currentUser.linkedStudents.map(student => (
+                                                <ListItem key={student.UserID} secondaryAction={
+                                                    <IconButton edge="end" aria-label="unlink-student" size="small" onClick={() => handleUnlinkStudent(student.UserID)}>
+                                                        <DeleteIcon fontSize="small" color="error" />
+                                                    </IconButton>
+                                                }>
+                                                    <ListItemText primary={`${student.FirstName} ${student.LastName}`} secondary={`Email: ${student.Email || '-'} - Lớp: ${student.ClassName || '-'}`} />
+                                                </ListItem>
+                                            ))}
+                                        </List>
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary">Chưa có học sinh nào được liên kết.</Typography>
+                                    )}
+
+                                    <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>Thêm Liên kết Học sinh:</Typography>
+                                     {/* Thêm Autocomplete và Button để link student */}
+                                     {/* Cần fetch danh sách tất cả student để cho vào Autocomplete options */}
+                                     {/* Cần thêm state cho student được chọn và hàm handleLinkStudent */}
+                                     <Typography variant="body2" color="text.secondary">(Chức năng thêm/liên kết học sinh chưa được triển khai)</Typography>
+                                </Grid>
+                            )}
+
                         </Grid>
                     </DialogContent>
                     <DialogActions>
@@ -754,6 +836,28 @@ const UserManagementPage = () => {
                                         </List>
                                     ) : (
                                         <Typography variant="body2" color="text.secondary">Chưa có phụ huynh nào được liên kết.</Typography>
+                                    )}
+                                </Grid>
+                            )}
+
+                            {/* Linked Students for Parent - Read Only */}
+                            {selectedUserForView.role === 'parent' && selectedUserForView.linkedStudents && (
+                                <Grid item xs={12}>
+                                    <Grid item xs={12}><Typography variant="caption" color="textSecondary">Debug LinkedStudents: Count={selectedUserForView.linkedStudents.length}, IsArray={Array.isArray(selectedUserForView.linkedStudents)}</Typography></Grid>
+                                    <Divider sx={{ my: 2 }}><Chip label="Học sinh Liên kết" /></Divider>
+                                    <Typography variant="subtitle1" gutterBottom>Học sinh Hiện tại:</Typography>
+                                    {loadingAuxData ? (
+                                        <CircularProgress size={20} />
+                                    ) : selectedUserForView.linkedStudents.length > 0 ? (
+                                        <List dense>
+                                            {selectedUserForView.linkedStudents.map(student => (
+                                                <ListItem key={student.UserID}>
+                                                    <ListItemText primary={`${student.FirstName} ${student.LastName}`} secondary={`Email: ${student.Email || '-'} - Lớp: ${student.ClassName || '-'}`} />
+                                                </ListItem>
+                                            ))}
+                                        </List>
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary">Chưa có học sinh nào được liên kết.</Typography>
                                     )}
                                 </Grid>
                             )}

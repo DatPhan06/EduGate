@@ -502,13 +502,12 @@ const ClassManagementPage = () => {
                                     <TableCell>Lớp</TableCell>
                                     <TableCell>Email</TableCell>
                                     <TableCell>SĐT</TableCell>
-                                    <TableCell>Phụ huynh</TableCell>
                                     <TableCell>Thao tác</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {loadingStudents ? (
-                                    <TableRow><TableCell colSpan={7} align="center">Đang tải...</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={6} align="center">Đang tải...</TableCell></TableRow>
                                 ) : students.length > 0 ? (
                                     students.map((student) => (
                                         <TableRow key={student.id}>
@@ -517,7 +516,6 @@ const ClassManagementPage = () => {
                                             <TableCell>{student.className}</TableCell>
                                             <TableCell>{student.Email}</TableCell>
                                             <TableCell>{student.PhoneNumber}</TableCell>
-                                            <TableCell>{student.parentName}</TableCell>
                                             <TableCell>
                                                 <IconButton 
                                                     color="secondary"
@@ -536,7 +534,7 @@ const ClassManagementPage = () => {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={7} align="center">
+                                        <TableCell colSpan={6} align="center">
                                             Không tìm thấy dữ liệu học sinh
                                         </TableCell>
                                     </TableRow>
