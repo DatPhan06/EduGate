@@ -5,19 +5,21 @@ import authService from '../services/authService';
 // Layout Components
 import MainLayout from '../layouts/MainLayout';
 
-// Page Components
 import Home from '../pages/Home/Home';
 import Messages from '../pages/Messages/Messages';
-import Events from '../pages/Events/Events';
-import Petitions from '../pages/Petitions/Petitions';
-import Rewards from '../pages/Rewards/Rewards';
-import AcademicResults from '../pages/AcademicResults/AcademicResults';
-import UserList from '../pages/Users/UserList';
-import Login from '../pages/Auth/Login';
+import Petitions from '../pages/Petitions/Petitions'; 
 import Register from '../pages/Auth/Register';
 import Unauthorized from '../pages/Errors/Unauthorized';
 import NotFound from '../pages/Errors/NotFound';
-import UserProfile from '../pages/Users/UserProfile';
+import UserProfile from '../pages/Users/UserProfile'; 
+import Login from '../pages/Auth/Login';
+import UserManagementPage from '../pages/UserManagement/UserManagementPage';
+import EventSchedulePage from '../pages/EventSchedule/EventSchedulePage';
+import RewardsDisciplinePage from '../pages/RewardsDiscipline/RewardsDisciplinePage';
+import DailyLogPage from '../pages/DailyLog/DailyLogPage';
+import AcademicResultsPage from '../pages/AcademicResults/AcademicResultsPage';
+import ReportsPage from '../pages/Reports/ReportsPage';
+import PrincipalDashboardPage from '../pages/Principal/PrincipalDashboardPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -27,7 +29,11 @@ const ProtectedRoute = ({ children, roles = [] }) => {
         return <Navigate to="/login" replace />;
     }
 
-    if (roles.length > 0 && !roles.includes(currentUser.role)) {
+    // Giả sử currentUser.role là một string. Nếu là mảng, cần điều chỉnh logic.
+    // Hoặc nếu role trong token là một object hoặc một trường khác (ví dụ: currentUser.rolesArray)
+    const userRole = currentUser.role; // Ví dụ: "ADMIN", "TEACHER", "STUDENT", "PARENT", "PRINCIPAL"
+
+    if (roles.length > 0 && !roles.includes(userRole)) {
         return <Navigate to="/unauthorized" replace />;
     }
 
@@ -42,7 +48,7 @@ const AppRoutes = () => {
             <Route path="/register" element={<Register />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
-            {/* Protected Routes */}
+            {/* Protected Routes using MainLayout */}
             <Route
                 path="/"
                 element={
@@ -51,23 +57,31 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 }
             >
-                {/* Default route */}
                 <Route index element={<Home />} />
-
-                {/* Module Routes */}
-                <Route path="messages" element={<Messages />} />
-                <Route path="events" element={<Events />} />
+                <Route path="home" element={<Home />} />
+                <Route path="profile" element={<UserProfile />} />
+                
+                <Route path="messaging" element={<Messages />} />
+                <Route path="event-schedule" element={<EventSchedulePage />} />
                 <Route path="petitions" element={<Petitions />} />
-                <Route path="rewards" element={<Rewards />} />
-                <Route path="academic-results" element={<AcademicResults />} />
-                <Route path="users/me" element={<UserProfile />} />
+                <Route path="rewards-discipline" element={<RewardsDisciplinePage />} />
+                <Route path="daily-log" element={<DailyLogPage />} />
+                <Route path="academic-results" element={<AcademicResultsPage />} />
+                <Route path="reports-statistics" element={<ReportsPage />} />
 
-                {/* Admin Routes */}
                 <Route
-                    path="users"
+                    path="user-management"
                     element={
                         <ProtectedRoute roles={['ADMIN']}>
-                            <UserList />
+                            <UserManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="principal-dashboard"
+                    element={
+                        <ProtectedRoute roles={['PRINCIPAL', 'BGH']}>
+                            <PrincipalDashboardPage />
                         </ProtectedRoute>
                     }
                 />

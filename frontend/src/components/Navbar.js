@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBell, faUser } from "@fortawesome/free-solid-svg-icons";
@@ -35,6 +35,11 @@ import {
     AccountCircle,
     Logout,
     Lock as LockIcon,
+    Home as HomeIcon,
+    People as PeopleIcon,
+    Book as DailyLogIcon,
+    Assessment as ReportsIcon,
+    SupervisorAccount as PrincipalIcon,
 } from '@mui/icons-material';
 
 /**
@@ -109,7 +114,7 @@ const slideIn = keyframes`
     to { transform: translateY(0); opacity: 1; }
 `;
 
-const Navbar = () => {
+const Navbar = ({ onLayoutChange }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const navigate = useNavigate();
@@ -117,23 +122,30 @@ const Navbar = () => {
     const currentUser = authService.getCurrentUser();
 
     const expandedDrawerWidth = 240;
-    const collapsedDrawerWidth = isMobile ? 0 : 80; // Mobile drawer is full width when open or 0 when closed
+    const collapsedDrawerWidth = isMobile ? 0 : 80;
     const [isDrawerHovered, setIsDrawerHovered] = useState(false);
 
-    const currentDrawerWidth = isMobile ? expandedDrawerWidth : (isDrawerHovered ? expandedDrawerWidth : collapsedDrawerWidth);
+    const currentActualDrawerWidth = isMobile ? expandedDrawerWidth : (isDrawerHovered ? expandedDrawerWidth : collapsedDrawerWidth);
+
+    useEffect(() => {
+        if (onLayoutChange) {
+            const widthForMainLayout = isMobile ? 0 : currentActualDrawerWidth;
+            onLayoutChange(widthForMainLayout, isMobile);
+        }
+    }, [currentActualDrawerWidth, isMobile, onLayoutChange]);
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
     };
 
-    const handleNavigation = useCallback((path) => { // useCallback to keep function identity stable
+    const handleNavigation = useCallback((path) => {
         navigate(path);
         if (isMobile) {
             setMobileOpen(false);
         }
     }, [navigate, isMobile]);
 
-    const handleLogout = useCallback(() => { // useCallback
+    const handleLogout = useCallback(() => {
         authService.logout();
         navigate('/login');
         if (isMobile) {
@@ -155,42 +167,76 @@ const Navbar = () => {
 
     const menuItems = [
         {
-            text: 'Quản lý Tin nhắn',
+            text: 'Trang chủ',
+            icon: <HomeIcon />,
+            path: '/home',
+            roles: [],
+        },
+        {
+            text: 'Quản lý Người dùng',
+            icon: <PeopleIcon />,
+            path: '/user-management',
+            roles: ['ADMIN'],
+        },
+        {
+            text: 'Tin nhắn',
             icon: <MessageIcon />,
-            path: '/messages',
+            path: '/messaging',
+            roles: [],
         },
         {
-            text: 'Quản lý Lịch sự kiện & Thời khóa biểu',
+            text: 'Lịch & Sự kiện',
             icon: <EventIcon />,
-            path: '/events',
+            path: '/event-schedule',
+            roles: [],
         },
         {
-            text: 'Quản lý đơn kiến nghị',
-            icon: <AssignmentIcon />,
-            path: '/petitions',
-        },
-        {
-            text: 'Quản lý Khen thưởng / Kỷ luật',
+            text: 'Khen thưởng/Kỷ luật',
             icon: <EmojiEventsIcon />,
-            path: '/rewards',
+            path: '/rewards-discipline',
+            roles: [],
         },
         {
-            text: 'Quản lý kết quả học tập',
+            text: 'Sổ liên lạc',
+            icon: <DailyLogIcon />,
+            path: '/daily-log',
+            roles: [],
+        },
+        {
+            text: 'Kết quả học tập',
             icon: <SchoolIcon />,
             path: '/academic-results',
+            roles: [],
+        },
+        {
+            text: 'Báo cáo & Thống kê',
+            icon: <ReportsIcon />,
+            path: '/reports-statistics',
+            roles: ['ADMIN', 'PRINCIPAL', 'BGH', 'TEACHER'],
+        },
+        {
+            text: 'Giám sát (BGH)',
+            icon: <PrincipalIcon />,
+            path: '/principal-dashboard',
+            roles: ['PRINCIPAL', 'BGH'],
         },
     ];
+
+    const userRole = currentUser?.role;
+    const accessibleMenuItems = menuItems.filter(item => 
+        item.roles.length === 0 || (userRole && item.roles.includes(userRole))
+    );
 
     const userActionItems = [
         {
             text: 'Thông tin cá nhân',
             icon: <AccountCircle fontSize="small" />,
-            action: () => handleNavigation('/users/me'),
+            action: () => handleNavigation('/profile'),
         },
         {
             text: 'Đổi mật khẩu',
             icon: <LockIcon fontSize="small" />,
-            action: () => handleNavigation('/users/me#change-password'),
+            action: () => handleNavigation('/profile#change-password'),
         },
         {
             text: 'Đăng xuất',
@@ -210,34 +256,32 @@ const Navbar = () => {
                 background: 'linear-gradient(180deg, #2c3e50 0%, #3498db 100%)',
                 color: 'white',
                 paddingTop: '20px',
-                overflowX: 'hidden', // Hide content when collapsing
+                overflowX: 'hidden',
                 transition: theme.transitions.create('width', {
                     easing: theme.transitions.easing.sharp,
                     duration: theme.transitions.duration.enteringScreen,
                 }),
-                width: currentDrawerWidth, // Dynamic width
+                width: currentActualDrawerWidth,
             }}
         >
-            {/* Logo */}
             <Box sx={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: isDrawerHovered || isMobile ? 'flex-start' : 'center', // Center logo when collapsed
+                justifyContent: isDrawerHovered || isMobile ? 'flex-start' : 'center',
                 mb: 3,
                 p: 2,
-                pl: isDrawerHovered || isMobile ? 2 : 0, // Adjust padding left for centered icon
-                minHeight: '64px', // Ensure consistent height with AppBar
+                pl: isDrawerHovered || isMobile ? 2 : 0,
+                minHeight: '64px',
             }}>
                 <IconButton 
                     onClick={() => navigate('/')} 
                     sx={{ 
                         color: 'white', 
-                        display: isDrawerHovered || isMobile ? 'none' : 'inline-flex', // Show icon instead of text when collapsed
+                        display: isDrawerHovered || isMobile ? 'none' : 'inline-flex',
                         p:1.5
                     }}
                 >
-                    {/* Placeholder for a smaller logo icon if you have one, e.g., an <img /> or another <Icon /> */}
-                     <SchoolIcon sx={{ fontSize: 30 }}/> 
+                    <SchoolIcon sx={{ fontSize: 30 }}/> 
                 </IconButton>
                 <Typography
                     variant="h5"
@@ -250,7 +294,7 @@ const Navbar = () => {
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         animation: `${pulse} 2s infinite`,
-                        display: isDrawerHovered || isMobile ? 'block' : 'none', // Hide text when collapsed
+                        display: isDrawerHovered || isMobile ? 'block' : 'none',
                         ml: isDrawerHovered || isMobile ? 1 : 0,
                         '&:hover': {
                             animation: 'none',
@@ -258,7 +302,7 @@ const Navbar = () => {
                         },
                     }}
                     onClick={() => navigate('/')}
-                    noWrap // Prevent text from wrapping
+                    noWrap
                 >
                     EduGate
                 </Typography>
@@ -266,13 +310,12 @@ const Navbar = () => {
 
             <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.2)', mb: 2 }} />
 
-            {/* Navigation Items */}
             <List sx={{ flexGrow: 1 }}>
-                {menuItems.map((item, index) => (
+                {accessibleMenuItems.map((item, index) => (
                     <ListItem key={item.path} disablePadding sx={{ display: 'block' }}>
                         <ListItemButton
                             onClick={() => handleNavigation(item.path)}
-                            title={item.text} // Show full text on native tooltip when collapsed
+                            title={item.text}
                             sx={{
                                 minHeight: 48,
                                 justifyContent: isDrawerHovered || isMobile ? 'initial' : 'center',
@@ -282,13 +325,13 @@ const Navbar = () => {
                                 animation: `${slideIn} 0.5s ease-out ${index * 0.1}s both`,
                                 '&:hover': {
                                     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                                    transform: isDrawerHovered || isMobile ? 'translateX(5px)' : 'scale(1.1)', // Different hover for collapsed
+                                    transform: isDrawerHovered || isMobile ? 'translateX(5px)' : 'scale(1.1)',
                                     boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)',
                                 },
                             }}
                         >
                             <ListItemIcon sx={{
-                                minWidth: 0, // Allow icon to be centered when text is hidden
+                                minWidth: 0,
                                 mr: isDrawerHovered || isMobile ? 3 : 'auto',
                                 justifyContent: 'center',
                                 color: 'white',
@@ -321,7 +364,6 @@ const Navbar = () => {
 
             <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.2)', mt: 'auto' }} />
 
-            {/* User Menu Trigger and Actions at the bottom */}
             <Box sx={{
                 mt: 'auto',
                 transition: theme.transitions.create('padding', {
@@ -433,8 +475,8 @@ const Navbar = () => {
                         color: 'white',
                         borderBottom: 'none',
                         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-                        width: { sm: `calc(100% - ${currentDrawerWidth}px)` },
-                        ml: { sm: `${currentDrawerWidth}px` },
+                        width: { sm: `calc(100% - ${currentActualDrawerWidth}px)` },
+                        ml: { sm: `${currentActualDrawerWidth}px` },
                     }}
                 >
                     <Toolbar>
@@ -482,9 +524,9 @@ const Navbar = () => {
             <Box
                 component="nav"
                 sx={{ 
-                    width: { sm: currentDrawerWidth }, // Adjusted for dynamic width
+                    width: { sm: currentActualDrawerWidth },
                     flexShrink: { sm: 0 },
-                    transition: theme.transitions.create('width', { // Transition for the nav container itself
+                    transition: theme.transitions.create('width', {
                         easing: theme.transitions.easing.sharp,
                         duration: theme.transitions.duration.enteringScreen,
                     }),
@@ -502,7 +544,7 @@ const Navbar = () => {
                         display: { xs: 'block', sm: 'none' },
                         '& .MuiDrawer-paper': { 
                             boxSizing: 'border-box', 
-                            width: expandedDrawerWidth, // Mobile drawer always expanded width when open
+                            width: expandedDrawerWidth,
                             borderRight: 'none',
                             animation: `${slideIn} 0.3s ease-out`,
                         },
@@ -516,10 +558,10 @@ const Navbar = () => {
                         display: { xs: 'none', sm: 'block' },
                         '& .MuiDrawer-paper': { 
                             boxSizing: 'border-box', 
-                            width: currentDrawerWidth, // Adjusted for dynamic width
+                            width: currentActualDrawerWidth,
                             borderRight: 'none',
                             boxShadow: '2px 0 10px rgba(0,0,0,0.1)',
-                            overflowX: 'hidden', // Important to prevent scrollbars during transition
+                            overflowX: 'hidden',
                             transition: theme.transitions.create('width', {
                                 easing: theme.transitions.easing.sharp,
                                 duration: theme.transitions.duration.enteringScreen,
