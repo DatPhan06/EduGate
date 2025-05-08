@@ -41,19 +41,12 @@ const MainLayout = () => {
                         duration: theme.transitions.duration.enteringScreen,
                     }),
                     marginLeft: {
-                        xs: 0, // Mobile: drawer là overlay, không cần margin
-                        sm: `${currentLayoutDrawerWidth}px`, // Desktop: margin bằng chiều rộng drawer
+                        xs: 0,
+                        sm: `8px`, // Adjusted margin to give a little space between navbar and content
                     },
-                    // marginTop chỉ cần thiết nếu AppBar trên mobile là fixed và không có Toolbar trong Navbar
-                    // Nếu Navbar đã có Toolbar riêng cho mobile AppBar fixed, thì không cần marginTop ở đây.
-                    // Giả sử AppBar mobile trong Navbar là fixed và chiếm không gian:
-                    // marginTop: {
-                    //    xs: isLayoutMobile ? mobileAppBarHeight : 0, 
-                    //    sm: 0,
-                    // },
-                    width: { // Điều chỉnh width của content
+                    width: {
                         xs: '100%',
-                        sm: `calc(100% - ${currentLayoutDrawerWidth}px)`,
+                        sm: `4 px`, // Adjusted width calculation
                     },
                 }}
             >

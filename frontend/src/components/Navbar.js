@@ -121,8 +121,8 @@ const Navbar = ({ onLayoutChange }) => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const currentUser = authService.getCurrentUser();
 
-    const expandedDrawerWidth = 240;
-    const collapsedDrawerWidth = isMobile ? 0 : 80;
+    const expandedDrawerWidth = 260;
+    const collapsedDrawerWidth = isMobile ? 0 : 60;
     const [isDrawerHovered, setIsDrawerHovered] = useState(false);
 
     const currentActualDrawerWidth = isMobile ? expandedDrawerWidth : (isDrawerHovered ? expandedDrawerWidth : collapsedDrawerWidth);
@@ -176,7 +176,7 @@ const Navbar = ({ onLayoutChange }) => {
             text: 'Quản lý Người dùng',
             icon: <PeopleIcon />,
             path: '/user-management',
-            roles: ['ADMIN'],
+            roles: ['admin'],
         },
         {
             text: 'Tin nhắn',
@@ -233,11 +233,7 @@ const Navbar = ({ onLayoutChange }) => {
             icon: <AccountCircle fontSize="small" />,
             action: () => handleNavigation('/profile'),
         },
-        {
-            text: 'Đổi mật khẩu',
-            icon: <LockIcon fontSize="small" />,
-            action: () => handleNavigation('/profile#change-password'),
-        },
+
         {
             text: 'Đăng xuất',
             icon: <Logout fontSize="small" />,
@@ -281,7 +277,7 @@ const Navbar = ({ onLayoutChange }) => {
                         p:1.5
                     }}
                 >
-                    <SchoolIcon sx={{ fontSize: 30 }}/> 
+                    <SchoolIcon sx={{ fontSize: 32 }}/>
                 </IconButton>
                 <Typography
                     variant="h5"
@@ -296,6 +292,7 @@ const Navbar = ({ onLayoutChange }) => {
                         animation: `${pulse} 2s infinite`,
                         display: isDrawerHovered || isMobile ? 'block' : 'none',
                         ml: isDrawerHovered || isMobile ? 1 : 0,
+                        fontSize: '1.5rem',
                         '&:hover': {
                             animation: 'none',
                             transform: 'scale(1.05)',
@@ -319,7 +316,7 @@ const Navbar = ({ onLayoutChange }) => {
                             sx={{
                                 minHeight: 48,
                                 justifyContent: isDrawerHovered || isMobile ? 'initial' : 'center',
-                                px: 2.5,
+                                px: isDrawerHovered || isMobile ? 2.5 : 1.5,
                                 py: 1.5,
                                 transition: 'all 0.2s ease-in-out',
                                 animation: `${slideIn} 0.5s ease-out ${index * 0.1}s both`,
@@ -335,6 +332,7 @@ const Navbar = ({ onLayoutChange }) => {
                                 mr: isDrawerHovered || isMobile ? 3 : 'auto',
                                 justifyContent: 'center',
                                 color: 'white',
+                                fontSize: '1.2rem',
                                 transition: theme.transitions.create('margin', {
                                     easing: theme.transitions.easing.sharp,
                                     duration: theme.transitions.duration.enteringScreen,
@@ -342,12 +340,19 @@ const Navbar = ({ onLayoutChange }) => {
                                 '&:hover': {
                                     transform: 'scale(1.2)',
                                 },
+                                '& .MuiSvgIcon-root': {
+                                    fontSize: '1.4rem',
+                                }
                             }}>
                                 {item.icon}
                             </ListItemIcon>
                             <ListItemText 
                                 primary={item.text} 
-                                primaryTypographyProps={{ variant: 'body2', noWrap: true }}
+                                primaryTypographyProps={{ 
+                                    variant: 'body1',
+                                    noWrap: true,
+                                    sx: { fontWeight: 'medium' }
+                                }}
                                 sx={{ 
                                     opacity: isDrawerHovered || isMobile ? 1 : 0,
                                     transition: theme.transitions.create('opacity', {
@@ -378,7 +383,7 @@ const Navbar = ({ onLayoutChange }) => {
                             alignItems: 'center',
                             cursor: 'default',
                             p: 1.5,
-                            px: isDrawerHovered || isMobile ? 1.5 : (collapsedDrawerWidth - 36)/2,
+                            px: isDrawerHovered || isMobile ? 1.5 : (collapsedDrawerWidth - 40)/2,
                             borderRadius: 1,
                             backgroundColor: 'rgba(255, 255, 255, 0.1)', 
                             transition: 'all 0.3s ease',
@@ -390,8 +395,8 @@ const Navbar = ({ onLayoutChange }) => {
                         }}
                     >
                         <Avatar sx={{
-                            width: 36,
-                            height: 36,
+                            width: 40,
+                            height: 40,
                             bgcolor: 'rgba(255, 255, 255, 0.2)',
                             mr: isDrawerHovered || isMobile ? 1.5 : 0,
                             transition: theme.transitions.create(['margin', 'transform'], {
@@ -411,7 +416,7 @@ const Navbar = ({ onLayoutChange }) => {
                             }),
                             ml: isDrawerHovered || isMobile ? 1 : 0,
                         }}>
-                            <Typography variant="subtitle2" noWrap sx={{ color: 'white' }}>
+                            <Typography variant="subtitle2" noWrap sx={{ color: 'white', fontWeight: 'medium' }}>
                                 {currentUser?.FirstName} {currentUser?.LastName}
                             </Typography>
                             <Typography variant="caption" noWrap sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
