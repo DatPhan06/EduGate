@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status, Depends
 from datetime import datetime, timedelta
 from ..models.user import User
@@ -13,6 +13,10 @@ import pandas as pd
 from fastapi import UploadFile
 from io import BytesIO
 from sqlalchemy.exc import IntegrityError
+from ..models.student import Student
+from ..models.teacher import Teacher
+from ..models.parent import Parent
+from ..models.administrative_staff import AdministrativeStaff
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -50,7 +54,12 @@ def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
     return db.query(User).filter(User.UserID == user_id).first()
 
 def get_users(db: Session, skip: int = 0, limit: int = 100, role: Optional[UserRole] = None, search: Optional[str] = None):
-    query = db.query(User)
+    query = db.query(User).options(
+        joinedload(User.student),
+        joinedload(User.teacher),
+        joinedload(User.parent),
+        joinedload(User.administrative_staff)
+    )
     
     if role:
         query = query.filter(User.role == role)
@@ -100,7 +109,6 @@ def create_user(db: Session, user: UserCreate):
     
     # Now create role-specific records with the generated UserID
     if user.role == 'student':
-        from ..models.student import Student
         db_user.student = Student(
             StudentID=db_user.UserID,
             ClassID=getattr(user, 'ClassID', None),
@@ -108,9 +116,6 @@ def create_user(db: Session, user: UserCreate):
             YtDate=getattr(user, 'YtDate', None)
         )
     elif user.role == 'teacher':
-        from ..models.teacher import Teacher
-        from ..models.department import Department
-
         teacher_department_id = getattr(user, 'DepartmentID', None)
 
         # If DepartmentID is 0, treat it as None (no department assigned)
@@ -134,13 +139,11 @@ def create_user(db: Session, user: UserCreate):
             Position=getattr(user, 'Position', None)
         )
     elif user.role == 'parent':
-        from ..models.parent import Parent
         db_user.parent = Parent(
             ParentID=db_user.UserID,
             Occupation=getattr(user, 'Occupation', None)
         )
     elif user.role == 'admin':
-        from ..models.administrative_staff import AdministrativeStaff
         db_user.administrative_staff = AdministrativeStaff(
             AdminID=db_user.UserID,
             Position=getattr(user, 'Position', None)

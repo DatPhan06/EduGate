@@ -9,7 +9,7 @@ import {
 import {
     Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, PeopleAlt as PeopleAltIcon,
     AdminPanelSettings as AdminIcon, School as SchoolIcon, Face as ParentIcon, Person as GenericUserIcon,
-    UploadFile as UploadFileIcon, HelpOutline as HelpOutlineIcon
+    UploadFile as UploadFileIcon, HelpOutline as HelpOutlineIcon, Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import userService, {
     linkParentToStudent, unlinkParentFromStudent, getStudentParents, getParentStudents 
@@ -34,6 +34,8 @@ const UserManagementPage = () => {
     const [openUserDialog, setOpenUserDialog] = useState(false);
     const [dialogMode, setDialogMode] = useState('add'); // 'add' or 'edit'
     const [currentUser, setCurrentUser] = useState(null); // Holds data for add/edit form
+    const [openUserDetailsDialog, setOpenUserDetailsDialog] = useState(false);
+    const [selectedUserForView, setSelectedUserForView] = useState(null);
 
     // Snackbar
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
@@ -352,6 +354,51 @@ const UserManagementPage = () => {
          }
     };
 
+    // --- User Details View Dialog Handlers ---
+    const handleOpenUserDetailsDialog = async (user) => {
+        const determinedClassName = (user.ClassID && classes.find(c => c.id === Number(user.ClassID))?.name) || '';
+        const determinedDepartmentName = (user.DepartmentID && departments.find(d => d.DepartmentID === Number(user.DepartmentID))?.DepartmentName) || '';
+
+        const userDataForView = {
+            UserID: user.UserID,
+            FirstName: user.FirstName || '', LastName: user.LastName || '', Email: user.Email || '',
+            PhoneNumber: user.PhoneNumber || '', DOB: user.DOB ? new Date(user.DOB).toISOString().split('T')[0] : null,
+            Gender: user.Gender || '', Address: user.Address || '', Street: user.Street || '',
+            District: user.District || '', City: user.City || '', Status: user.Status || 'ACTIVE',
+            role: user.role || '',
+            ClassID: user.ClassID ?? null,
+            DepartmentID: user.DepartmentID ?? null,
+            Graduate: user.Graduate ?? '', Degree: user.Degree ?? '', Position: user.Position ?? '',
+            Occupation: user.Occupation ?? '',
+            className: determinedClassName,
+            departmentName: determinedDepartmentName,
+            
+            // Khởi tạo linkedParents là một mảng rỗng để tránh lỗi undefined
+            linkedParents: [] 
+        };
+        setSelectedUserForView(userDataForView);
+
+        if (user.role === 'student') {
+            try {
+                setLoadingParents(true);
+                const parents = await userService.getStudentParents(user.UserID);
+                setSelectedUserForView(prev => ({ ...prev, linkedParents: parents || [] }));
+            } catch (error) {
+                showErrorSnackbar('Lỗi tải danh sách phụ huynh liên kết cho học sinh.');
+                // Đảm bảo linkedParents vẫn là mảng rỗng khi có lỗi
+                setSelectedUserForView(prev => ({ ...prev, linkedParents: [] })); 
+            } finally {
+                setLoadingParents(false);
+            }
+        }
+        setOpenUserDetailsDialog(true);
+    };
+
+    const handleCloseUserDetailsDialog = () => {
+        setOpenUserDetailsDialog(false);
+        setSelectedUserForView(null);
+    };
+
     // --- Render Logic ---
     const renderRoleSpecificFields = () => {
         if (!currentUser) return null;
@@ -505,6 +552,9 @@ const UserManagementPage = () => {
                                     <TableCell><Chip label={user.role || 'N/A'} size="small" variant="outlined"/></TableCell>
                                     <TableCell><Chip label={user.Status || 'N/A'} size="small" color={user.Status === 'ACTIVE' ? 'success' : 'default'} variant={user.Status === 'ACTIVE' ? 'filled' : 'outlined'}/></TableCell>
                                     <TableCell align="right">
+                                        <IconButton size="small" color="primary" onClick={() => handleOpenUserDetailsDialog(user)} title="Xem chi tiết">
+                                            <VisibilityIcon fontSize="small"/>
+                                        </IconButton>
                                         <IconButton size="small" color="secondary" onClick={() => handleOpenDialog('edit', user)} title="Chỉnh sửa">
                                             <EditIcon fontSize="small"/>
                                         </IconButton>
@@ -639,6 +689,81 @@ const UserManagementPage = () => {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+
+            {/* User Details View Dialog */}
+            {selectedUserForView && (
+                <Dialog open={openUserDetailsDialog} onClose={handleCloseUserDetailsDialog} maxWidth="md" fullWidth>
+                    <DialogTitle>Chi tiết Người dùng ID: {selectedUserForView.UserID}</DialogTitle>
+                    <DialogContent>
+                        <Grid container spacing={2} sx={{ mt: 1 }}>
+                            {/* Common Fields - Read Only */}
+                            <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: true }} fullWidth label="Họ" value={selectedUserForView.FirstName} InputProps={{ readOnly: true }} /></Grid>
+                            <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: true }} fullWidth label="Tên" value={selectedUserForView.LastName} InputProps={{ readOnly: true }} /></Grid>
+                            <Grid item xs={12}><TextField InputLabelProps={{ shrink: true }} fullWidth label="Email" value={selectedUserForView.Email} InputProps={{ readOnly: true }} /></Grid>
+                            <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: true }} fullWidth label="SĐT" value={selectedUserForView.PhoneNumber || '-'} InputProps={{ readOnly: true }} /></Grid>
+                            <Grid item xs={12} sm={6}>
+                               <TextField InputLabelProps={{ shrink: true }} fullWidth label="Ngày sinh" type="date" value={selectedUserForView.DOB || ''} InputProps={{ readOnly: true }}/>
+                            </Grid>
+                             <Grid item xs={12} sm={6}>
+                                <TextField InputLabelProps={{ shrink: true }} fullWidth label="Giới tính" value={selectedUserForView.Gender || '-'} InputProps={{ readOnly: true }} />
+                            </Grid>
+                             <Grid item xs={12} sm={6}>
+                                <TextField InputLabelProps={{ shrink: true }} fullWidth label="Vai trò" value={selectedUserForView.role ? selectedUserForView.role.charAt(0).toUpperCase() + selectedUserForView.role.slice(1) : '-'} InputProps={{ readOnly: true }} />
+                            </Grid>
+                            <Grid item xs={12}><TextField InputLabelProps={{ shrink: true }} fullWidth label="Địa chỉ" value={selectedUserForView.Address || '-'} InputProps={{ readOnly: true }} /></Grid>
+                             <Grid item xs={12} sm={6}>
+                                <TextField InputLabelProps={{ shrink: true }} fullWidth label="Trạng thái" value={selectedUserForView.Status || '-'} InputProps={{ readOnly: true }} />
+                            </Grid>
+                            
+                            {/* Role Specific Fields - Read Only */}
+                            {selectedUserForView.role === 'student' && (
+                                <Grid item xs={12} sm={6}>
+                                    <TextField InputLabelProps={{ shrink: true }} fullWidth label="Lớp" value={selectedUserForView.className || (selectedUserForView.ClassID ? `ID: ${selectedUserForView.ClassID}`: '-')} InputProps={{ readOnly: true }} />
+                                </Grid>
+                            )}
+                            {selectedUserForView.role === 'teacher' && (
+                                <>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField InputLabelProps={{ shrink: true }} fullWidth label="Phòng ban" value={selectedUserForView.departmentName || (selectedUserForView.DepartmentID ? `ID: ${selectedUserForView.DepartmentID}` : '-')} InputProps={{ readOnly: true }} />
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: true }} fullWidth label="Tốt nghiệp (Trường)" value={selectedUserForView.Graduate || '-'} InputProps={{ readOnly: true }} /></Grid>
+                                    <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: true }} fullWidth label="Bằng cấp" value={selectedUserForView.Degree || '-'} InputProps={{ readOnly: true }} /></Grid>
+                                </>    
+                            )}
+                            {(selectedUserForView.role === 'teacher' || selectedUserForView.role === 'admin') && (
+                                  <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: true }} fullWidth label="Chức vụ" value={selectedUserForView.Position || '-'} InputProps={{ readOnly: true }} /></Grid>
+                            )}
+                            {selectedUserForView.role === 'parent' && (
+                                <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: true }} fullWidth label="Nghề nghiệp" value={selectedUserForView.Occupation || '-'} InputProps={{ readOnly: true }} /></Grid>
+                            )}
+
+                            {/* Linked Parents for Student - Read Only */}
+                            {selectedUserForView.role === 'student' && selectedUserForView.linkedParents && (
+                                <Grid item xs={12}>
+                                    <Divider sx={{ my: 2 }}><Chip label="Phụ huynh Liên kết" /></Divider>
+                                    <Typography variant="subtitle1" gutterBottom>Phụ huynh Hiện tại:</Typography>
+                                    {loadingParents ? (
+                                        <CircularProgress size={20} />
+                                    ) : selectedUserForView.linkedParents.length > 0 ? (
+                                        <List dense>
+                                            {selectedUserForView.linkedParents.map(parent => (
+                                                <ListItem key={parent.UserID}>
+                                                    <ListItemText primary={`${parent.FirstName} ${parent.LastName}`} secondary={parent.Email} />
+                                                </ListItem>
+                                            ))}
+                                        </List>
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary">Chưa có phụ huynh nào được liên kết.</Typography>
+                                    )}
+                                </Grid>
+                            )}
+                        </Grid>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={handleCloseUserDetailsDialog}>Đóng</Button>
+                    </DialogActions>
+                </Dialog>
+            )}
     </Box>
   );
 };
