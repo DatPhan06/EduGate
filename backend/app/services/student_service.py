@@ -9,9 +9,10 @@ from ..models.parent import Parent
 from ..models.parent_student import ParentStudent
 from ..schemas.student_schema import StudentRead
 from ..schemas.user import UserCreate, UserUpdate # For create/update operations
-from ..services import user_service # To use create_user and update_user
+from ..services import user_service, message_service, parent_student_service # Import thêm
 from ..enums.user_enums import UserRole
 from fastapi import HTTPException, status
+from ..models import Conversation # Import thêm
 
 
 def _get_student_details_query(db: Session):
@@ -145,8 +146,6 @@ def get_student_by_id(db: Session, student_user_id: int) -> Optional[StudentRead
 def create_student(db: Session, student_data: UserCreate) -> User:
     # Ensure role is set to student
     student_data.role = UserRole.STUDENT
-    # StudentCode should be part of student_data as per UserCreate schema update
-    # ClassID also part of student_data
     
     # Validate that ClassID exists if provided
     if student_data.ClassID:
@@ -154,24 +153,56 @@ def create_student(db: Session, student_data: UserCreate) -> User:
         if not class_obj:
             raise HTTPException(status_code=400, detail=f"Class with ID {student_data.ClassID} not found.")
 
-    return user_service.create_user(db=db, user=student_data)
+    # Create the user and associated student record using user_service
+    # user_service.create_user handles the commit
+    created_user = user_service.create_user(db=db, user=student_data)
+
+    # Add student to class conversations if ClassID was provided
+    if created_user and created_user.student and created_user.student.ClassID:
+        try:
+             # Gọi hàm helper để thêm vào conversations
+            _update_student_class_conversations(db, created_user.UserID, created_user.student.ClassID, 'add')
+        except Exception as e:
+            # Log lỗi nhưng không raise để không làm fail việc tạo student
+            print(f"ERROR adding new student {created_user.UserID} to conversations for class {created_user.student.ClassID}: {e}")
+
+    return created_user
 
 def update_student(db: Session, student_user_id: int, student_data: UserUpdate) -> Optional[User]:
-    # StudentCode and ClassID updates are handled by user_service.update_user
-    # due to schema modifications
-    
-    # Validate that ClassID exists if provided and changed
-    if student_data.ClassID is not None:
-        student_user = user_service.get_user_by_id(db, student_user_id)
-        if not student_user or not student_user.student:
-            raise HTTPException(status_code=404, detail="Student not found")
-        
-        if student_user.student.ClassID != student_data.ClassID:
-            class_obj = db.query(Class).filter(Class.ClassID == student_data.ClassID).first()
-            if not class_obj:
-                raise HTTPException(status_code=400, detail=f"Class with ID {student_data.ClassID} not found.")
+    # Get current student state BEFORE update to check old ClassID
+    student_user_before = user_service.get_user_by_id(db, student_user_id)
+    if not student_user_before or student_user_before.role != UserRole.STUDENT:
+         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found or user is not a student.")
+    old_class_id = student_user_before.student.ClassID if student_user_before.student else None
 
-    return user_service.update_user(db=db, user_id=student_user_id, user=student_data)
+    # Validate new ClassID if provided
+    new_class_id_from_payload = getattr(student_data, 'ClassID', None)
+    if new_class_id_from_payload is not None and new_class_id_from_payload != old_class_id:
+        class_obj = db.query(Class).filter(Class.ClassID == new_class_id_from_payload).first()
+        if not class_obj:
+            raise HTTPException(status_code=400, detail=f"Class with ID {new_class_id_from_payload} not found.")
+
+    # Update the user and associated student record using user_service
+    # user_service.update_user handles the commit
+    updated_user = user_service.update_user(db=db, user_id=student_user_id, user=student_data)
+
+    # Update conversations if ClassID changed
+    if updated_user and updated_user.student:
+        new_class_id = updated_user.student.ClassID
+        if old_class_id != new_class_id:
+            try:
+                # Remove from old class conversations
+                if old_class_id:
+                    _update_student_class_conversations(db, updated_user.UserID, old_class_id, 'remove')
+                
+                # Add to new class conversations
+                if new_class_id:
+                    _update_student_class_conversations(db, updated_user.UserID, new_class_id, 'add')
+            except Exception as e:
+                # Log lỗi nhưng không raise để không làm fail việc update student
+                print(f"ERROR updating conversations for student {updated_user.UserID} changing class from {old_class_id} to {new_class_id}: {e}")
+
+    return updated_user
 
 def delete_student(db: Session, student_user_id: int) -> bool:
     # user_service.delete_user should handle deleting the User and associated Student record (due to cascade or explicit logic)
@@ -198,3 +229,62 @@ def delete_student(db: Session, student_user_id: int) -> bool:
 # ...
 # def unlink_parent_student(db: Session, student_id: int, parent_id: int) -> bool:
 # ... 
+
+# --- Helper Function for Conversation Management ---
+
+def _update_student_class_conversations(db: Session, student_user_id: int, class_id: int, action: str):
+    """Adds or removes a student and their parents from class conversations."""
+    if not class_id:
+        return
+
+    # Lấy thông tin lớp để có ClassName
+    class_obj = db.query(Class).filter(Class.ClassID == class_id).first()
+    if not class_obj:
+        print(f"Warning: Class {class_id} not found when updating conversations for student {student_user_id}.")
+        return
+    class_name = class_obj.ClassName
+
+    # Tìm conversations dựa trên tên quy ước
+    student_convo_name = f"Học sinh Lớp {class_name}"
+    parent_convo_name = f"Phụ huynh Lớp {class_name}"
+    
+    student_convo = db.query(Conversation).filter(Conversation.Name == student_convo_name).first()
+    parent_convo = db.query(Conversation).filter(Conversation.Name == parent_convo_name).first()
+
+    # Lấy danh sách phụ huynh của học sinh
+    parents = parent_student_service.get_parents_for_student(db=db, student_user_id=student_user_id)
+    parent_ids = [p.UserID for p in parents]
+
+    try:
+        if action == 'add':
+            # Thêm học sinh vào student convo
+            if student_convo:
+                message_service.add_participants_to_conversation(db, student_convo.ConversationID, [student_user_id])
+            else:
+                print(f"Warning: Student conversation '{student_convo_name}' not found.")
+            
+            # Thêm phụ huynh vào parent convo
+            if parent_convo and parent_ids:
+                message_service.add_participants_to_conversation(db, parent_convo.ConversationID, parent_ids)
+            elif not parent_convo:
+                 print(f"Warning: Parent conversation '{parent_convo_name}' not found.")
+
+        elif action == 'remove':
+            # Xóa học sinh khỏi student convo
+            if student_convo:
+                message_service.remove_participants_from_conversation(db, student_convo.ConversationID, [student_user_id])
+            else:
+                print(f"Warning: Student conversation '{student_convo_name}' not found.")
+
+            # Xóa phụ huynh khỏi parent convo
+            if parent_convo and parent_ids:
+                # TODO: Cân nhắc logic phức tạp hơn nếu phụ huynh có nhiều con trong lớp
+                message_service.remove_participants_from_conversation(db, parent_convo.ConversationID, parent_ids)
+            elif not parent_convo:
+                 print(f"Warning: Parent conversation '{parent_convo_name}' not found.")
+    except Exception as e:
+        # Log lỗi nhưng không raise để không ảnh hưởng đến tiến trình chính (create/update student)
+        print(f"ERROR updating conversations for student {student_user_id}, class {class_id}, action {action}: {e}")
+        # db.rollback() # Không rollback ở đây vì có thể đang trong transaction của create/update student
+
+# --- End Helper --- 

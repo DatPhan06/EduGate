@@ -197,3 +197,55 @@ def create_message(db: Session, conversation_id: int, message_data: schemas.Mess
 # Helper to get user by ID (can be moved to user_service if not already there)
 def get_user_by_id(db: Session, user_id: int) -> Optional[models.User]:
     return db.query(models.User).filter(models.User.UserID == user_id).first()
+
+def add_participants_to_conversation(db: Session, conversation_id: int, user_ids: List[int]):
+    conversation = db.query(Conversation).filter(Conversation.ConversationID == conversation_id).first()
+    if not conversation:
+        print(f"Warning: Conversation {conversation_id} not found when trying to add participants.")
+        # Hoặc raise HTTPException
+        # raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+        return
+
+    existing_participant_ids = {p.UserID for p in conversation.participations}
+    added_count = 0
+    for user_id in user_ids:
+        if user_id not in existing_participant_ids:
+            # Kiểm tra user có tồn tại không (tùy chọn, có thể bỏ qua nếu chắc chắn user_id hợp lệ)
+            user = db.query(User).filter(User.UserID == user_id).first()
+            if user:
+                db_participation = Participation(
+                    ConversationID=conversation.ConversationID,
+                    UserID=user_id
+                )
+                db.add(db_participation)
+                added_count += 1
+            else:
+                print(f"Warning: User {user_id} not found when trying to add to conversation {conversation_id}.")
+
+    if added_count > 0:
+        # Cập nhật số lượng thành viên (nếu cần)
+        conversation.NumOfParticipation = len(existing_participant_ids) + added_count
+        db.commit()
+    # Không cần refresh ở đây trừ khi muốn trả về thông tin mới
+
+def remove_participants_from_conversation(db: Session, conversation_id: int, user_ids: List[int]):
+    participations_to_delete = db.query(Participation).filter(
+        Participation.ConversationID == conversation_id,
+        Participation.UserID.in_(user_ids)
+    ).all()
+
+    if not participations_to_delete:
+        # print(f"Warning: No participants found to remove from conversation {conversation_id} for user IDs {user_ids}")
+        return # Không có gì để xóa
+    
+    conversation = db.query(Conversation).filter(Conversation.ConversationID == conversation_id).first()
+    num_removed = 0
+    for participation in participations_to_delete:
+        db.delete(participation)
+        num_removed += 1
+        
+    if num_removed > 0 and conversation:
+        # Cập nhật số lượng thành viên (nếu cần)
+        current_participants = db.query(Participation.UserID).filter(Participation.ConversationID == conversation_id).count()
+        conversation.NumOfParticipation = current_participants
+        db.commit()
