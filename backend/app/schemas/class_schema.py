@@ -1,72 +1,39 @@
-from typing import List, Optional
-from pydantic import BaseModel, Field
-from datetime import datetime
+from pydantic import BaseModel
+from typing import Optional, List
 
 # Base schema for Class
 class ClassBase(BaseModel):
-    ClassName: str = Field(..., description="Tên lớp")
-    GradeLevel: str = Field(..., description="Khối lớp")
-    AcademicYear: str = Field(..., description="Năm học")
-    HomeroomTeacherID: Optional[int] = Field(None, description="ID của giáo viên chủ nhiệm")
+    ClassName: str
+    GradeLevel: str
+    AcademicYear: str
+    HomeroomTeacherID: Optional[int] = None
 
-# Schema for class creation
+# Schema for creating a new class
 class ClassCreate(ClassBase):
     pass
 
-# Schema for class update
+# Schema for updating an existing class (all fields optional)
 class ClassUpdate(BaseModel):
-    ClassName: Optional[str] = Field(None, description="Tên lớp")
-    GradeLevel: Optional[str] = Field(None, description="Khối lớp")
-    AcademicYear: Optional[str] = Field(None, description="Năm học")
-    HomeroomTeacherID: Optional[int] = Field(None, description="ID của giáo viên chủ nhiệm")
+    ClassName: Optional[str] = None
+    GradeLevel: Optional[str] = None
+    AcademicYear: Optional[str] = None
+    HomeroomTeacherID: Optional[int] = None
 
-# Schema for class response
-class ClassResponse(ClassBase):
-    ClassID: int = Field(..., description="ID của lớp")
-    TeacherName: Optional[str] = Field(None, description="Tên giáo viên chủ nhiệm")
-    StudentCount: int = Field(0, description="Số lượng học sinh trong lớp")
+# Schema for reading/returning class information
+class ClassRead(ClassBase):
+    ClassID: int
+    teacherName: Optional[str] = None
+    totalStudents: int = 0
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
-# Schema for student in class
-class StudentInClass(BaseModel):
-    StudentID: int = Field(..., description="ID của học sinh")
-    UserID: int = Field(..., description="ID của người dùng")
-    Name: str = Field(..., description="Tên học sinh")
-    Email: Optional[str] = Field(None, description="Email của học sinh")
-    EnrollmentDate: datetime = Field(..., description="Ngày nhập học")
-
-    class Config:
-        orm_mode = True
-
-# Schema for paginated class list response
-class ClassListResponse(BaseModel):
-    total: int = Field(..., description="Tổng số lớp")
-    page: int = Field(..., description="Trang hiện tại")
-    size: int = Field(..., description="Số lượng lớp mỗi trang")
-    items: List[ClassResponse] = Field(..., description="Danh sách lớp")
-
-# Schema for teacher information
-class TeacherInfo(BaseModel):
-    TeacherID: int = Field(..., description="ID của giáo viên")
-    UserID: int = Field(..., description="ID của người dùng")
-    Name: str = Field(..., description="Tên giáo viên")
-    Email: Optional[str] = Field(None, description="Email của giáo viên")
-    Department: Optional[str] = Field(None, description="Bộ môn")
-    Position: Optional[str] = Field(None, description="Chức vụ")
-
-    class Config:
-        orm_mode = True
-
-# Schema for adding/removing student from class
-class StudentClassAssignment(BaseModel):
-    StudentID: int = Field(..., description="ID của học sinh")
-    ClassID: int = Field(..., description="ID của lớp")
-
-# Schema for detailed class info with students
-class ClassWithStudents(ClassResponse):
-    students: List[StudentInClass] = Field([], description="Danh sách học sinh trong lớp")
-
-    class Config:
-        orm_mode = True 
+class ClassReadWithOptionalTeacher(ClassBase):
+    ClassID: int
+    teacherName: Optional[str] = None # To handle cases where teacher might not be found or is null
+    totalStudents: int = 0
+    
+    model_config = {
+        "from_attributes": True
+    } 

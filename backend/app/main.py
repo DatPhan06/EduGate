@@ -6,6 +6,7 @@ from .database import get_db
 from .models import *
 from .config import settings
 from .routers import auth, user, reward_punishment, petition, message
+from .routers import classes_router, students_router, teachers_router
 from .database import engine, Base
 
 # Tạo bảng trong database
@@ -35,3 +36,9 @@ app.include_router(user.router)
 app.include_router(reward_punishment.router) 
 app.include_router(petition.router)
 app.include_router(message.router)
+# app.include_router(class_management.router) # Comment out or remove if not used/replaced
+
+# Add new routers
+app.include_router(classes_router.router)
+app.include_router(students_router.router)
+app.include_router(teachers_router.router)

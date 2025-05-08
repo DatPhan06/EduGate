@@ -89,9 +89,26 @@ def create_user(db: Session, user: UserCreate):
         )
     elif user.role == 'teacher':
         from ..models.teacher import Teacher
+        from ..models.department import Department
+
+        teacher_department_id = getattr(user, 'DepartmentID', None)
+
+        # If DepartmentID is 0, treat it as None (no department assigned)
+        if teacher_department_id == 0:
+            teacher_department_id = None
+
+        # Validate if DepartmentID actually exists if it's not None
+        if teacher_department_id is not None:
+            department = db.query(Department).filter(Department.DepartmentID == teacher_department_id).first()
+            if not department:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Department with ID {teacher_department_id} not found."
+                )
+
         db_user.teacher = Teacher(
             TeacherID=db_user.UserID,
-            DepartmentID=getattr(user, 'DepartmentID', None),
+            DepartmentID=teacher_department_id,
             Graduate=getattr(user, 'Graduate', None),
             Degree=getattr(user, 'Degree', None),
             Position=getattr(user, 'Position', None)
