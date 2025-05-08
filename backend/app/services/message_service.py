@@ -50,8 +50,9 @@ def create_conversation(db: Session, conversation_data: schemas.ConversationCrea
     participant_ids = set(conversation_data.participant_ids)
     participant_ids.add(current_user_id) # Ensure creator is a participant
 
-    if len(participant_ids) < 2:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A conversation needs at least two participants.")
+    # Comment out or remove the check for minimum participants
+    # if len(participant_ids) < 2:
+    #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A conversation needs at least two participants.")
 
     # Check if a conversation with the exact same set of participants (excluding one-on-one names) already exists
     # For group chats (more than 2 people), or if a name is provided, allow creation.

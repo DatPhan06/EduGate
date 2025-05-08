@@ -13,15 +13,18 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=ClassRead)
-def create_class_endpoint(class_in: ClassCreate, db: Session = Depends(get_db)):
-    # Convert to ClassRead before returning
-    db_class = class_service.create_class(db=db, class_in=class_in)
-    # Fetch the created class with teacher name and student count for response
-    class_read = class_service.get_classes(db=db, search=str(db_class.ClassID)) # Hacky way to get single full ClassRead
-    if class_read:
-        return class_read[0]
-    # Fallback, though ideally get_classes with ID filter would be better
-    return ClassRead.model_validate(db_class) 
+def create_class_endpoint(class_data: ClassCreate, db: Session = Depends(get_db)):
+    # Hàm service giờ trả về ClassRead trực tiếp
+    # Không cần gọi lại get_classes hoặc validate lại
+    try:
+        created_class = class_service.create_class(db=db, class_data=class_data) # Sử dụng class_data
+        return created_class
+    except HTTPException as e:
+        raise e # Re-raise lỗi HTTP từ service (vd: Teacher not found)
+    except Exception as e:
+        # Log lỗi nếu cần
+        # logger.error(f"Failed to create class in endpoint: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error creating class")
 
 @router.get("/", response_model=List[ClassRead])
 def read_classes_endpoint(
