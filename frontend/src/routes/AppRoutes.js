@@ -62,7 +62,11 @@ const AppRoutes = () => {
                 <Route path="home" element={<Home />} />
                 <Route path="profile" element={<UserProfile />} />
                 
-                <Route path="messaging" element={<Messages />} />
+                <Route path="messaging" element={
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <Messages />
+                    </ProtectedRoute>
+                } />
                 <Route path="event-schedule" element={<EventSchedulePage />} />
                 <Route path="petitions" element={<Petitions />} />
                 <Route path="rewards-discipline" element={<RewardsDisciplinePage />} />

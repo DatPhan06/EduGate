@@ -189,7 +189,7 @@ const Navbar = ({ onLayoutChange }) => {
             text: 'Tin nhắn',
             icon: <MessageIcon />,
             path: '/messaging',
-            roles: [],
+            roles: ['teacher', 'parent', 'student'],
         },
         {
             text: 'Lịch & Sự kiện',
