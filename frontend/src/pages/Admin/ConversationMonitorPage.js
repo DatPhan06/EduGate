@@ -28,6 +28,7 @@ const ConversationMonitorPage = () => {
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [messages, setMessages] = useState([]);
     const [participants, setParticipants] = useState([]);
+    const messagesEndRef = React.useRef(null); // Ref for scrolling to bottom
 
     // State cho dialog đổi tên
     const [openEditNameDialog, setOpenEditNameDialog] = useState(false);
@@ -224,140 +225,321 @@ const ConversationMonitorPage = () => {
     // Get current admin user (ví dụ để hiển thị tin nhắn của admin)
     const currentAdminUser = authService.getCurrentUser();
 
+    // Effect to scroll to bottom of messages
+    useEffect(() => {
+        if (openDetailsDialog && messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages, openDetailsDialog]); // Rerun when messages change or dialog opens
+
     return (
         <Box sx={{ p: 3 }}>
-            <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 3 }}>
-                <GroupIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Giám sát & Quản lý Nhóm Chat
-            </Typography>
+            <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h4" component="h1" gutterBottom sx={{ 
+                    mb: 3, 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    color: 'primary.main' 
+                }}>
+                    <GroupIcon sx={{ mr: 1, fontSize: 32 }} />
+                    Giám sát & Quản lý Nhóm Chat
+                </Typography>
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <TextField 
-                    label="Tìm kiếm theo tên nhóm"
-                    variant="outlined"
-                    size="small"
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    sx={{ width: { xs: '100%', sm: '400px' } }}
-                    InputProps={{
-                        startAdornment: (
-                            <SearchIcon sx={{ mr: 1, color: 'action.active' }} />
-                        ),
-                    }}
-                />
-                {/* Button tạo nhóm mới có thể thêm ở đây nếu cần */}
-            </Box>
+                <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    mb: 2,
+                    flexWrap: 'wrap',
+                    gap: 2
+                }}>
+                    <TextField 
+                        label="Tìm kiếm theo tên nhóm"
+                        variant="outlined"
+                        size="small"
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                        sx={{ 
+                            width: { xs: '100%', sm: '400px' },
+                            bgcolor: 'background.paper',
+                            '& .MuiOutlinedInput-root': {
+                                '& fieldset': {
+                                    borderColor: 'primary.light',
+                                },
+                                '&:hover fieldset': {
+                                    borderColor: 'primary.main',
+                                },
+                            }
+                        }}
+                        InputProps={{
+                            startAdornment: (
+                                <SearchIcon sx={{ mr: 1, color: 'primary.main' }} />
+                            ),
+                        }}
+                    />
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Chip 
+                            icon={<ChatIcon />} 
+                            label={`Tổng số: ${conversations.length} nhóm`} 
+                            variant="outlined" 
+                            color="primary"
+                        />
+                    </Box>
+                </Box>
+            </Paper>
 
-            <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
-                <Table stickyHeader>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell sx={{fontWeight: 'bold'}}>ID</TableCell>
-                            <TableCell sx={{fontWeight: 'bold'}}>Tên Nhóm</TableCell>
-                            <TableCell sx={{fontWeight: 'bold'}} align="center">Số thành viên</TableCell>
-                            <TableCell sx={{fontWeight: 'bold'}}>Ngày tạo</TableCell>
-                            <TableCell sx={{fontWeight: 'bold'}} align="right">Thao tác</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {loadingConversations ? (
-                            <TableRow><TableCell colSpan={5} align="center"><CircularProgress size={24} sx={{my: 2}} /></TableCell></TableRow>
-                        ) : filteredConversations.length > 0 ? (
-                            filteredConversations.map((conv) => (
-                                <TableRow key={conv.ConversationID} hover>
-                                    <TableCell>{conv.ConversationID}</TableCell>
-                                    <TableCell>{conv.Name || "(Chưa có tên)"}</TableCell>
-                                    <TableCell align="center">{conv.participants?.length || 0}</TableCell>
-                                    <TableCell>{moment(conv.CreatedAt).format('DD/MM/YYYY HH:mm')}</TableCell>
-                                    <TableCell align="right">
-                                        <Tooltip title="Xem chi tiết & Tin nhắn">
-                                            <IconButton size="small" color="primary" onClick={() => handleOpenDetailsDialog(conv)}>
-                                                <VisibilityIcon fontSize="small"/>
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Đổi tên nhóm">
-                                            <IconButton size="small" color="secondary" onClick={() => handleOpenEditNameDialog(conv)}>
-                                                <EditIcon fontSize="small"/>
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Quản lý thành viên">
-                                            <IconButton size="small" sx={{color: 'info.main'}} onClick={() => handleOpenManageParticipantsDialog(conv)}>
-                                                <PersonAddIcon fontSize="small"/>
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Xóa nhóm">
-                                            <IconButton size="small" color="error" onClick={() => handleOpenDeleteDialog(conv)}>
-                                                <DeleteIcon fontSize="small"/>
-                                            </IconButton>
-                                        </Tooltip>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow><TableCell colSpan={5} align="center">
-                                {searchTerm ? "Không tìm thấy nhóm chat nào khớp." : "Chưa có nhóm chat nào."}
-                            </TableCell></TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: 2 }}>
+                <TableContainer sx={{ maxHeight: 600 }}>
+                    <Table stickyHeader>
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: 'primary.light' }}>
+                                <TableCell sx={{fontWeight: 'bold', color: 'primary.dark'}}>ID</TableCell>
+                                <TableCell sx={{fontWeight: 'bold', color: 'primary.dark'}}>Tên Nhóm</TableCell>
+                                <TableCell sx={{fontWeight: 'bold', color: 'primary.dark'}} align="center">Số thành viên</TableCell>
+                                <TableCell sx={{fontWeight: 'bold', color: 'primary.dark'}}>Ngày tạo</TableCell>
+                                <TableCell sx={{fontWeight: 'bold', color: 'primary.dark'}} align="right">Thao tác</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {loadingConversations ? (
+                                <TableRow><TableCell colSpan={5} align="center"><CircularProgress size={24} sx={{my: 2}} /></TableCell></TableRow>
+                            ) : filteredConversations.length > 0 ? (
+                                filteredConversations.map((conv) => (
+                                    <TableRow 
+                                        key={conv.ConversationID} 
+                                        hover
+                                        sx={{
+                                            '&:nth-of-type(even)': {
+                                                backgroundColor: 'action.hover',
+                                            },
+                                        }}
+                                    >
+                                        <TableCell>{conv.ConversationID}</TableCell>
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Avatar sx={{ width: 24, height: 24, bgcolor: 'primary.main', fontSize: '0.8rem' }}>
+                                                    {(conv.Name || "C")[0].toUpperCase()}
+                                                </Avatar>
+                                                <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                                                    {conv.Name || "(Chưa có tên)"}
+                                                </Typography>
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Chip 
+                                                label={conv.participants?.length || 0} 
+                                                size="small" 
+                                                color={conv.participants?.length > 0 ? "primary" : "default"}
+                                                variant={conv.participants?.length > 0 ? "filled" : "outlined"}
+                                            />
+                                        </TableCell>
+                                        <TableCell>{moment(conv.CreatedAt).format('DD/MM/YYYY HH:mm')}</TableCell>
+                                        <TableCell align="right">
+                                            <Tooltip title="Xem chi tiết & Tin nhắn">
+                                                <IconButton size="small" color="primary" onClick={() => handleOpenDetailsDialog(conv)}>
+                                                    <VisibilityIcon fontSize="small"/>
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Đổi tên nhóm">
+                                                <IconButton size="small" color="secondary" onClick={() => handleOpenEditNameDialog(conv)}>
+                                                    <EditIcon fontSize="small"/>
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Quản lý thành viên">
+                                                <IconButton size="small" sx={{color: 'info.main'}} onClick={() => handleOpenManageParticipantsDialog(conv)}>
+                                                    <PersonAddIcon fontSize="small"/>
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Xóa nhóm">
+                                                <IconButton size="small" color="error" onClick={() => handleOpenDeleteDialog(conv)}>
+                                                    <DeleteIcon fontSize="small"/>
+                                                </IconButton>
+                                            </Tooltip>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
+                                        <SmsFailedIcon sx={{ fontSize: 40 }} />
+                                        {searchTerm ? "Không tìm thấy nhóm chat nào khớp." : "Chưa có nhóm chat nào."}
+                                    </Box>
+                                </TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Paper>
 
             {/* View Details Dialog */}
             {selectedConversation && openDetailsDialog && (
-                <Dialog open={openDetailsDialog} onClose={handleCloseDetailsDialog} maxWidth="md" fullWidth scroll="paper">
-                    <DialogTitle>
-                        Chi tiết Nhóm: {selectedConversation.Name || "(Chưa có tên)"} (ID: {selectedConversation.ConversationID})
+                <Dialog 
+                    open={openDetailsDialog} 
+                    onClose={handleCloseDetailsDialog} 
+                    maxWidth="lg"
+                    fullWidth
+                    sx={{
+                        '& .MuiDialog-paper': {
+                            width: '100%',
+                            maxWidth: { xs: '95%', sm: '90%', md: '80%' },
+                            maxHeight: '90vh',
+                            m: { xs: 1, sm: 2 },
+                            borderRadius: 1,
+                            overflow: 'hidden'
+                        }
+                    }}
+                >
+                    <DialogTitle sx={{ 
+                        py: 2, 
+                        px: 3, 
+                        bgcolor: 'primary.light', 
+                        color: 'primary.dark',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <ChatIcon />
+                            <Typography variant="h6" component="div">
+                                Chi tiết Nhóm: {selectedConversation.Name || "(Chưa có tên)"}
+                            </Typography>
+                        </Box>
+                        <Chip 
+                            label={`ID: ${selectedConversation.ConversationID}`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ bgcolor: 'background.paper' }}
+                        />
                     </DialogTitle>
-                    <DialogContent dividers>
+                    <DialogContent dividers sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '70vh' }}>
                         {loadingDetails ? (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}><CircularProgress /></Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                                <CircularProgress />
+                            </Box>
                         ) : (
-                            <Grid container spacing={2}>
-                                <Grid item xs={12} md={4}>
-                                    <Typography variant="h6" gutterBottom>Thành viên ({participants.length})</Typography>
-                                    <Paper variant="outlined" sx={{ maxHeight: 400, overflow: 'auto' }}>
+                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, height: '100%', overflow: 'hidden' }}>
+                                {/* Members Panel */}
+                                <Box sx={{ 
+                                    width: { xs: '100%', md: '30%' }, 
+                                    borderRight: { xs: 'none', md: '1px solid rgba(0, 0, 0, 0.12)' },
+                                    borderBottom: { xs: '1px solid rgba(0, 0, 0, 0.12)', md: 'none' },
+                                    height: { xs: 'auto', md: '100%' },
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                }}>
+                                    <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <GroupIcon fontSize="small" color="primary" />
+                                            Thành viên ({participants.length})
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ overflow: 'auto', flexGrow: 1 }}>
                                         <List dense>
                                             {participants.length > 0 ? participants.map(p => (
-                                                <ListItem key={p.UserID}>
+                                                <ListItem key={p.UserID} divider>
                                                     <ListItemText 
-                                                        primary={`${p.FirstName} ${p.LastName}`}
+                                                        primary={
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <Avatar sx={{ width: 24, height: 24, bgcolor: 'secondary.main', fontSize: '0.8rem' }}>
+                                                                    {p.FirstName[0].toUpperCase()}
+                                                                </Avatar>
+                                                                <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                                                                    {`${p.FirstName} ${p.LastName}`}
+                                                                </Typography>
+                                                            </Box>
+                                                        }
                                                         secondary={p.Email}
                                                     />
                                                 </ListItem>
-                                            )) : <ListItem><ListItemText primary="Không có thành viên." /></ListItem>}
+                                            )) : (
+                                                <ListItem>
+                                                    <ListItemText 
+                                                        primary={
+                                                            <Box sx={{ textAlign: 'center', color: 'text.secondary', py: 2 }}>
+                                                                <Typography>Không có thành viên.</Typography>
+                                                            </Box>
+                                                        } 
+                                                    />
+                                                </ListItem>
+                                            )}
                                         </List>
-                                    </Paper>
-                                </Grid>
-                                <Grid item xs={12} md={8}>
-                                    <Typography variant="h6" gutterBottom>Tin nhắn ({messages.length})</Typography>
-                                    <Paper variant="outlined" sx={{ maxHeight: 400, overflow: 'auto', p: 1, display: 'flex', flexDirection: 'column-reverse' }}>
+                                    </Box>
+                                </Box>
+                                
+                                {/* Messages Panel */}
+                                <Box sx={{ 
+                                    width: { xs: '100%', md: '70%' }, 
+                                    height: { xs: 'calc(70vh - 200px)', md: '100%' },
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                }}>
+                                    <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <ChatIcon fontSize="small" color="primary" />
+                                            Tin nhắn ({messages.length})
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ p: 2, overflow: 'auto', flexGrow: 1 }}>
                                         {messages.length > 0 ? (
-                                            [...messages].reverse().map((msg, index) => { // Hiển thị tin mới nhất ở dưới
+                                            messages.map((msg, index) => {
                                                 const sender = participants.find(p => p.UserID === msg.UserID) || msg.user;
                                                 const isAdminMsg = sender?.UserID === currentAdminUser?.UserID;
+                                                const senderName = sender ? `${sender.FirstName} ${sender.LastName}` : 'Unknown User';
+                                                
                                                 return (
-                                                    <Box key={msg.MessageID || index} sx={{
-                                                        mb: 1,
-                                                        display: 'flex',
-                                                        flexDirection: isAdminMsg ? 'row-reverse' : 'row',
-                                                    }}>
-                                                        <Card sx={{
-                                                            maxWidth: '70%',
-                                                            bgcolor: isAdminMsg ? 'primary.light' : 'grey.200',
-                                                            color: isAdminMsg ? 'primary.contrastText' : 'text.primary',
+                                                    <Box 
+                                                        key={msg.MessageID || index} 
+                                                        sx={{
+                                                            display: 'flex',
+                                                            flexDirection: 'row',
+                                                            alignItems: 'flex-start',
+                                                            mb: 2,
+                                                            alignSelf: isAdminMsg ? 'flex-end' : 'flex-start',
+                                                            justifyContent: isAdminMsg ? 'flex-end' : 'flex-start',
+                                                            width: '100%'
+                                                        }}
+                                                    >
+                                                        <Box sx={{ 
+                                                            display: 'flex', 
+                                                            maxWidth: '75%',
+                                                            flexDirection: isAdminMsg ? 'row-reverse' : 'row',
+                                                            alignItems: 'flex-start',
+                                                            gap: 1
                                                         }}>
-                                                            <CardContent sx={{ p: '8px !important' }}>
-                                                                {!isAdminMsg && sender && (
-                                                                    <Typography variant="caption" component="div" sx={{ fontWeight: 'bold' }}>
-                                                                        {sender.FirstName} {sender.LastName}
+                                                            <Avatar sx={{ 
+                                                                bgcolor: isAdminMsg ? 'primary.main' : 'secondary.main',
+                                                                width: 32, 
+                                                                height: 32
+                                                            }}>
+                                                                {senderName.charAt(0).toUpperCase()}
+                                                            </Avatar>
+                                                            <Card sx={{
+                                                                maxWidth: '100%',
+                                                                bgcolor: isAdminMsg ? 'primary.light' : 'grey.100',
+                                                                color: isAdminMsg ? 'primary.contrastText' : 'text.primary',
+                                                                borderRadius: '12px',
+                                                                boxShadow: 1
+                                                            }}>
+                                                                <CardContent sx={{ p: '8px 12px !important' }}>
+                                                                    {!isAdminMsg && (
+                                                                        <Typography variant="caption" component="div" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                                                                            {senderName}
+                                                                        </Typography>
+                                                                    )}
+                                                                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                                        {msg.Content}
                                                                     </Typography>
-                                                                )}
-                                                                <Typography variant="body2">{msg.Content}</Typography>
-                                                                <Typography variant="caption" component="div" sx={{ textAlign: 'right', fontSize: '0.7rem', mt: 0.5 }}>
-                                                                    {moment(msg.SentAt).format('HH:mm DD/MM/YY')}
-                                                                </Typography>
-                                                            </CardContent>
-                                                        </Card>
+                                                                    <Typography variant="caption" component="div" sx={{ 
+                                                                        textAlign: 'right', 
+                                                                        fontSize: '0.65rem', 
+                                                                        color: isAdminMsg ? 'rgba(255,255,255,0.7)' : 'text.secondary', 
+                                                                        mt: 0.5 
+                                                                    }}>
+                                                                        {moment(msg.SentAt).format('HH:mm DD/MM/YY')}
+                                                                    </Typography>
+                                                                </CardContent>
+                                                            </Card>
+                                                        </Box>
                                                     </Box>
                                                 );
                                             })
@@ -367,122 +549,285 @@ const ConversationMonitorPage = () => {
                                                 <Typography>Chưa có tin nhắn nào trong nhóm này.</Typography>
                                             </Box>
                                         )}
-                                    </Paper>
-                                </Grid>
-                            </Grid>
+                                        <div ref={messagesEndRef} /> {/* Element to scroll to */}
+                                    </Box>
+                                </Box>
+                            </Box>
                         )}
                     </DialogContent>
-                    <DialogActions>
-                        <Button onClick={handleCloseDetailsDialog}>Đóng</Button>
+                    <DialogActions sx={{ p: 2, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
+                        <Button onClick={handleCloseDetailsDialog} variant="outlined">Đóng</Button>
                     </DialogActions>
                 </Dialog>
             )}
 
             {/* Edit Name Dialog */}
             {conversationToEdit && (
-                <Dialog open={openEditNameDialog} onClose={handleCloseEditNameDialog} maxWidth="sm" fullWidth>
-                    <DialogTitle>Đổi tên Nhóm Chat</DialogTitle>
-                    <DialogContent>
+                <Dialog 
+                    open={openEditNameDialog} 
+                    onClose={handleCloseEditNameDialog} 
+                    maxWidth="sm" 
+                    fullWidth
+                    sx={{
+                        '& .MuiDialog-paper': {
+                            width: '100%',
+                            maxWidth: { xs: '95%', sm: '500px' },
+                            maxHeight: '90vh',
+                            m: { xs: 1, sm: 2 },
+                            borderRadius: 1
+                        }
+                    }}
+                >
+                    <DialogTitle sx={{ py: 2, bgcolor: 'secondary.light', color: 'secondary.dark' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <EditIcon fontSize="small" />
+                            Đổi tên Nhóm Chat
+                        </Box>
+                    </DialogTitle>
+                    <DialogContent sx={{ p: 3, mt: 1 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Nhập tên mới cho nhóm chat ID: {conversationToEdit.ConversationID}
+                        </Typography>
                         <TextField
                             autoFocus
                             margin="dense"
                             label="Tên nhóm mới"
                             type="text"
                             fullWidth
-                            variant="standard"
+                            variant="outlined"
                             value={newConversationName}
                             onChange={(e) => setNewConversationName(e.target.value)}
                             sx={{mt:1}}
                         />
                     </DialogContent>
-                    <DialogActions>
-                        <Button onClick={handleCloseEditNameDialog}>Hủy</Button>
-                        <Button onClick={handleSaveConversationName} variant="contained">Lưu</Button>
+                    <DialogActions sx={{ p: 2, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
+                        <Button onClick={handleCloseEditNameDialog} color="inherit">Hủy</Button>
+                        <Button 
+                            onClick={handleSaveConversationName} 
+                            variant="contained" 
+                            color="secondary"
+                            disabled={!newConversationName.trim()}
+                        >
+                            Lưu
+                        </Button>
                     </DialogActions>
                 </Dialog>
             )}
 
             {/* Manage Participants Dialog */}
             {selectedConversation && openManageParticipantsDialog && (
-                 <Dialog open={openManageParticipantsDialog} onClose={handleCloseManageParticipantsDialog} maxWidth="md" fullWidth scroll="paper">
-                    <DialogTitle>Quản lý Thành viên: {selectedConversation.Name || '(Chưa có tên)'}</DialogTitle>
-                    <DialogContent dividers>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
-                                <Typography variant="subtitle1" gutterBottom>Thành viên hiện tại ({participants.length})</Typography>
-                                {loadingDetails ? <CircularProgress size={20}/> :
-                                <List dense sx={{ maxHeight: 300, overflow: 'auto', border: '1px solid #ddd', borderRadius: 1, p:1}}>
-                                    {participants.length > 0 ? participants.map(p => (
-                                        <ListItem 
-                                            key={p.UserID} 
-                                            secondaryAction={
-                                                <Tooltip title="Xóa khỏi nhóm">
-                                                    <IconButton edge="end" size="small" onClick={() => handleRemoveParticipant(p.UserID)}>
-                                                        <DeleteIcon fontSize="small" color="error" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            }
-                                        >
-                                            <ListItemText primary={`${p.FirstName} ${p.LastName}`} secondary={p.Email} />
-                                        </ListItem>
-                                    )) : <ListItem><ListItemText primary="Không có thành viên nào." /></ListItem>}
-                                </List>}
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                                <Typography variant="subtitle1" gutterBottom>Thêm thành viên mới</Typography>
-                                {loadingUsersForAutocomplete ? <CircularProgress size={20}/> :
-                                <Autocomplete
-                                    options={usersForAutocomplete.filter(user => 
-                                        !participants.some(p => p.UserID === user.UserID) // Chỉ hiển thị user chưa có trong nhóm
+                <Dialog 
+                    open={openManageParticipantsDialog} 
+                    onClose={handleCloseManageParticipantsDialog} 
+                    maxWidth="md" 
+                    fullWidth 
+                    sx={{
+                        '& .MuiDialog-paper': {
+                            width: '100%',
+                            maxWidth: { xs: '95%', sm: '90%', md: '800px' },
+                            maxHeight: '90vh',
+                            m: { xs: 1, sm: 2 },
+                            borderRadius: 1
+                        }
+                    }}
+                >
+                    <DialogTitle sx={{ py: 2, bgcolor: 'info.light', color: 'info.dark' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <PersonAddIcon fontSize="small" />
+                            Quản lý Thành viên: {selectedConversation.Name || '(Chưa có tên)'}
+                        </Box>
+                    </DialogTitle>
+                    <DialogContent dividers sx={{ p: 0 }}>
+                        <Grid container sx={{ height: '100%' }}>
+                            <Grid item xs={12} md={6} sx={{ borderRight: { xs: 'none', md: '1px solid rgba(0, 0, 0, 0.12)' } }}>
+                                <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
+                                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <GroupIcon fontSize="small" color="info" />
+                                        Thành viên hiện tại ({participants.length})
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ p: 2 }}>
+                                    {loadingDetails ? (
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                            <CircularProgress size={24} />
+                                        </Box>
+                                    ) : (
+                                        <List dense sx={{ maxHeight: 350, overflow: 'auto', border: '1px solid #eee', borderRadius: 1 }}>
+                                            {participants.length > 0 ? participants.map(p => (
+                                                <ListItem 
+                                                    key={p.UserID} 
+                                                    divider
+                                                    secondaryAction={
+                                                        <Tooltip title="Xóa khỏi nhóm">
+                                                            <IconButton edge="end" size="small" onClick={() => handleRemoveParticipant(p.UserID)}>
+                                                                <DeleteIcon fontSize="small" color="error" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    }
+                                                >
+                                                    <ListItemText 
+                                                        primary={
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <Avatar sx={{ width: 24, height: 24, bgcolor: 'info.main', fontSize: '0.8rem' }}>
+                                                                    {p.FirstName[0].toUpperCase()}
+                                                                </Avatar>
+                                                                <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                                                                    {`${p.FirstName} ${p.LastName}`}
+                                                                </Typography>
+                                                            </Box>
+                                                        }
+                                                        secondary={p.Email} 
+                                                    />
+                                                </ListItem>
+                                            )) : (
+                                                <ListItem>
+                                                    <ListItemText primary={
+                                                        <Box sx={{ textAlign: 'center', color: 'text.secondary', py: 2 }}>
+                                                            <Typography>Không có thành viên nào.</Typography>
+                                                        </Box>
+                                                    } />
+                                                </ListItem>
+                                            )}
+                                        </List>
                                     )}
-                                    getOptionLabel={(option) => `${option.FirstName} ${option.LastName} (${option.Email} - ${option.role})`}
-                                    value={selectedUserToManage}
-                                    onChange={(event, newValue) => {
-                                        setSelectedUserToManage(newValue);
-                                    }}
-                                    isOptionEqualToValue={(option, value) => option.UserID === value.UserID}
-                                    renderInput={(params) => <TextField {...params} label="Tìm và chọn người dùng" variant="outlined" size="small" />}
-                                    fullWidth
-                                />}
-                                <Button 
-                                    variant="contained" 
-                                    onClick={handleAddParticipant} 
-                                    disabled={!selectedUserToManage}
-                                    startIcon={<PersonAddIcon/>}
-                                    sx={{mt:2}}
-                                >
-                                    Thêm vào nhóm
-                                </Button>
+                                </Box>
+                            </Grid>
+                            <Grid item xs={12} md={6} sx={{ p: 2 }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <PersonAddIcon fontSize="small" color="info" />
+                                    Thêm thành viên mới
+                                </Typography>
+                                
+                                {loadingUsersForAutocomplete ? (
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                        <CircularProgress size={24} />
+                                    </Box>
+                                ) : (
+                                    <>
+                                        <Autocomplete
+                                            options={usersForAutocomplete.filter(user => 
+                                                !participants.some(p => p.UserID === user.UserID)
+                                            )}
+                                            getOptionLabel={(option) => `${option.FirstName} ${option.LastName} (${option.Email} - ${option.role})`}
+                                            value={selectedUserToManage}
+                                            onChange={(event, newValue) => {
+                                                setSelectedUserToManage(newValue);
+                                            }}
+                                            isOptionEqualToValue={(option, value) => option.UserID === value.UserID}
+                                            renderInput={(params) => 
+                                                <TextField 
+                                                    {...params} 
+                                                    label="Tìm và chọn người dùng" 
+                                                    variant="outlined" 
+                                                    size="small"
+                                                    fullWidth
+                                                />
+                                            }
+                                            renderOption={(props, option) => (
+                                                <li {...props}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <Avatar sx={{ width: 24, height: 24, bgcolor: 'info.main', fontSize: '0.8rem' }}>
+                                                            {option.FirstName[0].toUpperCase()}
+                                                        </Avatar>
+                                                        <Box>
+                                                            <Typography variant="body2">{`${option.FirstName} ${option.LastName}`}</Typography>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {option.Email} - {option.role}
+                                                            </Typography>
+                                                        </Box>
+                                                    </Box>
+                                                </li>
+                                            )}
+                                        />
+                                        <Button 
+                                            variant="contained" 
+                                            color="info"
+                                            onClick={handleAddParticipant} 
+                                            disabled={!selectedUserToManage}
+                                            startIcon={<PersonAddIcon/>}
+                                            sx={{mt:3}}
+                                            fullWidth
+                                        >
+                                            Thêm vào nhóm
+                                        </Button>
+                                    </>
+                                )}
                             </Grid>
                         </Grid>
                     </DialogContent>
-                    <DialogActions>
-                        <Button onClick={handleCloseManageParticipantsDialog}>Đóng</Button>
+                    <DialogActions sx={{ p: 2, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
+                        <Button onClick={handleCloseManageParticipantsDialog} variant="outlined">Đóng</Button>
                     </DialogActions>
                 </Dialog>
             )}
 
             {/* Delete Confirmation Dialog */}
             {conversationToDelete && (
-                <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog} maxWidth="xs">
-                    <DialogTitle>Xác nhận Xóa</DialogTitle>
-                    <DialogContent>
-                        <Typography>
-                            Bạn có chắc chắn muốn xóa nhóm 
-                            <strong>"{conversationToDelete.Name || '(Không tên)'}"</strong> (ID: {conversationToDelete.ConversationID})?
-                            Hành động này không thể hoàn tác.
+                <Dialog 
+                    open={openDeleteDialog} 
+                    onClose={handleCloseDeleteDialog} 
+                    maxWidth="xs"
+                    sx={{
+                        '& .MuiDialog-paper': {
+                            width: '100%',
+                            maxWidth: { xs: '95%', sm: '400px' },
+                            m: { xs: 1, sm: 2 },
+                            borderRadius: 1
+                        }
+                    }}
+                >
+                    <DialogTitle sx={{ py: 2, bgcolor: 'error.light', color: 'error.dark' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <DeleteIcon fontSize="small" />
+                            Xác nhận Xóa
+                        </Box>
+                    </DialogTitle>
+                    <DialogContent sx={{ p: 3, mt: 1 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
+                            <NoMeetingRoomIcon sx={{ fontSize: 48, color: 'error.main', mb: 2 }} />
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+                                Bạn có chắc chắn muốn xóa nhóm này?
+                            </Typography>
+                        </Box>
+                        <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default', mb: 2 }}>
+                            <Typography variant="body2" sx={{ mb: 1 }}>
+                                <strong>Tên nhóm:</strong> {conversationToDelete.Name || '(Không tên)'}
+                            </Typography>
+                            <Typography variant="body2">
+                                <strong>ID:</strong> {conversationToDelete.ConversationID}
+                            </Typography>
+                        </Paper>
+                        <Typography variant="body2" color="error" sx={{ fontStyle: 'italic' }}>
+                            Lưu ý: Hành động này không thể hoàn tác và tất cả tin nhắn trong nhóm sẽ bị xóa.
                         </Typography>
                     </DialogContent>
-                    <DialogActions>
-                        <Button onClick={handleCloseDeleteDialog}>Hủy</Button>
-                        <Button onClick={handleDeleteConversation} color="error" variant="contained">Xóa</Button>
+                    <DialogActions sx={{ p: 2, borderTop: '1px solid rgba(0, 0, 0, 0.12)', justifyContent: 'space-between' }}>
+                        <Button onClick={handleCloseDeleteDialog} color="inherit">Hủy</Button>
+                        <Button 
+                            onClick={handleDeleteConversation} 
+                            color="error" 
+                            variant="contained"
+                            startIcon={<DeleteIcon />}
+                        >
+                            Xóa
+                        </Button>
                     </DialogActions>
                 </Dialog>
             )}
 
             {/* Snackbar */}
-            <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
-                <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled" sx={{ width: '100%' }}>
+            <Snackbar 
+                open={snackbar.open} 
+                autoHideDuration={6000} 
+                onClose={handleCloseSnackbar} 
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert 
+                    onClose={handleCloseSnackbar} 
+                    severity={snackbar.severity} 
+                    variant="filled" 
+                    sx={{ width: '100%' }}
+                >
                     {snackbar.message}
                 </Alert>
             </Snackbar>
