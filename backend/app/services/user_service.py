@@ -17,6 +17,7 @@ from ..models.student import Student
 from ..models.teacher import Teacher
 from ..models.parent import Parent
 from ..models.administrative_staff import AdministrativeStaff
+from ..models.department import Department
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -313,6 +314,12 @@ def create_users_from_excel(db: Session, file: UploadFile):
             if department_id_str and str(department_id_str).strip() and role_str == UserRole.TEACHER.value:
                 try:
                     department_id = int(float(str(department_id_str).strip()))
+                    # Kiểm tra phòng ban có tồn tại hay không
+                    if department_id > 0:  # Nếu = 0 thì để None, không cần kiểm tra
+                        department = db.query(Department).filter(Department.DepartmentID == department_id).first()
+                        if not department:
+                            results["errors"].append(f"Row {index + 2} (Email: {user_data_dict.get('Email')}): Department with ID {department_id} does not exist.")
+                            continue
                 except ValueError:
                     results["errors"].append(f"Row {index + 2} (Email: {user_data_dict.get('Email')}, DepartmentID: '{department_id_str}'): Invalid DepartmentID format.")
                     continue
@@ -339,6 +346,8 @@ def create_users_from_excel(db: Session, file: UploadFile):
                 "Position": user_data_dict.get("Position") if role_str in [UserRole.TEACHER.value, UserRole.ADMIN.value] else None,
                 "Occupation": user_data_dict.get("Occupation") if role_str == UserRole.PARENT.value else None,
             }
+            
+            print(f"user_payload: {user_payload}")
 
             if not all([user_payload["FirstName"], user_payload["LastName"], user_payload["Email"], user_payload["Password"], user_payload["role"]]):
                 results["errors"].append(f"Row {index + 2} (Email: {user_payload.get('Email', 'N/A')}): Missing required fields (FirstName, LastName, Email, Password, role).")
