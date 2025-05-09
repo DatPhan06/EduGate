@@ -24,6 +24,7 @@ import ClassManagementPage from '../pages/Admin/ClassManagementPage';
 import ConversationMonitorPage from '../pages/Admin/ConversationMonitorPage';
 import DepartmentManagementPage from '../pages/Admin/DepartmentManagementPage';
 import TimetableManagementPage from '../pages/Admin/TimetableManagementPage';
+import TimetableViewComponent from '../components/Timetable/TimetableViewComponent';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -98,6 +99,14 @@ const AppRoutes = () => {
                     element={
                         <ProtectedRoute roles={['admin']}>
                             <DepartmentManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="timetable-view"
+                    element={
+                        <ProtectedRoute roles={['admin', 'teacher', 'student', 'parent']}>
+                            <TimetableViewComponent />
                         </ProtectedRoute>
                     }
                 />
