@@ -21,6 +21,20 @@ import userService from '../../services/userService';
 const TimetableManagementPage = () => {
     const theme = useTheme();
     
+    // Constants - moved before states that use them
+    const dayOptions = [
+        'Monday', 'Tuesday', 'Wednesday', 
+        'Thursday', 'Friday', 'Saturday', 'Sunday'
+    ];
+    
+    const periodOptions = Array.from({ length: 12 }, (_, i) => i + 1); // 1-12
+    
+    const academicYears = [
+        '2022-2023', '2023-2024', '2024-2025', '2025-2026'
+    ];
+    
+    const semesters = ['HK1', 'HK2'];
+    
     // Subject states
     const [subjects, setSubjects] = useState([]);
     const [filteredSubjects, setFilteredSubjects] = useState([]);
@@ -46,6 +60,12 @@ const TimetableManagementPage = () => {
         classes: true,
         teachers: true
     });
+    
+    // Add filter states for schedules
+    const [dayFilter, setDayFilter] = useState('');
+    const [classFilter, setClassFilter] = useState('');
+    const [semesterFilter, setSemesterFilter] = useState('');
+    const [yearFilter, setYearFilter] = useState('');
     
     // Form states
     const [openSubjectDialog, setOpenSubjectDialog] = useState(false);
@@ -76,7 +96,12 @@ const TimetableManagementPage = () => {
         ClassSubjectID: '',
         StartPeriod: 1,
         EndPeriod: 1,
-        Day: 'Monday'
+        Day: 'Monday',
+        ClassID: '',
+        SubjectID: '',
+        TeacherID: '',
+        Semester: 'HK1',
+        AcademicYear: academicYears[0]
     });
     
     // Notification state
@@ -85,20 +110,6 @@ const TimetableManagementPage = () => {
         message: '',
         severity: 'success'
     });
-    
-    // Constants 
-    const dayOptions = [
-        'Monday', 'Tuesday', 'Wednesday', 
-        'Thursday', 'Friday', 'Saturday', 'Sunday'
-    ];
-    
-    const periodOptions = Array.from({ length: 12 }, (_, i) => i + 1); // 1-12
-    
-    const academicYears = [
-        '2022-2023', '2023-2024', '2024-2025', '2025-2026'
-    ];
-    
-    const semesters = ['HK1', 'HK2'];
     
     // Initial data loading
     useEffect(() => {
@@ -1008,16 +1019,16 @@ const TimetableManagementPage = () => {
                                                 currentClassSubject.ClassSubjectID, 
                                                 classSubjectFormData
                                             );
-                                            showNotification('Cập nhật phân công lớp thành công');
+                                            showNotification('Cập nhật phân công môn học thành công');
                                         } else {
                                             await timetableService.createClassSubject(classSubjectFormData);
-                                            showNotification('Thêm phân công lớp mới thành công');
+                                            showNotification('Thêm phân công môn học mới thành công');
                                         }
                                         setOpenClassSubjectDialog(false);
                                         fetchClassSubjects();
                                     } catch (error) {
                                         showNotification(
-                                            `Lỗi ${currentClassSubject ? 'cập nhật' : 'thêm'} phân công lớp: ${error.message}`,
+                                            `Lỗi ${currentClassSubject ? 'cập nhật' : 'thêm'} phân công môn học: ${error.message}`,
                                             'error'
                                         );
                                     }
@@ -1035,8 +1046,8 @@ const TimetableManagementPage = () => {
             {/* Schedule Management Tab */}
             {activeTab === 3 && (
                 <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, alignItems: 'center' }}>
-                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, alignItems: 'flex-start' }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <TextField
                                 placeholder="Tìm kiếm lịch học..."
                                 variant="outlined"
@@ -1052,22 +1063,84 @@ const TimetableManagementPage = () => {
                                 }}
                                 sx={{ width: '300px' }}
                             />
-                            <FormControl size="small" sx={{ minWidth: 200 }}>
-                                <InputLabel>Lọc theo ngày</InputLabel>
-                                <Select
-                                    value=""
-                                    label="Lọc theo ngày"
-                                    onChange={(e) => {
-                                        // TODO: Implement filtering by day
-                                    }}
-                                >
-                                    <MenuItem value="">Tất cả các ngày</MenuItem>
-                                    {dayOptions.map((day) => (
-                                        <MenuItem key={day} value={day}>{day}</MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
+                            
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1 }}>
+                                <FormControl size="small" sx={{ minWidth: 150 }}>
+                                    <InputLabel>Lọc theo ngày</InputLabel>
+                                    <Select
+                                        value={dayFilter}
+                                        label="Lọc theo ngày"
+                                        onChange={(e) => setDayFilter(e.target.value)}
+                                    >
+                                        <MenuItem value="">Tất cả các ngày</MenuItem>
+                                        {dayOptions.map((day) => (
+                                            <MenuItem key={day} value={day}>{day}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                                
+                                <FormControl size="small" sx={{ minWidth: 200 }}>
+                                    <InputLabel>Lọc theo lớp</InputLabel>
+                                    <Select
+                                        value={classFilter}
+                                        label="Lọc theo lớp"
+                                        onChange={(e) => setClassFilter(e.target.value)}
+                                    >
+                                        <MenuItem value="">Tất cả các lớp</MenuItem>
+                                        {classes.map((classObj) => (
+                                            <MenuItem key={classObj.ClassID} value={classObj.ClassID}>
+                                                Khối {classObj.GradeLevel} - {classObj.ClassName}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                                
+                                <FormControl size="small" sx={{ minWidth: 120 }}>
+                                    <InputLabel>Học kỳ</InputLabel>
+                                    <Select
+                                        value={semesterFilter}
+                                        label="Học kỳ"
+                                        onChange={(e) => setSemesterFilter(e.target.value)}
+                                    >
+                                        <MenuItem value="">Tất cả</MenuItem>
+                                        {semesters.map((semester) => (
+                                            <MenuItem key={semester} value={semester}>{semester}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                                
+                                <FormControl size="small" sx={{ minWidth: 150 }}>
+                                    <InputLabel>Năm học</InputLabel>
+                                    <Select
+                                        value={yearFilter}
+                                        label="Năm học"
+                                        onChange={(e) => setYearFilter(e.target.value)}
+                                    >
+                                        <MenuItem value="">Tất cả</MenuItem>
+                                        {academicYears.map((year) => (
+                                            <MenuItem key={year} value={year}>{year}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                                
+                                {(dayFilter || classFilter || semesterFilter || yearFilter) && (
+                                    <Button 
+                                        variant="outlined" 
+                                        size="small" 
+                                        onClick={() => {
+                                            setDayFilter('');
+                                            setClassFilter('');
+                                            setSemesterFilter('');
+                                            setYearFilter('');
+                                        }}
+                                        startIcon={<FilterListIcon />}
+                                    >
+                                        Xóa bộ lọc
+                                    </Button>
+                                )}
+                            </Box>
                         </Box>
+                        
                         <Button
                             variant="contained"
                             color="primary"
@@ -1078,7 +1151,12 @@ const TimetableManagementPage = () => {
                                     ClassSubjectID: '',
                                     StartPeriod: 1,
                                     EndPeriod: 1,
-                                    Day: 'Monday'
+                                    Day: 'Monday',
+                                    ClassID: '',
+                                    SubjectID: '',
+                                    TeacherID: '',
+                                    Semester: 'HK1',
+                                    AcademicYear: academicYears[0]
                                 });
                                 setOpenScheduleDialog(true);
                             }}
@@ -1102,105 +1180,159 @@ const TimetableManagementPage = () => {
                         </Paper>
                     ) : (
                         <Grid container spacing={3}>
-                            {/* Group schedules by day */}
-                            {dayOptions.map(day => {
-                                const daySchedules = schedules.filter(s => s.Day === day);
-                                if (daySchedules.length === 0) return null;
-                                
-                                return (
-                                    <Grid item xs={12} key={day}>
-                                        <Typography variant="h6" sx={{ mb: 2, mt: 1, fontWeight: 'bold' }}>
-                                            {day}
-                                        </Typography>
-                                        <TableContainer component={Paper}>
-                                            <Table>
-                                                <TableHead>
-                                                    <TableRow>
-                                                        <TableCell sx={{ fontWeight: 'bold' }}>Lớp</TableCell>
-                                                        <TableCell sx={{ fontWeight: 'bold' }}>Môn Học</TableCell>
-                                                        <TableCell sx={{ fontWeight: 'bold' }}>Giáo Viên</TableCell>
-                                                        <TableCell sx={{ fontWeight: 'bold' }}>Tiết Bắt Đầu</TableCell>
-                                                        <TableCell sx={{ fontWeight: 'bold' }}>Tiết Kết Thúc</TableCell>
-                                                        <TableCell sx={{ fontWeight: 'bold' }}>Học Kỳ/Năm Học</TableCell>
-                                                        <TableCell sx={{ fontWeight: 'bold' }}>Thao Tác</TableCell>
-                                                    </TableRow>
-                                                </TableHead>
-                                                <TableBody>
-                                                    {daySchedules.map(schedule => {
-                                                        // Find related class subject
-                                                        const classSubject = classSubjects.find(
-                                                            cs => cs.ClassSubjectID === schedule.ClassSubjectID
-                                                        );
-                                                        
-                                                        // Find related entities
-                                                        const subject = classSubject ? subjects.find(
-                                                            s => s.SubjectID === classSubject.SubjectID
-                                                        ) : null;
-                                                        
-                                                        const classObj = classSubject ? classes.find(
-                                                            c => c.ClassID === classSubject.ClassID
-                                                        ) : null;
-                                                        
-                                                        const teacher = classSubject ? teachers.find(
-                                                            t => t.UserID === classSubject.TeacherID
-                                                        ) : null;
-                                                        
-                                                        return (
-                                                            <TableRow key={schedule.SubjectScheduleID}>
-                                                                <TableCell>
-                                                                    {classObj ? (
-                                                                        <>Khối {classObj.GradeLevel} - {classObj.ClassName}</>
-                                                                    ) : 'N/A'}
-                                                                </TableCell>
-                                                                <TableCell>{subject?.SubjectName || 'N/A'}</TableCell>
-                                                                <TableCell>
-                                                                    {teacher ? `${teacher.FirstName} ${teacher.LastName}` : 'N/A'}
-                                                                </TableCell>
-                                                                <TableCell>{schedule.StartPeriod}</TableCell>
-                                                                <TableCell>{schedule.EndPeriod}</TableCell>
-                                                                <TableCell>
-                                                                    {classSubject ? 
-                                                                        `${classSubject.Semester}/${classSubject.AcademicYear}` : 
-                                                                        'N/A'
-                                                                    }
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    <IconButton
-                                                                        color="primary"
-                                                                        onClick={() => {
-                                                                            setCurrentSchedule(schedule);
-                                                                            setScheduleFormData({
-                                                                                ClassSubjectID: schedule.ClassSubjectID,
-                                                                                StartPeriod: schedule.StartPeriod,
-                                                                                EndPeriod: schedule.EndPeriod,
-                                                                                Day: schedule.Day
-                                                                            });
-                                                                            setOpenScheduleDialog(true);
-                                                                        }}
-                                                                    >
-                                                                        <EditIcon />
-                                                                    </IconButton>
-                                                                    <IconButton
-                                                                        color="error"
-                                                                        onClick={() => {
-                                                                            setDeleteType('schedule');
-                                                                            setDeleteId(schedule.SubjectScheduleID);
-                                                                            setCurrentSchedule(schedule);
-                                                                            setOpenDeleteDialog(true);
-                                                                        }}
-                                                                    >
-                                                                        <DeleteIcon />
-                                                                    </IconButton>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        );
-                                                    })}
-                                                </TableBody>
-                                            </Table>
-                                        </TableContainer>
-                                    </Grid>
-                                );
-                            })}
+                            {/* Filter schedules and group them by day */}
+                            {dayOptions
+                                .filter(day => dayFilter ? day === dayFilter : true)
+                                .map(day => {
+                                    // First filter schedules by day
+                                    const daySchedules = schedules.filter(s => s.Day === day);
+                                    
+                                    // Then apply additional filters
+                                    const filteredSchedules = daySchedules.filter(schedule => {
+                                        // Find the class subject for this schedule
+                                        const classSubject = classSubjects.find(cs => cs.ClassSubjectID === schedule.ClassSubjectID);
+                                        if (!classSubject) return false;
+                                        
+                                        // Apply class filter
+                                        if (classFilter && classSubject.ClassID !== classFilter) {
+                                            return false;
+                                        }
+                                        
+                                        // Apply semester filter
+                                        if (semesterFilter && classSubject.Semester !== semesterFilter) {
+                                            return false;
+                                        }
+                                        
+                                        // Apply year filter
+                                        if (yearFilter && classSubject.AcademicYear !== yearFilter) {
+                                            return false;
+                                        }
+                                        
+                                        // Apply search filter if any
+                                        if (searchQuery) {
+                                            // Get related entities for search
+                                            const subject = subjects.find(s => s.SubjectID === classSubject.SubjectID);
+                                            const classObj = classes.find(c => c.ClassID === classSubject.ClassID);
+                                            const teacher = teachers.find(t => t.UserID === classSubject.TeacherID);
+                                            
+                                            const subjectName = subject?.SubjectName?.toLowerCase() || '';
+                                            const className = classObj?.ClassName?.toLowerCase() || '';
+                                            const teacherName = teacher ? 
+                                                `${teacher.FirstName} ${teacher.LastName}`.toLowerCase() : '';
+                                            
+                                            const searchLower = searchQuery.toLowerCase();
+                                            
+                                            if (!subjectName.includes(searchLower) && 
+                                                !className.includes(searchLower) && 
+                                                !teacherName.includes(searchLower)) {
+                                                return false;
+                                            }
+                                        }
+                                        
+                                        return true;
+                                    });
+                                    
+                                    if (filteredSchedules.length === 0) return null;
+                                    
+                                    return (
+                                        <Grid item xs={12} key={day}>
+                                            <Typography variant="h6" sx={{ mb: 2, mt: 1, fontWeight: 'bold' }}>
+                                                {day}
+                                            </Typography>
+                                            <TableContainer component={Paper}>
+                                                <Table>
+                                                    <TableHead>
+                                                        <TableRow>
+                                                            <TableCell sx={{ fontWeight: 'bold' }}>Lớp</TableCell>
+                                                            <TableCell sx={{ fontWeight: 'bold' }}>Môn Học</TableCell>
+                                                            <TableCell sx={{ fontWeight: 'bold' }}>Giáo Viên</TableCell>
+                                                            <TableCell sx={{ fontWeight: 'bold' }}>Tiết Bắt Đầu</TableCell>
+                                                            <TableCell sx={{ fontWeight: 'bold' }}>Tiết Kết Thúc</TableCell>
+                                                            <TableCell sx={{ fontWeight: 'bold' }}>Học Kỳ/Năm Học</TableCell>
+                                                            <TableCell sx={{ fontWeight: 'bold' }}>Thao Tác</TableCell>
+                                                        </TableRow>
+                                                    </TableHead>
+                                                    <TableBody>
+                                                        {filteredSchedules.map(schedule => {
+                                                            // Find related class subject
+                                                            const classSubject = classSubjects.find(
+                                                                cs => cs.ClassSubjectID === schedule.ClassSubjectID
+                                                            );
+                                                            
+                                                            // Find related entities
+                                                            const subject = classSubject ? subjects.find(
+                                                                s => s.SubjectID === classSubject.SubjectID
+                                                            ) : null;
+                                                            
+                                                            const classObj = classSubject ? classes.find(
+                                                                c => c.ClassID === classSubject.ClassID
+                                                            ) : null;
+                                                            
+                                                            const teacher = classSubject ? teachers.find(
+                                                                t => t.UserID === classSubject.TeacherID
+                                                            ) : null;
+                                                            
+                                                            return (
+                                                                <TableRow key={schedule.SubjectScheduleID}>
+                                                                    <TableCell>
+                                                                        {classObj ? (
+                                                                            <>Khối {classObj.GradeLevel} - {classObj.ClassName}</>
+                                                                        ) : 'N/A'}
+                                                                    </TableCell>
+                                                                    <TableCell>{subject?.SubjectName || 'N/A'}</TableCell>
+                                                                    <TableCell>
+                                                                        {teacher ? `${teacher.FirstName} ${teacher.LastName}` : 'N/A'}
+                                                                    </TableCell>
+                                                                    <TableCell>{schedule.StartPeriod}</TableCell>
+                                                                    <TableCell>{schedule.EndPeriod}</TableCell>
+                                                                    <TableCell>
+                                                                        {classSubject ? 
+                                                                            `${classSubject.Semester}/${classSubject.AcademicYear}` : 
+                                                                            'N/A'
+                                                                        }
+                                                                    </TableCell>
+                                                                    <TableCell>
+                                                                        <IconButton
+                                                                            color="primary"
+                                                                            onClick={() => {
+                                                                                setCurrentSchedule(schedule);
+                                                                                setScheduleFormData({
+                                                                                    ClassSubjectID: schedule.ClassSubjectID,
+                                                                                    StartPeriod: schedule.StartPeriod,
+                                                                                    EndPeriod: schedule.EndPeriod,
+                                                                                    Day: schedule.Day,
+                                                                                    ClassID: classSubject ? classSubject.ClassID : '',
+                                                                                    SubjectID: classSubject ? classSubject.SubjectID : '',
+                                                                                    TeacherID: classSubject ? classSubject.TeacherID : '',
+                                                                                    Semester: classSubject ? classSubject.Semester : '',
+                                                                                    AcademicYear: classSubject ? classSubject.AcademicYear : ''
+                                                                                });
+                                                                                setOpenScheduleDialog(true);
+                                                                            }}
+                                                                        >
+                                                                            <EditIcon />
+                                                                        </IconButton>
+                                                                        <IconButton
+                                                                            color="error"
+                                                                            onClick={() => {
+                                                                                setDeleteType('schedule');
+                                                                                setDeleteId(schedule.SubjectScheduleID);
+                                                                                setCurrentSchedule(schedule);
+                                                                                setOpenDeleteDialog(true);
+                                                                            }}
+                                                                        >
+                                                                            <DeleteIcon />
+                                                                        </IconButton>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            );
+                                                        })}
+                                                    </TableBody>
+                                                </Table>
+                                            </TableContainer>
+                                        </Grid>
+                                    );
+                                })}
                         </Grid>
                     )}
                     
@@ -1216,31 +1348,164 @@ const TimetableManagementPage = () => {
                         </DialogTitle>
                         <DialogContent>
                             <Grid container spacing={2} sx={{ mt: 1 }}>
-                                <Grid item xs={12}>
-                                    <FormControl fullWidth required>
-                                        <InputLabel>Phân Công Môn Học</InputLabel>
-                                        <Select
-                                            value={scheduleFormData.ClassSubjectID}
-                                            label="Phân Công Môn Học"
-                                            onChange={(e) => setScheduleFormData({
-                                                ...scheduleFormData,
-                                                ClassSubjectID: e.target.value
-                                            })}
-                                            disabled={currentSchedule !== null}
-                                        >
-                                            {classSubjects.map((cs) => {
-                                                const subject = subjects.find(s => s.SubjectID === cs.SubjectID);
-                                                const classObj = classes.find(c => c.ClassID === cs.ClassID);
-                                                
-                                                return (
-                                                    <MenuItem key={cs.ClassSubjectID} value={cs.ClassSubjectID}>
-                                                        {`${classObj ? `Khối ${classObj.GradeLevel} - ${classObj.ClassName}` : 'Unknown'} - ${subject?.SubjectName || 'Unknown'} (${cs.Semester}/${cs.AcademicYear})`}
-                                                    </MenuItem>
-                                                );
-                                            })}
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
+                                {currentSchedule ? (
+                                    // For editing, show the existing class subject info
+                                    <Grid item xs={12}>
+                                        <FormControl fullWidth required>
+                                            <InputLabel>Phân Công Môn Học</InputLabel>
+                                            <Select
+                                                value={scheduleFormData.ClassSubjectID}
+                                                label="Phân Công Môn Học"
+                                                onChange={(e) => setScheduleFormData({
+                                                    ...scheduleFormData,
+                                                    ClassSubjectID: e.target.value
+                                                })}
+                                                disabled={currentSchedule !== null}
+                                            >
+                                                {classSubjects.map((cs) => {
+                                                    const subject = subjects.find(s => s.SubjectID === cs.SubjectID);
+                                                    const classObj = classes.find(c => c.ClassID === cs.ClassID);
+                                                    
+                                                    return (
+                                                        <MenuItem key={cs.ClassSubjectID} value={cs.ClassSubjectID}>
+                                                            {`${classObj ? `Khối ${classObj.GradeLevel} - ${classObj.ClassName}` : 'Unknown'} - ${subject?.SubjectName || 'Unknown'} (${cs.Semester}/${cs.AcademicYear})`}
+                                                        </MenuItem>
+                                                    );
+                                                })}
+                                            </Select>
+                                        </FormControl>
+                                    </Grid>
+                                ) : (
+                                    // For creating new schedule, show separate fields
+                                    <>
+                                        <Grid item xs={12} md={6}>
+                                            <FormControl fullWidth required>
+                                                <InputLabel>Lớp</InputLabel>
+                                                <Select
+                                                    value={scheduleFormData.ClassID}
+                                                    label="Lớp"
+                                                    onChange={(e) => {
+                                                        const newClassID = e.target.value;
+                                                        setScheduleFormData({
+                                                            ...scheduleFormData,
+                                                            ClassID: newClassID,
+                                                            // Reset downstream dependencies
+                                                            ClassSubjectID: ''
+                                                        });
+                                                    }}
+                                                >
+                                                    <MenuItem value="">Chọn lớp</MenuItem>
+                                                    {classes.map((classObj) => (
+                                                        <MenuItem key={classObj.ClassID} value={classObj.ClassID}>
+                                                            Khối {classObj.GradeLevel} - {classObj.ClassName}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </Grid>
+                                        
+                                        <Grid item xs={12} md={6}>
+                                            <FormControl fullWidth required>
+                                                <InputLabel>Môn Học</InputLabel>
+                                                <Select
+                                                    value={scheduleFormData.SubjectID}
+                                                    label="Môn Học"
+                                                    onChange={(e) => {
+                                                        const newSubjectID = e.target.value;
+                                                        setScheduleFormData({
+                                                            ...scheduleFormData,
+                                                            SubjectID: newSubjectID,
+                                                            // Reset downstream dependencies
+                                                            ClassSubjectID: ''
+                                                        });
+                                                    }}
+                                                >
+                                                    <MenuItem value="">Chọn môn học</MenuItem>
+                                                    {subjects.map((subject) => (
+                                                        <MenuItem key={subject.SubjectID} value={subject.SubjectID}>
+                                                            {subject.SubjectName}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </Grid>
+                                        
+                                        <Grid item xs={12} md={6}>
+                                            <FormControl fullWidth required>
+                                                <InputLabel>Giáo Viên</InputLabel>
+                                                <Select
+                                                    value={scheduleFormData.TeacherID}
+                                                    label="Giáo Viên"
+                                                    onChange={(e) => {
+                                                        const newTeacherID = e.target.value;
+                                                        setScheduleFormData({
+                                                            ...scheduleFormData,
+                                                            TeacherID: newTeacherID,
+                                                            // Reset downstream dependencies
+                                                            ClassSubjectID: ''
+                                                        });
+                                                    }}
+                                                >
+                                                    <MenuItem value="">Chọn giáo viên</MenuItem>
+                                                    {teachers.map((teacher) => (
+                                                        <MenuItem key={teacher.UserID} value={teacher.UserID}>
+                                                            {`${teacher.FirstName} ${teacher.LastName}`}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </Grid>
+                                        
+                                        <Grid item xs={12} md={6}>
+                                            <FormControl fullWidth required>
+                                                <InputLabel>Học Kỳ</InputLabel>
+                                                <Select
+                                                    value={scheduleFormData.Semester}
+                                                    label="Học Kỳ"
+                                                    onChange={(e) => {
+                                                        setScheduleFormData({
+                                                            ...scheduleFormData,
+                                                            Semester: e.target.value,
+                                                            // Reset downstream dependencies
+                                                            ClassSubjectID: ''
+                                                        });
+                                                    }}
+                                                >
+                                                    {semesters.map((semester) => (
+                                                        <MenuItem key={semester} value={semester}>
+                                                            {semester}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </Grid>
+                                        
+                                        <Grid item xs={12}>
+                                            <FormControl fullWidth required>
+                                                <InputLabel>Năm Học</InputLabel>
+                                                <Select
+                                                    value={scheduleFormData.AcademicYear}
+                                                    label="Năm Học"
+                                                    onChange={(e) => {
+                                                        setScheduleFormData({
+                                                            ...scheduleFormData,
+                                                            AcademicYear: e.target.value,
+                                                            // Reset downstream dependencies
+                                                            ClassSubjectID: ''
+                                                        });
+                                                    }}
+                                                >
+                                                    {academicYears.map((year) => (
+                                                        <MenuItem key={year} value={year}>
+                                                            {year}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </Grid>
+                                    </>
+                                )}
+                                
                                 <Grid item xs={12} md={4}>
                                     <FormControl fullWidth required>
                                         <InputLabel>Ngày</InputLabel>
@@ -1312,38 +1577,137 @@ const TimetableManagementPage = () => {
                             <Button onClick={() => setOpenScheduleDialog(false)}>Hủy</Button>
                             <Button 
                                 onClick={async () => {
-                                    // Validate form
-                                    if (!scheduleFormData.ClassSubjectID || 
-                                        !scheduleFormData.Day || 
-                                        !scheduleFormData.StartPeriod || 
-                                        !scheduleFormData.EndPeriod) {
-                                        showNotification('Vui lòng điền đầy đủ thông tin', 'error');
-                                        return;
-                                    }
-                                    
-                                    if (scheduleFormData.StartPeriod > scheduleFormData.EndPeriod) {
-                                        showNotification('Tiết bắt đầu không thể sau tiết kết thúc', 'error');
-                                        return;
-                                    }
-                                    
-                                    try {
-                                        if (currentSchedule) {
+                                    // For creating new schedules
+                                    if (!currentSchedule) {
+                                        // Find or create the class subject assignment if needed
+                                        try {
+                                            // Validate required fields first
+                                            if (!scheduleFormData.ClassID || 
+                                                !scheduleFormData.SubjectID || 
+                                                !scheduleFormData.TeacherID || 
+                                                !scheduleFormData.Semester || 
+                                                !scheduleFormData.AcademicYear ||
+                                                !scheduleFormData.Day || 
+                                                !scheduleFormData.StartPeriod || 
+                                                !scheduleFormData.EndPeriod) {
+                                                showNotification('Vui lòng điền đầy đủ thông tin', 'error');
+                                                return;
+                                            }
+                                            
+                                            if (scheduleFormData.StartPeriod > scheduleFormData.EndPeriod) {
+                                                showNotification('Tiết bắt đầu không thể sau tiết kết thúc', 'error');
+                                                return;
+                                            }
+                                            
+                                            // Find if a class subject with these properties already exists
+                                            let targetClassSubjectID = scheduleFormData.ClassSubjectID;
+                                            let wasCreated = false;
+                                            
+                                            if (!targetClassSubjectID) {
+                                                const matchingClassSubject = classSubjects.find(cs => 
+                                                    cs.ClassID === scheduleFormData.ClassID &&
+                                                    cs.SubjectID === scheduleFormData.SubjectID &&
+                                                    cs.TeacherID === scheduleFormData.TeacherID &&
+                                                    cs.Semester === scheduleFormData.Semester &&
+                                                    cs.AcademicYear === scheduleFormData.AcademicYear
+                                                );
+                                                
+                                                if (matchingClassSubject) {
+                                                    // Use existing class subject
+                                                    targetClassSubjectID = matchingClassSubject.ClassSubjectID;
+                                                    console.log('Found existing class subject:', matchingClassSubject);
+                                                } else {
+                                                    // Create a new class subject assignment
+                                                    console.log('Creating new class subject assignment');
+                                                    
+                                                    const newClassSubjectData = {
+                                                        ClassID: scheduleFormData.ClassID,
+                                                        SubjectID: scheduleFormData.SubjectID,
+                                                        TeacherID: scheduleFormData.TeacherID,
+                                                        Semester: scheduleFormData.Semester,
+                                                        AcademicYear: scheduleFormData.AcademicYear
+                                                    };
+                                                    
+                                                    // Look up related entities for notification
+                                                    const classObj = classes.find(c => c.ClassID === scheduleFormData.ClassID);
+                                                    const subject = subjects.find(s => s.SubjectID === scheduleFormData.SubjectID);
+                                                    const teacher = teachers.find(t => t.UserID === scheduleFormData.TeacherID);
+                                                    
+                                                    const newClassSubject = await timetableService.createClassSubject(newClassSubjectData);
+                                                    wasCreated = true;
+                                                    targetClassSubjectID = newClassSubject.ClassSubjectID;
+                                                    
+                                                    // Refresh class subjects list
+                                                    fetchClassSubjects();
+                                                    
+                                                    // Tell the user we created a new assignment
+                                                    showNotification(
+                                                        `Đã tự động tạo phân công môn ${subject?.SubjectName || 'N/A'} cho lớp ${classObj?.ClassName || 'N/A'} với giáo viên ${teacher ? `${teacher.FirstName} ${teacher.LastName}` : 'N/A'}`,
+                                                        'info'
+                                                    );
+                                                }
+                                            }
+                                            
+                                            // Now create the schedule with the class subject ID
+                                            if (!targetClassSubjectID) {
+                                                showNotification('Không thể tạo phân công lớp-môn học', 'error');
+                                                return;
+                                            }
+                                            
+                                            // Create schedule
+                                            const scheduleData = {
+                                                ClassSubjectID: targetClassSubjectID,
+                                                Day: scheduleFormData.Day,
+                                                StartPeriod: scheduleFormData.StartPeriod,
+                                                EndPeriod: scheduleFormData.EndPeriod
+                                            };
+                                            
+                                            await timetableService.createSchedule(scheduleData);
+                                            
+                                            // Show success notification
+                                            if (wasCreated) {
+                                                showNotification('Đã tạo lịch học và phân công môn học mới thành công');
+                                            } else {
+                                                showNotification('Thêm lịch học mới thành công');
+                                            }
+                                            
+                                            setOpenScheduleDialog(false);
+                                            fetchSchedules();
+                                        } catch (error) {
+                                            showNotification(`Lỗi thêm lịch học: ${error.message}`, 'error');
+                                        }
+                                    } else {
+                                        // For updating existing schedules
+                                        try {
+                                            if (!scheduleFormData.ClassSubjectID || 
+                                                !scheduleFormData.Day || 
+                                                !scheduleFormData.StartPeriod || 
+                                                !scheduleFormData.EndPeriod) {
+                                                showNotification('Vui lòng điền đầy đủ thông tin', 'error');
+                                                return;
+                                            }
+                                            
+                                            if (scheduleFormData.StartPeriod > scheduleFormData.EndPeriod) {
+                                                showNotification('Tiết bắt đầu không thể sau tiết kết thúc', 'error');
+                                                return;
+                                            }
+                                            
                                             await timetableService.updateSchedule(
                                                 currentSchedule.SubjectScheduleID, 
-                                                scheduleFormData
+                                                {
+                                                    ClassSubjectID: scheduleFormData.ClassSubjectID,
+                                                    Day: scheduleFormData.Day,
+                                                    StartPeriod: scheduleFormData.StartPeriod,
+                                                    EndPeriod: scheduleFormData.EndPeriod
+                                                }
                                             );
+                                            
                                             showNotification('Cập nhật lịch học thành công');
-                                        } else {
-                                            await timetableService.createSchedule(scheduleFormData);
-                                            showNotification('Thêm lịch học mới thành công');
+                                            setOpenScheduleDialog(false);
+                                            fetchSchedules();
+                                        } catch (error) {
+                                            showNotification(`Lỗi cập nhật lịch học: ${error.message}`, 'error');
                                         }
-                                        setOpenScheduleDialog(false);
-                                        fetchSchedules();
-                                    } catch (error) {
-                                        showNotification(
-                                            `Lỗi ${currentSchedule ? 'cập nhật' : 'thêm'} lịch học: ${error.message}`,
-                                            'error'
-                                        );
                                     }
                                 }} 
                                 color="primary"
