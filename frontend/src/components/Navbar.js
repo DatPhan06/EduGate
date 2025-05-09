@@ -126,14 +126,19 @@ const Navbar = ({ onLayoutChange }) => {
     const collapsedDrawerWidth = isMobile ? 0 : 60;
     const [isDrawerHovered, setIsDrawerHovered] = useState(false);
 
-    const currentActualDrawerWidth = isMobile ? expandedDrawerWidth : (isDrawerHovered ? expandedDrawerWidth : collapsedDrawerWidth);
+    // Use a fixed layout width for the main content area
+    const fixedLayoutWidth = collapsedDrawerWidth;
+    
+    // Visual width for the drawer that changes on hover
+    const visualDrawerWidth = isMobile ? expandedDrawerWidth : (isDrawerHovered ? expandedDrawerWidth : collapsedDrawerWidth);
 
     useEffect(() => {
         if (onLayoutChange) {
-            const widthForMainLayout = isMobile ? 0 : currentActualDrawerWidth;
+            // Always use the fixed width for layout calculations
+            const widthForMainLayout = isMobile ? 0 : fixedLayoutWidth;
             onLayoutChange(widthForMainLayout, isMobile);
         }
-    }, [currentActualDrawerWidth, isMobile, onLayoutChange]);
+    }, [fixedLayoutWidth, isMobile, onLayoutChange]);
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
@@ -282,7 +287,9 @@ const Navbar = ({ onLayoutChange }) => {
                     easing: theme.transitions.easing.sharp,
                     duration: theme.transitions.duration.enteringScreen,
                 }),
-                width: currentActualDrawerWidth,
+                width: visualDrawerWidth,
+                position: 'absolute',
+                zIndex: 10,
             }}
         >
             <Box sx={{
@@ -496,8 +503,27 @@ const Navbar = ({ onLayoutChange }) => {
 
     return (
         <Box sx={{ display: 'flex' }}>
+            {/* Dark overlay when drawer is hovered */}
+            {!isMobile && isDrawerHovered && (
+                <Box 
+                    sx={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                        zIndex: 1050,
+                        transition: 'all 0.3s ease',
+                        opacity: isDrawerHovered ? 1 : 0,
+                        pointerEvents: 'none',
+                        marginLeft: `${collapsedDrawerWidth}px`,
+                    }}
+                />
+            )}
+            
             {isMobile && (
-                 <AppBar 
+                <AppBar 
                     position="fixed"
                     elevation={0}
                     sx={{ 
@@ -505,8 +531,8 @@ const Navbar = ({ onLayoutChange }) => {
                         color: 'white',
                         borderBottom: 'none',
                         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-                        width: { sm: `calc(100% - ${currentActualDrawerWidth}px)` },
-                        ml: { sm: `${currentActualDrawerWidth}px` },
+                        width: { sm: `calc(100% - ${fixedLayoutWidth}px)` },
+                        ml: { sm: `${fixedLayoutWidth}px` },
                     }}
                 >
                     <Toolbar>
@@ -554,12 +580,9 @@ const Navbar = ({ onLayoutChange }) => {
             <Box
                 component="nav"
                 sx={{ 
-                    width: { sm: currentActualDrawerWidth },
+                    width: { sm: fixedLayoutWidth },
                     flexShrink: { sm: 0 },
-                    transition: theme.transitions.create('width', {
-                        easing: theme.transitions.easing.sharp,
-                        duration: theme.transitions.duration.enteringScreen,
-                    }),
+                    position: 'relative',
                 }}
                 aria-label="mailbox folders"
             >
@@ -582,26 +605,18 @@ const Navbar = ({ onLayoutChange }) => {
                 >
                     {drawerContent}
                 </Drawer>
-                <Drawer
-                    variant="permanent"
+                <Box
                     sx={{
                         display: { xs: 'none', sm: 'block' },
-                        '& .MuiDrawer-paper': { 
-                            boxSizing: 'border-box', 
-                            width: currentActualDrawerWidth,
-                            borderRight: 'none',
-                            boxShadow: '2px 0 10px rgba(0,0,0,0.1)',
-                            overflowX: 'hidden',
-                            transition: theme.transitions.create('width', {
-                                easing: theme.transitions.easing.sharp,
-                                duration: theme.transitions.duration.enteringScreen,
-                            }),
-                        },
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        height: '100%',
+                        zIndex: 1100,
                     }}
-                    open
                 >
                     {drawerContent}
-                </Drawer>
+                </Box>
             </Box>
         </Box>
   );
