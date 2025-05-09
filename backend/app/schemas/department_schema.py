@@ -9,6 +9,9 @@ class DepartmentBase(BaseModel):
 class DepartmentCreate(DepartmentBase):
     pass
 
+class DepartmentUpdate(DepartmentBase):
+    pass
+
 class DepartmentRead(DepartmentBase):
     DepartmentID: int
     teachers: List[TeacherBasicInfo] = []

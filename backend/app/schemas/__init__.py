@@ -21,3 +21,27 @@ from .message import (
     ConversationUpdateAdmin,
     ConversationParticipantsUpdate
 )
+
+from .subject_schema import (
+    SubjectBase,
+    SubjectCreate,
+    SubjectUpdate,
+    SubjectRead,
+    SubjectBasicInfo
+)
+
+from .subject_schedule_schema import (
+    DayOfWeek,
+    SubjectScheduleBase,
+    SubjectScheduleCreate,
+    SubjectScheduleUpdate,
+    SubjectScheduleRead
+)
+
+from .class_subject_schema import (
+    ClassSubjectBase,
+    ClassSubjectCreate,
+    ClassSubjectUpdate,
+    ClassSubjectRead,
+    ClassSubjectWithSchedules
+)

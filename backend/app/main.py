@@ -7,7 +7,7 @@ from .models import *
 from .config import settings
 from .routers import auth, user, reward_punishment, petition, message
 from .routers import classes_router, students_router, teachers_router, admin_conversation_router
-from .routers import departments_router
+from .routers import departments_router, subjects_router, timetable_router
 from .routers import parent_student_router
 from .database import engine, Base
 
@@ -24,7 +24,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
@@ -47,3 +47,7 @@ app.include_router(teachers_router.router)
 app.include_router(departments_router.router)
 app.include_router(parent_student_router.router)
 app.include_router(admin_conversation_router.router)
+
+# Add timetable management routers
+app.include_router(subjects_router.router)
+app.include_router(timetable_router.router)
