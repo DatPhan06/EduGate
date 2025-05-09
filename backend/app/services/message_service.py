@@ -249,3 +249,113 @@ def remove_participants_from_conversation(db: Session, conversation_id: int, use
         current_participants = db.query(Participation.UserID).filter(Participation.ConversationID == conversation_id).count()
         conversation.NumOfParticipation = current_participants
         db.commit()
+
+# --- Admin Conversation Management Functions ---
+
+def get_all_conversations_admin(db: Session, skip: int = 0, limit: int = 100) -> List[schemas.ConversationRead]:
+    """
+    Retrieves all conversations, intended for Admin use.
+    Includes participants and a snippet of the last message for preview.
+    """
+    conversations = db.query(models.Conversation)\
+        .options(
+            joinedload(models.Conversation.participations).joinedload(models.Participation.user),
+            # Optionally load last message if needed for an admin preview
+            # joinedload(models.Conversation.messages) # This would load ALL messages, be careful
+        )\
+        .order_by(desc(models.Conversation.CreatedAt))\
+        .offset(skip)\
+        .limit(limit)\
+        .all()
+
+    results = []
+    for conv in conversations:
+        # Fetch last message separately to avoid loading all messages for all conversations
+        last_msg_obj = db.query(models.Message)\
+            .filter(models.Message.ConversationID == conv.ConversationID)\
+            .order_by(desc(models.Message.SentAt))\
+            .first()
+        
+        participants_schemas = [schemas.UserSimple.from_orm(part.user) for part in conv.participations]
+        
+        # For admin view, we might use ConversationRead directly or a specialized AdminConversationRead
+        # For now, adapting to ConversationRead, messages will be empty unless explicitly fetched by get_conversation_details_admin
+        results.append(schemas.ConversationRead(
+            ConversationID=conv.ConversationID,
+            Name=conv.Name,
+            CreatedAt=conv.CreatedAt,
+            messages=[schemas.MessageRead.from_orm(last_msg_obj)] if last_msg_obj else [], # Show only last message in this list view
+            participants=participants_schemas
+        ))
+    return results
+
+def get_conversation_details_admin(db: Session, conversation_id: int) -> Optional[schemas.ConversationRead]:
+    """
+    Retrieves a specific conversation by its ID, including all messages and participants.
+    Admin version: Does not check for user participation.
+    """
+    conversation = db.query(models.Conversation)\
+        .options(
+            joinedload(models.Conversation.messages).joinedload(models.Message.user),
+            joinedload(models.Conversation.participations).joinedload(models.Participation.user)
+        )\
+        .filter(models.Conversation.ConversationID == conversation_id)\
+        .first()
+
+    if not conversation:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+    conversation.messages.sort(key=lambda m: m.SentAt) # Ensure chronological order
+
+    participants_schemas = [schemas.UserSimple.from_orm(part.user) for part in conversation.participations]
+    messages_schemas = [schemas.MessageRead.from_orm(msg) for msg in conversation.messages]
+    
+    return schemas.ConversationRead(
+        ConversationID=conversation.ConversationID,
+        Name=conversation.Name,
+        CreatedAt=conversation.CreatedAt,
+        messages=messages_schemas,
+        participants=participants_schemas
+    )
+
+def update_conversation_admin(db: Session, conversation_id: int, conversation_data: schemas.ConversationUpdateAdmin) -> Optional[schemas.ConversationRead]:
+    """
+    Updates a conversation's details (e.g., name). Admin version.
+    """
+    db_conversation = db.query(models.Conversation).filter(models.Conversation.ConversationID == conversation_id).first()
+    if not db_conversation:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+    if conversation_data.Name is not None:
+        db_conversation.Name = conversation_data.Name
+    
+    db.commit()
+    db.refresh(db_conversation)
+    
+    # Return the updated conversation details, similar to get_conversation_details_admin
+    return get_conversation_details_admin(db=db, conversation_id=db_conversation.ConversationID)
+
+def delete_conversation_admin(db: Session, conversation_id: int) -> bool:
+    """
+    Deletes a conversation, its participations, and its messages. Admin version.
+    Returns True if deletion was successful, False otherwise.
+    """
+    db_conversation = db.query(models.Conversation).filter(models.Conversation.ConversationID == conversation_id).first()
+    if not db_conversation:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+    try:
+        # Delete participations first to avoid FK constraint issues if not cascaded from Conversation
+        db.query(models.Participation).filter(models.Participation.ConversationID == conversation_id).delete(synchronize_session=False)
+        
+        # Delete messages as cascade delete is not set on the relationship
+        db.query(models.Message).filter(models.Message.ConversationID == conversation_id).delete(synchronize_session=False)
+
+        db.delete(db_conversation)
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting conversation {conversation_id}: {e}") # Log error
+        # Consider raising a specific HTTPException for deletion failure
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not delete conversation: {e}")

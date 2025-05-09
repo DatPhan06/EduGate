@@ -192,6 +192,12 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['teacher', 'parent', 'student'],
         },
         {
+            text: 'Quản lý cuộc trò chuyện',
+            icon: <MessageIcon />,
+            path: '/conversation-monitor',
+            roles: ['admin'],
+        },
+        {
             text: 'Lịch & Sự kiện',
             icon: <EventIcon />,
             path: '/event-schedule',

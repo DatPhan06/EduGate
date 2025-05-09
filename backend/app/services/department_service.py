@@ -88,4 +88,35 @@ def remove_teacher_from_department(db: Session, department_id: int, teacher_user
     teacher.DepartmentID = None
     db.commit()
     db.refresh(teacher)
-    return teacher 
+    return teacher
+
+def create_department(db: Session, department: DepartmentCreate) -> DepartmentRead:
+    """
+    Create a new department
+    """
+    # Check if department with the same name already exists
+    existing_dept = db.query(Department).filter(Department.DepartmentName == department.DepartmentName).first()
+    if existing_dept:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Department with name '{department.DepartmentName}' already exists"
+        )
+    
+    # Create new department
+    db_department = Department(
+        DepartmentName=department.DepartmentName,
+        Description=department.Description
+    )
+    
+    # Add to database
+    db.add(db_department)
+    db.commit()
+    db.refresh(db_department)
+    
+    # Return the created department
+    return DepartmentRead(
+        DepartmentID=db_department.DepartmentID,
+        DepartmentName=db_department.DepartmentName,
+        Description=db_department.Description,
+        teachers=[] # New department has no teachers yet
+    ) 

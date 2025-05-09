@@ -6,7 +6,7 @@ from .database import get_db
 from .models import *
 from .config import settings
 from .routers import auth, user, reward_punishment, petition, message
-from .routers import classes_router, students_router, teachers_router
+from .routers import classes_router, students_router, teachers_router, admin_conversation_router
 from .routers import departments_router
 from .routers import parent_student_router
 from .database import engine, Base
@@ -46,3 +46,4 @@ app.include_router(students_router.router)
 app.include_router(teachers_router.router)
 app.include_router(departments_router.router)
 app.include_router(parent_student_router.router)
+app.include_router(admin_conversation_router.router)

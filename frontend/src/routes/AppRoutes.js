@@ -21,6 +21,7 @@ import AcademicResultsPage from '../pages/AcademicResults/AcademicResultsPage';
 import ReportsPage from '../pages/Reports/ReportsPage';
 import PrincipalDashboardPage from '../pages/Principal/PrincipalDashboardPage';
 import ClassManagementPage from '../pages/ClassManagement/ClassManagementPage';
+import ConversationMonitorPage from '../pages/Admin/ConversationMonitorPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -98,7 +99,16 @@ const AppRoutes = () => {
                         </ProtectedRoute>
                     }
                 />
+                <Route
+                    path="conversation-monitor"
+                    element={
+                        <ProtectedRoute roles={['admin']}>
+                            <ConversationMonitorPage />
+                        </ProtectedRoute>
+                    }
+                />
             </Route>
+
 
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />

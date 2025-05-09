@@ -146,7 +146,6 @@ def create_user(db: Session, user: UserCreate):
     elif user.role == 'admin':
         db_user.administrative_staff = AdministrativeStaff(
             AdminID=db_user.UserID,
-            Position=getattr(user, 'Position', None)
         )
     
     db.commit()

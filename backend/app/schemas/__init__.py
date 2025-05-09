@@ -17,5 +17,7 @@ from .message import (
     ConversationBase,
     ConversationCreate,
     ConversationRead,
-    ConversationPreview
+    ConversationPreview,
+    ConversationUpdateAdmin,
+    ConversationParticipantsUpdate
 )
