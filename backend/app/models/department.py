@@ -5,7 +5,7 @@ from ..base import Base
 class Department(Base):
     __tablename__ = "departments"
 
-    DepartmentID = Column(Integer, primary_key=True, index=True)
+    DepartmentID = Column(Integer, primary_key=True, index=True, autoincrement=True)
     DepartmentName = Column(String, unique=True)
     Description = Column(String)
 

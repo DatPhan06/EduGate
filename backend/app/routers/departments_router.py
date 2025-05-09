@@ -5,7 +5,7 @@ from typing import List
 # from ..dependencies import get_db 
 from ..database import get_db # Common pattern
 from ..services import department_service
-from ..schemas.department_schema import DepartmentRead
+from ..schemas.department_schema import DepartmentRead, DepartmentCreate
 from ..schemas.teacher_schema import TeacherBasicInfo
 from pydantic import BaseModel
 
@@ -63,4 +63,20 @@ def remove_teacher_from_department_route(department_id: int, teacher_user_id: in
     except HTTPException as e:
         raise e
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) 
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@router.post("/", response_model=DepartmentRead, status_code=status.HTTP_201_CREATED)
+def create_department_route(department: DepartmentCreate, db: Session = Depends(get_db)):
+    """
+    Create a new department
+    """
+    try:
+        created_department = department_service.create_department(db, department)
+        return created_department
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating department: {str(e)}"
+        ) 
