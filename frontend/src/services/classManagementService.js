@@ -1,6 +1,6 @@
 import { api } from './api'; // Assuming api.js exports the configured axios instance
 
-const API_BASE_URL = ''; // FastAPI routers are at root relative to API_URL in api.js
+const API_BASE_URL = 'http://localhost:8000'; // FastAPI routers are at root relative to API_URL in api.js
 
 // Teacher API
 export const getTeachers = async () => {

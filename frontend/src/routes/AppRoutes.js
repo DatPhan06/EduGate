@@ -24,6 +24,7 @@ import ClassManagementPage from '../pages/Admin/ClassManagementPage';
 import ConversationMonitorPage from '../pages/Admin/ConversationMonitorPage';
 import DepartmentManagementPage from '../pages/Admin/DepartmentManagementPage';
 import TimetableManagementPage from '../pages/Admin/TimetableManagementPage';
+import GradeManagementPage from '../pages/Admin/GradeManagementPage';
 import TimetableViewComponent from '../components/Timetable/TimetableViewComponent';
 
 // Protected Route Component
@@ -71,12 +72,31 @@ const AppRoutes = () => {
                         <Messages />
                     </ProtectedRoute>
                 } />
-                <Route path="event-schedule" element={<EventSchedulePage />} />
-                <Route path="petitions" element={<Petitions />} />
-                <Route path="rewards-discipline" element={<RewardsDisciplinePage />} />
-                <Route path="daily-log" element={<DailyLogPage />} />
-                <Route path="academic-results" element={<AcademicResultsPage />} />
-                <Route path="reports-statistics" element={<ReportsPage />} />
+                <Route path="event-schedule" element={
+                                        <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <EventSchedulePage />
+                    </ProtectedRoute>
+                } />
+                <Route path="petitions" element={
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <Petitions />
+                    </ProtectedRoute>
+                } />
+                <Route path="rewards-discipline" element={
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <RewardsDisciplinePage />
+                    </ProtectedRoute>
+                } />
+                <Route path="daily-log" element={
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <DailyLogPage />
+                    </ProtectedRoute>
+                } />
+                <Route path="academic-results" element={
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <AcademicResultsPage />
+                    </ProtectedRoute>
+                } />
 
                 <Route
                     path="user-management"
@@ -115,6 +135,14 @@ const AppRoutes = () => {
                     element={
                         <ProtectedRoute roles={['admin']}>
                             <TimetableManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="grade-management"
+                    element={
+                        <ProtectedRoute roles={['admin', 'teacher']}>
+                            <GradeManagementPage />
                         </ProtectedRoute>
                     }
                 />

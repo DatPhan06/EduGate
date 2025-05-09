@@ -41,6 +41,7 @@ import {
     Assessment as ReportsIcon,
     SupervisorAccount as PrincipalIcon,
     ClassOutlined as ClassIcon,
+    Grading as GradingIcon,
 } from '@mui/icons-material';
 
 /**
@@ -212,6 +213,12 @@ const Navbar = ({ onLayoutChange }) => {
             text: 'Quản lý lịch học',
             icon: <EventIcon />,
             path: '/timetable-management',
+            roles: ['admin'],
+        },
+        {
+            text: 'Quản lý điểm',
+            icon: <GradingIcon />,
+            path: '/grade-management',
             roles: ['admin'],
         },
         {
