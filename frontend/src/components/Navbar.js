@@ -186,6 +186,12 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['admin'],
         },
         {
+            text: 'Quản lý Phòng ban',
+            icon: <PeopleIcon />,
+            path: '/department-management',
+            roles: ['admin'],
+        },
+        {
             text: 'Tin nhắn',
             icon: <MessageIcon />,
             path: '/messaging',

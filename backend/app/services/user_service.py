@@ -347,7 +347,6 @@ def create_users_from_excel(db: Session, file: UploadFile):
                 "Occupation": user_data_dict.get("Occupation") if role_str == UserRole.PARENT.value else None,
             }
             
-            print(f"user_payload: {user_payload}")
 
             if not all([user_payload["FirstName"], user_payload["LastName"], user_payload["Email"], user_payload["Password"], user_payload["role"]]):
                 results["errors"].append(f"Row {index + 2} (Email: {user_payload.get('Email', 'N/A')}): Missing required fields (FirstName, LastName, Email, Password, role).")

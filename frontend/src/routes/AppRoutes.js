@@ -13,15 +13,16 @@ import Unauthorized from '../pages/Errors/Unauthorized';
 import NotFound from '../pages/Errors/NotFound';
 import UserProfile from '../pages/Users/UserProfile'; 
 import Login from '../pages/Auth/Login';
-import UserManagementPage from '../pages/UserManagement/UserManagementPage';
+import UserManagementPage from '../pages/Admin/UserManagementPage';
 import EventSchedulePage from '../pages/EventSchedule/EventSchedulePage';
 import RewardsDisciplinePage from '../pages/RewardsDiscipline/RewardsDisciplinePage';
 import DailyLogPage from '../pages/DailyLog/DailyLogPage';
 import AcademicResultsPage from '../pages/AcademicResults/AcademicResultsPage';
 import ReportsPage from '../pages/Reports/ReportsPage';
 import PrincipalDashboardPage from '../pages/Principal/PrincipalDashboardPage';
-import ClassManagementPage from '../pages/ClassManagement/ClassManagementPage';
+import ClassManagementPage from '../pages/Admin/ClassManagementPage';
 import ConversationMonitorPage from '../pages/Admin/ConversationMonitorPage';
+import DepartmentManagementPage from '../pages/Admin/DepartmentManagementPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -76,6 +77,33 @@ const AppRoutes = () => {
                 <Route path="reports-statistics" element={<ReportsPage />} />
 
                 <Route
+                    path="petitions"
+                    element={
+                        <ProtectedRoute roles={['admin']}>
+                            <UserManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+<Route
+                    path="petitions"
+                    element={
+                        <ProtectedRoute roles={['admin']}>
+                            <UserManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+<Route
+                    path="petitions"
+                    element={
+                        <ProtectedRoute roles={['admin']}>
+                            <UserManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
                     path="user-management"
                     element={
                         <ProtectedRoute roles={['admin']}>
@@ -88,6 +116,14 @@ const AppRoutes = () => {
                     element={
                         <ProtectedRoute roles={['admin']}>
                             <ClassManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="department-management"
+                    element={
+                        <ProtectedRoute roles={['admin']}>
+                            <DepartmentManagementPage />
                         </ProtectedRoute>
                     }
                 />

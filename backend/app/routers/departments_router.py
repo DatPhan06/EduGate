@@ -5,7 +5,7 @@ from typing import List
 # from ..dependencies import get_db 
 from ..database import get_db # Common pattern
 from ..services import department_service
-from ..schemas.department_schema import DepartmentRead, DepartmentCreate
+from ..schemas.department_schema import DepartmentRead, DepartmentCreate, DepartmentUpdate
 from ..schemas.teacher_schema import TeacherBasicInfo
 from pydantic import BaseModel
 
@@ -27,16 +27,6 @@ def read_department_detail(department_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Department not found")
     return department
 
-# Endpoint để lấy danh sách giáo viên trong một phòng ban cụ thể
-# Thực ra, thông tin này đã có trong GET /{department_id} nếu DepartmentRead đã bao gồm teachers
-# Nhưng nếu muốn một endpoint riêng biệt chỉ trả về danh sách giáo viên thì có thể làm như sau:
-@router.get("/{department_id}/teachers", response_model=List[TeacherBasicInfo])
-def get_teachers_in_department_route(department_id: int, db: Session = Depends(get_db)):
-    department = department_service.get_department_by_id(db, dept_id=department_id)
-    if not department:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Department not found")
-    return department.teachers
-
 @router.post("/{department_id}/teachers", status_code=status.HTTP_200_OK)
 def add_teacher_to_department_route(department_id: int, payload: AssignTeacherPayload, db: Session = Depends(get_db)):
     try:
@@ -55,15 +45,18 @@ def add_teacher_to_department_route(department_id: int, payload: AssignTeacherPa
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.delete("/{department_id}/teachers/{teacher_user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_teacher_from_department_route(department_id: int, teacher_user_id: int, db: Session = Depends(get_db)):
+@router.delete("/{department_id}/teachers/{teacher_id}", status_code=status.HTTP_200_OK)
+def remove_teacher_from_department_route(department_id: int, teacher_id: int, db: Session = Depends(get_db)):
     try:
-        department_service.remove_teacher_from_department(db, department_id=department_id, teacher_user_id=teacher_user_id)
-        return
+        department_service.remove_teacher_from_department(db, department_id=department_id, teacher_user_id=teacher_id)
+        return {"message": "Teacher removed from department successfully"}
     except HTTPException as e:
         raise e
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error removing teacher from department: {str(e)}"
+        )
 
 @router.post("/", response_model=DepartmentRead, status_code=status.HTTP_201_CREATED)
 def create_department_route(department: DepartmentCreate, db: Session = Depends(get_db)):
@@ -79,4 +72,46 @@ def create_department_route(department: DepartmentCreate, db: Session = Depends(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating department: {str(e)}"
-        ) 
+        )
+
+@router.put("/{department_id}", response_model=DepartmentRead)
+def update_department_route(department_id: int, department: DepartmentUpdate, db: Session = Depends(get_db)):
+    """
+    Update an existing department
+    """
+    try:
+        updated_department = department_service.update_department(db, department_id, department)
+        if not updated_department:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Department with ID {department_id} not found"
+            )
+        return updated_department
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating department: {str(e)}"
+        )
+
+@router.delete("/{department_id}", status_code=status.HTTP_200_OK)
+def delete_department_route(department_id: int, db: Session = Depends(get_db)):
+    """
+    Delete a department
+    """
+    try:
+        success = department_service.delete_department(db, department_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Department with ID {department_id} not found"
+            )
+        return {"message": f"Department with ID {department_id} deleted successfully"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting department: {str(e)}"
+        )
