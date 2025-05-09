@@ -204,6 +204,12 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['admin'],
         },
         {
+            text: 'Quản lý lịch học',
+            icon: <EventIcon />,
+            path: '/timetable-management',
+            roles: ['admin'],
+        },
+        {
             text: 'Lịch & Sự kiện',
             icon: <EventIcon />,
             path: '/event-schedule',

@@ -23,6 +23,7 @@ import PrincipalDashboardPage from '../pages/Principal/PrincipalDashboardPage';
 import ClassManagementPage from '../pages/Admin/ClassManagementPage';
 import ConversationMonitorPage from '../pages/Admin/ConversationMonitorPage';
 import DepartmentManagementPage from '../pages/Admin/DepartmentManagementPage';
+import TimetableManagementPage from '../pages/Admin/TimetableManagementPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -77,33 +78,6 @@ const AppRoutes = () => {
                 <Route path="reports-statistics" element={<ReportsPage />} />
 
                 <Route
-                    path="petitions"
-                    element={
-                        <ProtectedRoute roles={['admin']}>
-                            <UserManagementPage />
-                        </ProtectedRoute>
-                    }
-                />
-
-<Route
-                    path="petitions"
-                    element={
-                        <ProtectedRoute roles={['admin']}>
-                            <UserManagementPage />
-                        </ProtectedRoute>
-                    }
-                />
-
-<Route
-                    path="petitions"
-                    element={
-                        <ProtectedRoute roles={['admin']}>
-                            <UserManagementPage />
-                        </ProtectedRoute>
-                    }
-                />
-
-                <Route
                     path="user-management"
                     element={
                         <ProtectedRoute roles={['admin']}>
@@ -124,6 +98,14 @@ const AppRoutes = () => {
                     element={
                         <ProtectedRoute roles={['admin']}>
                             <DepartmentManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="timetable-management"
+                    element={
+                        <ProtectedRoute roles={['admin']}>
+                            <TimetableManagementPage />
                         </ProtectedRoute>
                     }
                 />
