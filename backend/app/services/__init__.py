@@ -3,3 +3,11 @@ from . import message_service
 from . import user_service
 from . import auth_service
 from . import petition_service
+from . import department_service
+from . import class_service
+from . import student_service
+from . import teacher_service
+from . import parent_student_service
+from . import subject_service
+from . import subject_schedule_service
+from . import class_subject_service
