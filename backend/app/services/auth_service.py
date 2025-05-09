@@ -4,6 +4,11 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from ..config import settings
 from ..schemas.user import TokenData
+from fastapi import Depends, HTTPException, status, Header
+from sqlalchemy.orm import Session
+from .. import models
+from ..database import get_db
+from ..services import user_service
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -39,4 +44,24 @@ def get_current_user_email(token: str) -> Optional[str]:
         token_data = TokenData(email=email)
         return token_data.email
     except JWTError:
-        return None 
+        return None
+
+async def get_current_active_user(authorization: str = Header(None), db: Session = Depends(get_db)) -> models.User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if not authorization or not authorization.startswith("Bearer "):
+        raise credentials_exception
+    
+    token = authorization.split(" ")[1]
+    email = get_current_user_email(token)
+    if email is None:
+        raise credentials_exception
+    
+    user = user_service.get_user_by_email(db, email=email)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    return user 

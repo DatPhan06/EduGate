@@ -5,34 +5,13 @@ from typing import List, Optional
 
 from .. import schemas, services, models
 from ..database import get_db
-from ..services import auth_service # To get current user
+from ..services.auth_service import get_current_active_user # Import a centralized function
 
 router = APIRouter(
     prefix="/messaging",
     tags=["messaging"],
     responses={404: {"description": "Not found"}},
 )
-
-async def get_current_active_user(authorization: str = Header(None), db: Session = Depends(get_db)) -> models.User:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    token = authorization.split(" ")[1]
-    email = auth_service.get_current_user_email(token)
-    if email is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    user = services.user_service.get_user_by_email(db, email=email)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    # TODO: Add check for user.Status == 'ACTIVE' if needed
-    return user
 
 @router.get("/conversations", response_model=List[schemas.ConversationPreview])
 def get_my_conversations(

@@ -56,3 +56,11 @@ class ConversationPreview(ConversationBase):
     model_config = {
         "from_attributes": True
     }
+
+# Schema for Admin to update conversation details
+class ConversationUpdateAdmin(ConversationBase):
+    Name: str # Make Name mandatory for admin updates, can be changed to Optional[str] if needed
+
+# Schema for updating conversation participants
+class ConversationParticipantsUpdate(BaseModel):
+    user_ids: List[int] = [] # Allow empty list if that's a valid use case, or use Field(..., min_items=1)
