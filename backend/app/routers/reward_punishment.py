@@ -276,3 +276,29 @@ async def get_my_rewards_punishments(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve rewards/punishments: {str(e)}"
         )
+
+@router.get("/", response_model=List[schemas.RewardPunishmentRead])
+async def get_all_reward_punishments(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """
+    Lấy danh sách tất cả khen thưởng/kỷ luật trong hệ thống
+    - **Permissions**: Admin, Teacher
+    """
+    try:
+        # Kiểm tra quyền truy cập
+        if current_user.role not in [UserRole.ADMIN, UserRole.TEACHER]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền xem toàn bộ danh sách khen thưởng/kỷ luật"
+            )
+        
+        return reward_punishment_service.get_all_reward_punishments(db=db)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve all rewards/punishments: {str(e)}"
+        )

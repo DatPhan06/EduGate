@@ -9,7 +9,7 @@ from .routers import auth, user, reward_punishment, petition, message
 from .routers import classes_router, students_router, teachers_router, admin_conversation_router
 from .routers import departments_router, subjects_router, timetable_router
 from .routers import parent_student_router, class_post_router
-from .routers import grade_router, class_subjects_router
+from .routers import grade_router, class_subjects_router, event_router
 from .database import engine, Base
 from fastapi.staticfiles import StaticFiles
 import os
@@ -38,6 +38,9 @@ app.mount(
     StaticFiles(directory=os.path.join(os.path.dirname(__file__), "../public")),
     name="public"
 )
+
+# Create upload directory if it doesn't exist
+os.makedirs(os.path.join(os.path.dirname(__file__), "../uploads/events"), exist_ok=True)
 
 @app.get("/")
 async def root():
@@ -70,3 +73,6 @@ app.include_router(grade_router.router)
 
 # Add daily progress router
 app.include_router(daily_progress.router)
+
+# Add event management router
+app.include_router(event_router.router)

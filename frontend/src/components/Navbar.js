@@ -42,10 +42,10 @@ import {
     Assessment as ReportsIcon,
     SupervisorAccount as PrincipalIcon,
     ClassOutlined as ClassIcon,
-    Announcement as AnnouncementIcon,
     Grading as GradingIcon,
     MenuBook as MenuBookIcon,
-
+    Dashboard as DashboardIcon,
+    Admin as AdminIcon,
 } from '@mui/icons-material';
 import { useBGHTeacher } from '../contexts/BGHTeacherContext';
 
@@ -205,6 +205,12 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['admin'],
         },
         {
+            text: 'Quản lý sự kiện',
+            icon: <EventIcon />,
+            path: '/admin/event-management',
+            roles: ['admin'],
+        },
+        {
             text: 'Tin nhắn',
             icon: <MessageIcon />,
             path: '/messaging',
@@ -241,28 +247,22 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['teacher'],
         },
         {
+            text: 'Quản lý khen thưởng/kỷ luật',
+            icon: <EmojiEventsIcon />,
+            path: '/teacher/rewards-discipline',
+            roles: ['teacher'],
+        },
+        {
             text: 'Lịch & Sự kiện',
             icon: <EventIcon />,
             path: '/event-schedule',
             roles: ['teacher', 'parent', 'student'],
         },
         {
-            text: 'Thông báo lớp',
-            icon: <AnnouncementIcon />,
-            path: '/teacher/class-events',
-            roles: ['teacher'],
-        },
-        {
-            text: 'Thông báo lớp',
-            icon: <AnnouncementIcon />,
-            path: '/student/class-events',
-            roles: ['student'],
-        },
-        {
             text: 'Khen thưởng/Kỷ luật',
             icon: <EmojiEventsIcon />,
             path: '/rewards-discipline',
-            roles: ['admin', 'teacher', 'parent', 'student'],
+            roles: ['parent', 'student'],
         },
         {
             text: 'Sổ liên lạc',
@@ -274,17 +274,12 @@ const Navbar = ({ onLayoutChange }) => {
                 return 'Xem sổ liên lạc';
             }
         },
-        {
-            text: 'Kết quả học tập',
-            icon: <SchoolIcon />,
-            path: '/academic-results',
-            roles: ['teacher', 'parent', 'student'],
-        },
+
         {
             text: 'Xem điểm số',
             icon: <GradingIcon />,
             path: '/student/grades',
-            roles: ['student'],
+            roles: ['student', 'parent'],
         },
         {
             text: 'Báo cáo & Thống kê',

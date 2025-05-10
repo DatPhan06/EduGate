@@ -38,6 +38,10 @@ const viewStudentRewardPunishments = (studentId) => {
     return api.get(`${API_URL}/student/${studentId}/view`, { headers: getAuthHeaders() });
 };
 
+const getAllRewardPunishments = () => {
+    return api.get(`${API_URL}`, { headers: getAuthHeaders() });
+};
+
 // Thêm các hàm khác nếu cần
 
 const rewardPunishmentService = {
@@ -46,7 +50,8 @@ const rewardPunishmentService = {
     getStudentRewardPunishments,
     getClassRewardPunishments,
     getMyRewardsPunishments,      
-    viewStudentRewardPunishments, 
+    viewStudentRewardPunishments,
+    getAllRewardPunishments,
 };
 
 export default rewardPunishmentService;

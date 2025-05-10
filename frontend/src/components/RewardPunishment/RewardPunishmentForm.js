@@ -39,6 +39,7 @@ const RewardPunishmentForm = ({ targetType, onSuccess, onError }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [openSnackbar, setOpenSnackbar] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = useState('success');
     // Optional states for dropdowns
     // const [students, setStudents] = useState([]);
     // const [classes, setClasses] = useState([]);
@@ -67,11 +68,18 @@ const RewardPunishmentForm = ({ targetType, onSuccess, onError }) => {
     const handleDateChange = (newDate) => {
         setFormData(prev => ({ ...prev, Date: newDate }));
     };
+    
     const handleCloseSnackbar = (event, reason) => {
         if (reason === 'clickaway') {
             return;
         }
         setOpenSnackbar(false);
+    };
+    
+    const showNotification = (message, severity) => {
+        setSnackbarMessage(message);
+        setSnackbarSeverity(severity);
+        setOpenSnackbar(true);
     };
 
     const handleSubmit = async (e) => {
@@ -83,10 +91,13 @@ const RewardPunishmentForm = ({ targetType, onSuccess, onError }) => {
         // Điều chỉnh dữ liệu phù hợp với cấu trúc backend yêu cầu
         const dataToSend = {
             // Các trường trong RewardPunishmentBase
+            title: formData.Title || "Khen thưởng/Kỷ luật",
             type: formData.Type === 'REWARD' ? 'reward' : 'punishment',
             description: formData.Description || "",
             date: formData.Date ? formData.Date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
             issuer_id: currentUser?.id || currentUser?.UserID || 1,
+            semester: formData.Semester || null,
+            week: formData.Week ? parseInt(formData.Week, 10) : null,
             
             // Trường cho StudentRewardPunishmentCreate
             student_id: formData.StudentID ? parseInt(formData.StudentID, 10) : null,
@@ -94,6 +105,8 @@ const RewardPunishmentForm = ({ targetType, onSuccess, onError }) => {
     
         try {
             let response;
+            let successMsg = '';
+            
             if (targetType === 'student') {
                 if (!formData.StudentID) {
                     throw new Error("Vui lòng nhập ID Học sinh.");
@@ -102,7 +115,8 @@ const RewardPunishmentForm = ({ targetType, onSuccess, onError }) => {
                 console.log("Sending data to backend:", dataToSend); // Log để debug
                 
                 response = await rewardPunishmentService.createStudentRewardPunishment(dataToSend);
-                setSuccess(`Khen thưởng/Kỷ luật cho học sinh ID ${formData.StudentID} đã được tạo thành công!`);
+                successMsg = `Khen thưởng/Kỷ luật cho học sinh ID ${formData.StudentID} đã được tạo thành công!`;
+                setSuccess(successMsg);
             } else if (targetType === 'class') {
                 if (!formData.ClassID) {
                     throw new Error("Vui lòng nhập ID Lớp học.");
@@ -112,11 +126,11 @@ const RewardPunishmentForm = ({ targetType, onSuccess, onError }) => {
                 delete dataToSend.student_id;
                 
                 response = await rewardPunishmentService.createClassRewardPunishment(dataToSend);
-                setSuccess(`Khen thưởng/Kỷ luật cho lớp ID ${formData.ClassID} đã được tạo thành công!`);
+                successMsg = `Khen thưởng/Kỷ luật cho lớp ID ${formData.ClassID} đã được tạo thành công!`;
+                setSuccess(successMsg);
             }
 
-            setSnackbarMessage(successMessage);
-            setOpenSnackbar(true);
+            showNotification(successMsg, 'success');
             setFormData(initialFormData);
             if (onSuccess) onSuccess(response.data);
         } catch (err) {
@@ -124,6 +138,7 @@ const RewardPunishmentForm = ({ targetType, onSuccess, onError }) => {
             const errorMsg = err.response?.data?.detail || err.message || 
                 `Không thể tạo ${targetType === 'student' ? 'khen thưởng/kỷ luật học sinh' : 'khen thưởng/kỷ luật lớp'}.`;
             setError(errorMsg);
+            showNotification(errorMsg, 'error');
             if (onError) onError(errorMsg);
         } finally {
             setLoading(false);
@@ -256,10 +271,9 @@ const RewardPunishmentForm = ({ targetType, onSuccess, onError }) => {
                     open={openSnackbar}
                     autoHideDuration={6000}
                     onClose={handleCloseSnackbar}
-                    message={snackbarMessage}
                     anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
                 >
-                    <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: '100%' }}>
+                    <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
                         {snackbarMessage}
                     </Alert>
                 </Snackbar>

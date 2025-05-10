@@ -109,3 +109,56 @@ def get_student_rnps(db: Session, student_id: int) -> List[schemas.StudentRNPRea
         )
         result.append(student_rnp_item)
     return result
+
+def get_all_reward_punishments(db: Session) -> List[schemas.RewardPunishmentRead]:
+    """
+    Lấy tất cả khen thưởng kỷ luật trong hệ thống
+    
+    Args:
+        db: Database session
+        
+    Returns:
+        Danh sách các bản ghi khen thưởng/kỷ luật đã chuyển đổi sang schema
+    """
+    try:
+        # Query tất cả bản ghi khen thưởng/kỷ luật, sắp xếp theo thời gian tạo giảm dần
+        db_records = db.query(models.RewardPunishment).order_by(models.RewardPunishment.Date.desc()).all()
+        
+        result = []
+        for record in db_records:
+            record_type_str = ""
+            if isinstance(record.Type, RNPType):
+                record_type_str = record.Type.value
+            elif isinstance(record.Type, str):  # Handle if it's already a string
+                record_type_str = record.Type
+
+            # Ensure date is handled correctly (date vs datetime)
+            record_date = None
+            if record.Date:
+                if hasattr(record.Date, 'date'):  # If it's a datetime object
+                    record_date = record.Date.date()
+                else:  # If it's already a date object
+                    record_date = record.Date
+
+            # Create schema object
+            reward_punishment_data = schemas.RewardPunishmentRead(
+                RecordID=record.RecordID,
+                Title=record.Title,
+                Type=record_type_str,
+                description=record.Description,
+                date=record_date,
+                Semester=record.Semester,
+                Week=record.Week,
+                StudentID=record.StudentID,
+                # Fields from RewardPunishmentBase
+                type=record_type_str,
+                issuer_id=record.AdminID
+            )
+            
+            result.append(reward_punishment_data)
+            
+        return result
+    except Exception as e:
+        print(f"Error in get_all_reward_punishments: {str(e)}")
+        # Trả về danh sách trống để tránh lỗi
+        return []

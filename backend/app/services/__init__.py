@@ -11,3 +11,4 @@ from . import parent_student_service
 from . import subject_service
 from . import subject_schedule_service
 from . import class_subject_service
+from . import event_service

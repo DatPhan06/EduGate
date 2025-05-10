@@ -18,6 +18,7 @@ import UserProfile from '../pages/Users/UserProfile';
 import Login from '../pages/Auth/Login';
 import UserManagementPage from '../pages/Admin/UserManagementPage';
 import EventSchedulePage from '../pages/EventSchedule/EventSchedulePage';
+import EventDetailPage from '../pages/EventSchedule/EventDetailPage';
 import RewardsDisciplinePage from '../pages/RewardsDiscipline/RewardsDisciplinePage';
 import ViewDailyLogPage from '../pages/DailyLog/ViewDailyLogPage';
 import ManageDailyLogPage from '../pages/DailyLog/ManageDailyLogPage';
@@ -33,7 +34,7 @@ import TimetableViewComponent from '../components/Timetable/TimetableViewCompone
 import ClassEventsPage from '../pages/ClassEventsPage';
 import TeacherClassEventsPage from '../pages/Teacher/TeacherClassEventsPage';
 import StudentClassEventsPage from '../pages/Student/StudentClassEventsPage';
-
+import EventManagementPage from '../pages/Admin/EventManagementPage';
 
 // Teacher Pages
 import HomeroomClassPage from '../pages/Teacher/HomeroomClassPage';
@@ -43,6 +44,7 @@ import TeachingSubjectsPage from '../pages/Teacher/TeachingSubjectsPage';
 import ClassSubjectStudentsPage from '../pages/Teacher/ClassSubjectStudentsPage';
 import SubjectStudentGradesPage from '../pages/Teacher/SubjectStudentGradesPage';
 import HomeroomClassGradesPage from '../pages/Teacher/HomeroomClassGradesPage';
+import TeacherRewardsDisciplinePage from '../pages/Teacher/TeacherRewardsDisciplinePage';
 
 // Student Pages
 import StudentGradesViewPage from '../pages/Student/StudentGradesViewPage';
@@ -100,8 +102,13 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
                 <Route path="event-schedule" element={
-                                        <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
                         <EventSchedulePage />
+                    </ProtectedRoute>
+                } />
+                <Route path="event-schedule/:eventId" element={
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <EventDetailPage />
                     </ProtectedRoute>
                 } />
                 <Route path="petitions" element={
@@ -115,7 +122,7 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
                 <Route path="rewards-discipline" element={
-                    <ProtectedRoute roles={[ 'admin', 'teacher', 'parent', 'student']}>
+                    <ProtectedRoute roles={['admin', 'parent', 'student']}>
                         <RewardsDisciplinePage />
                     </ProtectedRoute>
                 } />
@@ -134,6 +141,11 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
 
+                <Route path="reports-statistics" element={
+                    <ProtectedRoute roles={['admin']}>
+                        <ReportsPage />
+                    </ProtectedRoute>
+                } />
                 {/* Teacher Homeroom Routes */}
                 <Route
                     path="teacher/homeroom"
@@ -190,6 +202,16 @@ const AppRoutes = () => {
                     element={
                         <ProtectedRoute roles={['teacher']}>
                             <SubjectStudentGradesPage />
+                        </ProtectedRoute>
+                    }
+                />
+                
+                {/* Teacher Rewards and Discipline Management */}
+                <Route
+                    path="teacher/rewards-discipline"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <TeacherRewardsDisciplinePage />
                         </ProtectedRoute>
                     }
                 />
@@ -306,6 +328,15 @@ const AppRoutes = () => {
                         }
                     />
                 )}
+
+                <Route
+                    path="admin/event-management"
+                    element={
+                        <ProtectedRoute roles={['admin']}>
+                            <EventManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
             </Route>
 
             {/* 404 Route */}
