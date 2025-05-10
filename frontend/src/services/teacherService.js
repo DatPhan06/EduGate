@@ -125,16 +125,57 @@ const deleteGrade = async (gradeId) => {
   }
 };
 
-// Get subjects taught by teacher
-const getTeacherSubjects = async (teacherId) => {
+// Get class subjects with semester and academic year information
+const getClassSubjectsInfo = async () => {
   try {
     const token = localStorage.getItem('token');
-    const response = await api.get(`/teachers/${teacherId}/teaching-subjects`, {
+    const response = await api.get('/timetable/class-subjects/', {
       headers: {
         Authorization: `Bearer ${token}`
       }
     });
     return response.data;
+  } catch (error) {
+    console.error('Error fetching class subjects info:', error);
+    throw error;
+  }
+};
+
+// Get subjects taught by teacher
+const getTeacherSubjects = async (teacherId) => {
+  try {
+    const token = localStorage.getItem('token');
+    
+    // Get teacher subjects
+    const subjectsResponse = await api.get(`/teachers/${teacherId}/teaching-subjects`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    
+    // Get class subjects info with semester and academic year
+    const classSubjectsInfo = await getClassSubjectsInfo();
+    
+    // Create a lookup map for class subjects
+    const classSubjectsMap = {};
+    classSubjectsInfo.forEach(item => {
+      classSubjectsMap[item.ClassSubjectID] = {
+        semester: item.Semester,
+        academic_year: item.AcademicYear
+      };
+    });
+    
+    // Enrich the teacher subjects data with semester and academic year info
+    const enrichedData = subjectsResponse.data.map(classItem => ({
+      ...classItem,
+      subjects: classItem.subjects.map(subject => ({
+        ...subject,
+        semester: classSubjectsMap[subject.class_subject_id]?.semester || 'HK1',
+        academic_year: classSubjectsMap[subject.class_subject_id]?.academic_year || '2023-2024'
+      }))
+    }));
+    
+    return enrichedData;
   } catch (error) {
     console.error('Error fetching teacher subjects:', error);
     throw error;
@@ -319,5 +360,6 @@ export {
   initializeGradeComponents,
   getClassGrades,
   getClassSubjects,
-  getStudentById
+  getStudentById,
+  getClassSubjectsInfo
 }; 
