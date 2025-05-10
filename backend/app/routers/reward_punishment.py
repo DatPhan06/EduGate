@@ -67,16 +67,8 @@ async def check_permission_for_student_rnp(
     
     # Student chỉ xem được của mình
     if current_user.role == UserRole.STUDENT:
-        student = db.query(models.Student).filter(
-            models.Student.StudentID == current_user.UserID
-        ).first()
-        
-        if not student:
-            raise HTTPException(status_code=404, detail="Student profile not found")
-            
-        if student.StudentID != student_id:
+        if current_user.UserID != student_id:
             raise HTTPException(status_code=403, detail="You can only view your own rewards/punishments")
-        
         return True
         
     # Parent chỉ xem được của con mình
@@ -92,7 +84,6 @@ async def check_permission_for_student_rnp(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only view rewards/punishments for your children"
             )
-        
         return True
     
     # Các vai trò khác không có quyền xem
@@ -196,14 +187,15 @@ async def create_new_class_reward_punishment(
 async def get_student_rewards_punishments(
     student_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(check_admin)
+    _: bool = Depends(check_permission_for_student_rnp)  # Thay đổi từ check_admin sang check_permission_for_student_rnp
 ):
     """
     Lấy danh sách khen thưởng/kỷ luật của một học sinh.
 
-    - **Permissions**: Admin, Teacher
+    - **Permissions**: Admin, Teacher, Student (self), Parent (for their children)
     """
     try:
+        # Sử dụng service giống như view endpoint
         return reward_punishment_service.get_student_rnps(db=db, student_id=student_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

@@ -28,35 +28,34 @@ const RewardsDisciplinePage = () => {
   const [refreshList, setRefreshList] = useState(false);
 
 
-useEffect(() => {
-  const fetchUserData = async () => {
-    try {
-      const user = authService.getCurrentUser();
-      if (user) {
-        setCurrentUser(user);
-        setUserRole(user.role);
-        
-        // Student sẽ xem dữ liệu của bản thân
-        if (user.role === 'student') {
-          setStudentIdForView(user.UserID || user.id);
-        }
-        // Parent sẽ cần chọn con (hoặc mặc định là con đầu tiên)
-        else if (user.role === 'parent') {
-          // Đây là một ví dụ đơn giản, bạn có thể cần tải danh sách con
-          // và cho phép parent chọn con cụ thể
-          const response = await parentService.getChildren();
-          if (response.data && response.data.length > 0) {
-            setStudentIdForView(response.data[0].StudentID);
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const user = authService.getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+          setUserRole(user.role);
+  
+          // Student sẽ xem dữ liệu của bản thân
+          if (user.role === 'student') {
+            setStudentIdForView(user.UserID || user.id);
+          }
+          // Parent sẽ cần chọn con (hoặc mặc định là con đầu tiên)
+          else if (user.role === 'parent') {
+            const response = await parentService.getChildren();
+            if (response.data && response.data.length > 0) {
+              setStudentIdForView(response.data[0].StudentID);
+              // Có thể thêm select box để chọn con nếu có nhiều con
+            }
           }
         }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
       }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-    }
-  };
-
-  fetchUserData();
-}, []);
+    };
+  
+    fetchUserData();
+  }, []);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);

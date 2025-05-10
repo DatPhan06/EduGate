@@ -95,7 +95,7 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
                 <Route path="rewards-discipline" element={
-                    <ProtectedRoute roles={[ 'admin']}>
+                    <ProtectedRoute roles={[ 'admin', 'teacher', 'parent', 'student']}>
                         <RewardsDisciplinePage />
                     </ProtectedRoute>
                 } />
