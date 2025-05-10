@@ -13,6 +13,7 @@ from .routers import grade_router, class_subjects_router
 from .database import engine, Base
 from fastapi.staticfiles import StaticFiles
 import os
+from .routers import daily_progress
 
 # Tạo bảng trong database
 Base.metadata.create_all(bind=engine)
@@ -66,3 +67,6 @@ app.include_router(class_subjects_router.router)
 
 # Add grade management router
 app.include_router(grade_router.router)
+
+# Add daily progress router
+app.include_router(daily_progress.router)

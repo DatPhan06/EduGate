@@ -269,6 +269,10 @@ const Navbar = ({ onLayoutChange }) => {
             icon: <DailyLogIcon />,
             path: '/daily-log',
             roles: ['teacher', 'parent', 'student'],
+            getText: (userRole) => {
+                if (userRole === 'teacher') return 'Quản lý sổ liên lạc';
+                return 'Xem sổ liên lạc';
+            }
         },
         {
             text: 'Kết quả học tập',
