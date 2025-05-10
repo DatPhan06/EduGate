@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Header
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Header, File, UploadFile, Form
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..services import petition_service, auth_service, user_service
@@ -16,8 +16,11 @@ from ..schemas.petition import (
     PetitionListResponse,
     PetitionStatisticsResponse
 )
+import os
 
 router = APIRouter(prefix="/petitions", tags=["petitions"])
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Dependency for authorization
 async def get_current_active_user(
@@ -184,7 +187,7 @@ async def get_petitions(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Retrieve list of petitions with optional filters (ADMIN only).
+    Retrieve list of petitions with optional filters (ADMIN or BGH teacher only).
 
     Args:
         status: Filter by petition status (e.g., PENDING, APPROVED)
@@ -198,18 +201,25 @@ async def get_petitions(
 
     Raises:
         HTTPException:
-            - 403 if user is not an ADMIN
+            - 403 if user is not an ADMIN or BGH teacher
             - 400 for invalid filter parameters
             - 500 for internal server errors
 
     Returns:
         PetitionListResponse: List of petitions with pagination info
     """
-    # Check if user is ADMIN
-    if current_user.role != UserRole.ADMIN:
+    # Check if user is ADMIN or BGH teacher
+    if not (
+        current_user.role == UserRole.ADMIN or
+        (current_user.role == UserRole.TEACHER and
+         hasattr(current_user, "teacher") and
+         current_user.teacher and
+         current_user.teacher.department and
+         current_user.teacher.department.DepartmentName == "BGH")
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only ADMIN can access this endpoint"
+            detail="Only ADMIN or BGH teachers can access this endpoint"
         )
 
     try:
@@ -286,8 +296,16 @@ async def get_petition(
         if not petition:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Petition not found")
 
-        # Check authorization: only petition owner or admin
-        if current_user.role != UserRole.ADMIN and petition.ParentID != current_user.UserID:
+        # Check authorization: only petition owner, admin, or BGH teacher
+        if not (
+            current_user.role == UserRole.ADMIN or
+            (current_user.role == UserRole.TEACHER and
+             hasattr(current_user, "teacher") and
+             current_user.teacher and
+             current_user.teacher.department and
+             current_user.teacher.department.DepartmentName == "BGH") or
+            petition.ParentID == current_user.UserID
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to view this petition"
@@ -296,6 +314,29 @@ async def get_petition(
         # Map to PetitionResponse
         if not petition.parent or not petition.parent.user:
             raise ValueError("Parent or user information not found for this petition")
+
+        # Chuẩn hóa danh sách file đính kèm
+        petition_files = []
+        if hasattr(petition, 'petition_files') and petition.petition_files:
+            for f in petition.petition_files:
+                # Tạo đường dẫn public
+                public_path = f.FilePath
+                # Nếu lưu tuyệt đối, chuyển về dạng /public/...
+                if public_path:
+                    idx = public_path.replace('\\', '/').find('/public/')
+                    if idx != -1:
+                        public_url = public_path.replace('\\', '/')[idx:]
+                    else:
+                        public_url = '/public/petitions/' + f.FileName
+                else:
+                    public_url = ''
+                petition_files.append({
+                    'FileID': f.FileID,
+                    'FileName': f.FileName,
+                    'FileUrl': public_url,
+                    'FileSize': f.FileSize,
+                    'ContentType': f.ContentType
+                })
 
         return PetitionResponse(
             PetitionID=petition.PetitionID,
@@ -306,7 +347,8 @@ async def get_petition(
             SubmittedAt=petition.SubmittedAt,
             AdminID=petition.AdminID,
             Response=petition.Response,
-            parent=User.from_orm(petition.parent.user)
+            parent=User.from_orm(petition.parent.user),
+            petition_files=petition_files
         )
 
     except ValueError as e:
@@ -319,28 +361,48 @@ async def get_petition(
 
 @router.post("/", response_model=PetitionResponse)
 async def create_petition(
-    petition: PetitionCreate,
+    Title: str = Form(...),
+    Content: str = Form(...),
+    files: Optional[List[UploadFile]] = File(None),
     current_user: User = Depends(check_parent),
     db: Session = Depends(get_db)
 ):
     """
-    Tạo một đơn thỉnh cầu mới
+    Tạo một đơn thỉnh cầu mới, cho phép upload file
     """
     try:
-        # Lấy parent từ relationship của user
         if not current_user.parent:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Parent profile not found. Please complete your parent profile first."
             )
-
-        # Tạo petition với ParentID
+        # Tạo petition
+        petition_in = PetitionCreate(Title=Title, Content=Content)
         db_petition = petition_service.PetitionService.create_petition(
             db=db,
-            petition=petition,
+            petition=petition_in,
             parent_id=current_user.parent.ParentID
         )
-        
+        # Xử lý file upload
+        petition_files = []
+        if files:
+            petition_dir = os.path.join(ROOT_DIR, 'public', 'petitions')
+            os.makedirs(petition_dir, exist_ok=True)
+            for file in files:
+                file_location = os.path.join(petition_dir, file.filename)
+                with open(file_location, "wb") as f:
+                    f.write(await file.read())
+                # Lưu file_path là đường dẫn tương đối (public/petitions/...) để không bị tuyệt đối hóa
+                relative_file_path = os.path.join('public', 'petitions', file.filename).replace('\\', '/').replace('\\', '/')
+                petition_file = petition_service.PetitionService.create_petition_file(
+                    db=db,
+                    petition_id=db_petition.PetitionID,
+                    file_name=file.filename,
+                    file_path=relative_file_path,
+                    file_size=file.spool_max_size if hasattr(file, 'spool_max_size') else None,
+                    content_type=file.content_type
+                )
+                petition_files.append(petition_file)
         # Tạo response object
         response = PetitionResponse(
             PetitionID=db_petition.PetitionID,
@@ -353,7 +415,6 @@ async def create_petition(
             Response=db_petition.Response,
             parent=current_user
         )
-        
         return response
     except Exception as e:
         raise HTTPException(
@@ -436,7 +497,7 @@ async def get_petition_statistics(
     current_user: User= Depends(get_current_active_user)
 ):
     """
-    Retrieve statistics of petitions by status (ADMIN only).
+    Retrieve statistics of petitions by status (ADMIN or BGH teacher only).
 
     Args:
         start_date: Start date for filtering petitions (optional)
@@ -446,17 +507,24 @@ async def get_petition_statistics(
 
     Raises:
         HTTPException:
-            - 403 if user is not an ADMIN
+            - 403 if user is not an ADMIN or BGH teacher
             - 400 for invalid date range (e.g., start_date > end_date)
             - 500 for internal server errors
 
     Returns:
         PetitionStatisticsResponse: Dictionary with count of petitions by status
     """
-    if current_user.role != UserRole.ADMIN:
+    if not (
+        current_user.role == UserRole.ADMIN or
+        (current_user.role == UserRole.TEACHER and
+         hasattr(current_user, "teacher") and
+         current_user.teacher and
+         current_user.teacher.department and
+         current_user.teacher.department.DepartmentName == "BGH")
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only ADMIN can access statistics"
+            detail="Only ADMIN or BGH teachers can access statistics"
         )
 
     if start_date and end_date and start_date > end_date:

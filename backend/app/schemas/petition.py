@@ -51,6 +51,17 @@ class PetitionInDB(PetitionBase):
         "from_attributes": True
     }
 
+class PetitionFileResponse(BaseModel):
+    FileID: int
+    FileName: str
+    FileUrl: str
+    FileSize: Optional[int] = None
+    ContentType: str
+
+    model_config = {
+        "from_attributes": True
+    }
+
 class PetitionResponse(PetitionBase):
     PetitionID: int
     ParentID: int
@@ -59,6 +70,7 @@ class PetitionResponse(PetitionBase):
     AdminID: Optional[int] = None
     Response: Optional[str] = None
     parent: User
+    petition_files: List[PetitionFileResponse] = []
 
     model_config = {
         "from_attributes": True

@@ -1,6 +1,9 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import authService from '../services/authService';
+import BGHPetitionsView from '../pages/Petitions/BGHPetitionsView';
+import axios from 'axios';
+import { useBGHTeacher } from '../contexts/BGHTeacherContext';
 
 // Layout Components
 import MainLayout from '../layouts/MainLayout';
@@ -64,6 +67,13 @@ const ProtectedRoute = ({ children, roles = [] }) => {
 };
 
 const AppRoutes = () => {
+    const currentUser = authService.getCurrentUser();
+    // Lấy trạng thái giáo viên BGH từ context
+    const { isBGHTeacher, checked } = useBGHTeacher();
+
+    // Nếu chưa kiểm tra xong quyền, không render routes (tránh nháy route)
+    if (!checked) return null;
+
     return (
         <Routes>
             {/* Public Routes */}
@@ -290,6 +300,18 @@ const AppRoutes = () => {
                         </ProtectedRoute>
                     }
                 />
+
+                {/* Route dành riêng cho giáo viên BGH */}
+                {isBGHTeacher && (
+                    <Route
+                        path="bgh-petitions"
+                        element={
+                            <ProtectedRoute roles={['teacher']}>
+                                <BGHPetitionsView userId={currentUser?.UserID} />
+                            </ProtectedRoute>
+                        }
+                    />
+                )}
             </Route>
 
             {/* 404 Route */}

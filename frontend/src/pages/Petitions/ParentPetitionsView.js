@@ -24,7 +24,14 @@ import {
   IconButton,
 } from "@mui/material";
 import DescriptionIcon from "@mui/icons-material/Description";
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
 import petitionService from "../../services/petitionService"; // Giữ lại import service
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 // Component này nhận userId từ props
 const ParentPetitionsView = ({ userId }) => {
@@ -41,6 +48,7 @@ const ParentPetitionsView = ({ userId }) => {
   const [detailsError, setDetailsError] = useState(null);
   const [openDialog, setOpenDialog] = useState(false); // Dialog tạo đơn
   const [newPetition, setNewPetition] = useState({ Title: "", Content: "" });
+  const [selectedFiles, setSelectedFiles] = useState([]);
 
   // --- Helper Functions ---
   const formatDate = (isoString) => {
@@ -108,29 +116,33 @@ const ParentPetitionsView = ({ userId }) => {
     setOpenDialog(false);
   };
 
+  const handleFileChange = (e) => {
+    const newFiles = Array.from(e.target.files);
+    setSelectedFiles(prev => [...prev, ...newFiles]);
+  };
+
   const handleCreatePetition = async () => {
     if (!newPetition.Title || !newPetition.Content) {
         setError("Vui lòng nhập Tiêu đề và Nội dung.");
         return;
     }
-    setError(null); // Xóa lỗi hiển thị
+    setError(null);
     try {
-      console.log("Parent creating petition:", newPetition);
+      console.log("Parent creating petition:", newPetition, selectedFiles);
       await petitionService.createPetition({
         ...newPetition,
-        ParentID: userId, // Sử dụng userId từ props
-      });
+        ParentID: userId,
+      }, selectedFiles);
       handleCloseCreateDialog();
       setSuccessMessage("Tạo đơn thỉnh cầu thành công!");
       setOpenSnackbar(true);
-      setPage(1); // Quay về trang 1 để xem đơn mới nhất
-      fetchPetitions(); // Tải lại danh sách
+      setPage(1);
+      fetchPetitions();
+      setSelectedFiles([]);
     } catch (error) {
       console.error("Error creating petition:", error);
-      // Hiển thị lỗi cụ thể hơn nếu có từ API, nếu không thì báo lỗi chung
       const apiError = error.response?.data?.message || "Không thể tạo đơn thỉnh cầu. Vui lòng thử lại.";
       setError(apiError);
-       // Không đóng dialog khi lỗi để người dùng sửa
     }
   };
 
@@ -274,7 +286,7 @@ const ParentPetitionsView = ({ userId }) => {
             required
             value={newPetition.Title}
             onChange={(e) => setNewPetition({ ...newPetition, Title: e.target.value })}
-            error={!!error && !newPetition.Title} // Highlight lỗi nếu cần
+            error={!!error && !newPetition.Title}
             helperText={!!error && !newPetition.Title ? "Tiêu đề là bắt buộc" : ""}
           />
           <TextField
@@ -286,9 +298,25 @@ const ParentPetitionsView = ({ userId }) => {
             rows={4}
             value={newPetition.Content}
             onChange={(e) => setNewPetition({ ...newPetition, Content: e.target.value })}
-            error={!!error && !newPetition.Content} // Highlight lỗi nếu cần
-             helperText={!!error && !newPetition.Content ? "Nội dung là bắt buộc" : ""}
+            error={!!error && !newPetition.Content}
+            helperText={!!error && !newPetition.Content ? "Nội dung là bắt buộc" : ""}
           />
+          <input
+            type="file"
+            multiple
+            onChange={handleFileChange}
+            style={{ marginTop: 16 }}
+          />
+          {selectedFiles.length > 0 && (
+            <Box mt={1}>
+              <Typography variant="body2">File đã chọn:</Typography>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {selectedFiles.map((file, idx) => (
+                  <li key={idx}>{file.name}</li>
+                ))}
+              </ul>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseCreateDialog}>Hủy</Button>
@@ -312,9 +340,41 @@ const ParentPetitionsView = ({ userId }) => {
               <TextField label="Ngày tạo" value={formatDate(selectedPetition.SubmittedAt) || "N/A"} fullWidth InputProps={{ readOnly: true }} variant="outlined"/>
               <TextField label="Thời gian tạo" value={formatTime(selectedPetition.SubmittedAt) || "N/A"} fullWidth InputProps={{ readOnly: true }} variant="outlined"/>
               <TextField label="Phản hồi (Admin)" value={selectedPetition.Response || "Chưa có phản hồi"} fullWidth multiline rows={2} InputProps={{ readOnly: true }} variant="outlined"/>
+              {/* Hiển thị file đính kèm nếu có */}
+              {selectedPetition.petition_files && selectedPetition.petition_files.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>File đính kèm:</Typography>
+                  <List dense sx={{ pl: 1 }}>
+                    {selectedPetition.petition_files.map((file, idx) => (
+                      <ListItem key={idx} disablePadding>
+                        <ListItemIcon sx={{ minWidth: 32 }}>
+                          <AttachFileIcon color="primary" />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={
+                            <a
+                              href={`${API_URL}${file.FileUrl}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                color: '#1976d2',
+                                textDecoration: 'underline',
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {file.FileName}
+                            </a>
+                          }
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              )}
             </Box>
           ) : (
-            <Box display="flex" justifyContent="center" my={3}><CircularProgress /></Box> // Loading indicator for details
+            <Box display="flex" justifyContent="center" my={3}><CircularProgress /></Box>
           )}
         </DialogContent>
         <DialogActions>

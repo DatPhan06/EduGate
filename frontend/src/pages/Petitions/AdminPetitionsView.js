@@ -32,10 +32,17 @@ import {
   Tooltip,
 } from "@mui/material";
 import DescriptionIcon from "@mui/icons-material/Description";
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
 import petitionService from "../../services/petitionService"; // Giữ lại import service
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
 // Component này nhận userId (của admin) từ props
-const AdminPetitionsView = ({ userId }) => {
+const AdminPetitionsView = ({ userId, readOnly = false }) => {
   const [loadingPetitions, setLoadingPetitions] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
   const [error, setError] = useState(null);
@@ -321,14 +328,16 @@ const AdminPetitionsView = ({ userId }) => {
                   <TableCell sx={{ width: '10%', minWidth: 110 }}>Trạng thái</TableCell>
                   <TableCell sx={{ width: '10%', minWidth: 100 }}>Thời gian</TableCell>
                   <TableCell sx={{ width: '10%', minWidth: 110 }}>Ngày tạo</TableCell>
-                  <TableCell sx={{ width: '10%', minWidth: 110 }}>Thao tác</TableCell>
+                  {!readOnly && (
+                    <TableCell sx={{ width: '10%', minWidth: 110 }}>Thao tác</TableCell>
+                  )}
                   <TableCell sx={{ width: '10%', minWidth: 90 }}>Chi tiết</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {petitions.length === 0 ? (
                      <TableRow>
-                        <TableCell colSpan={9} align="center">Không tìm thấy đơn thỉnh cầu nào khớp với bộ lọc.</TableCell>
+                        <TableCell colSpan={readOnly ? 8 : 9} align="center">Không tìm thấy đơn thỉnh cầu nào khớp với bộ lọc.</TableCell>
                      </TableRow>
                 ) : (
                     petitions.map((petition) => (
@@ -362,20 +371,22 @@ const AdminPetitionsView = ({ userId }) => {
                         </TableCell>
                         <TableCell>{formatTime(petition.SubmittedAt)}</TableCell>
                         <TableCell>{formatDate(petition.SubmittedAt)}</TableCell>
-                        <TableCell>
-                          {petition.Status === "PENDING" && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              size="small"
-                              onClick={() => handleOpenStatusDialog(petition.PetitionID)}
-                              sx={{ whiteSpace: "nowrap" }}
-                            >
-                              Cập nhật
-                            </Button>
-                          )}
-                           {/* Có thể thêm nút khác ở đây nếu cần */}
-                        </TableCell>
+                        {!readOnly && (
+                          <TableCell>
+                            {petition.Status === "PENDING" && (
+                              <Button
+                                variant="contained"
+                                color="primary"
+                                size="small"
+                                onClick={() => handleOpenStatusDialog(petition.PetitionID)}
+                                sx={{ whiteSpace: "nowrap" }}
+                              >
+                                Cập nhật
+                              </Button>
+                            )}
+                             {/* Có thể thêm nút khác ở đây nếu cần */}
+                          </TableCell>
+                        )}
                          <TableCell>
                              <Tooltip title="Xem chi tiết">
                                <IconButton
@@ -471,6 +482,38 @@ const AdminPetitionsView = ({ userId }) => {
                  <TextField label="Ngày tạo" value={formatDate(selectedPetition.SubmittedAt) || "N/A"} fullWidth InputProps={{ readOnly: true }} variant="outlined"/>
                  <TextField label="Thời gian tạo" value={formatTime(selectedPetition.SubmittedAt) || "N/A"} fullWidth InputProps={{ readOnly: true }} variant="outlined"/>
                  <TextField label="Phản hồi (Admin)" value={selectedPetition.Response || "Chưa có phản hồi"} fullWidth multiline rows={2} InputProps={{ readOnly: true }} variant="outlined"/>
+                 {/* Hiển thị file đính kèm nếu có */}
+                 {selectedPetition.petition_files && selectedPetition.petition_files.length > 0 && (
+                   <Box>
+                     <Typography variant="subtitle2" sx={{ mb: 1 }}>File đính kèm:</Typography>
+                     <List dense sx={{ pl: 1 }}>
+                       {selectedPetition.petition_files.map((file, idx) => (
+                         <ListItem key={idx} disablePadding>
+                           <ListItemIcon sx={{ minWidth: 32 }}>
+                             <AttachFileIcon color="primary" />
+                           </ListItemIcon>
+                           <ListItemText
+                             primary={
+                               <a
+                                 href={`${API_URL}${file.FileUrl}`}
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 style={{
+                                   color: '#1976d2',
+                                   textDecoration: 'underline',
+                                   fontWeight: 500,
+                                   cursor: 'pointer',
+                                 }}
+                               >
+                                 {file.FileName}
+                               </a>
+                             }
+                           />
+                         </ListItem>
+                       ))}
+                     </List>
+                   </Box>
+                 )}
                  {/* Thêm thông tin người xử lý nếu có */}
                  {selectedPetition.admin && (
                     <TextField label="Người xử lý (Admin)" value={`${selectedPetition.admin.FirstName} ${selectedPetition.admin.LastName} (${selectedPetition.admin.Email})` || "N/A"} fullWidth InputProps={{ readOnly: true }} variant="outlined"/>
