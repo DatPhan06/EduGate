@@ -34,6 +34,7 @@ import StudentGradesPage from '../pages/Teacher/StudentGradesPage';
 import TeachingSubjectsPage from '../pages/Teacher/TeachingSubjectsPage';
 import ClassSubjectStudentsPage from '../pages/Teacher/ClassSubjectStudentsPage';
 import SubjectStudentGradesPage from '../pages/Teacher/SubjectStudentGradesPage';
+import HomeroomClassGradesPage from '../pages/Teacher/HomeroomClassGradesPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -124,6 +125,14 @@ const AppRoutes = () => {
                     }
                 />
                 <Route
+                    path="teacher/homeroom/:classId/grades"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <HomeroomClassGradesPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
                     path="teacher/homeroom/:classId/student/:studentId/grades"
                     element={
                         <ProtectedRoute roles={['teacher']}>
@@ -201,7 +210,7 @@ const AppRoutes = () => {
                 <Route
                     path="grade-management"
                     element={
-                        <ProtectedRoute roles={['admin']}>
+                        <ProtectedRoute roles={['admin', 'teacher']}>
                             <GradeManagementPage />
                         </ProtectedRoute>
                     }

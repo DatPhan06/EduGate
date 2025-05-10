@@ -200,6 +200,44 @@ const initializeGradeComponents = async (teacherId, gradeId) => {
   }
 };
 
+// Lấy danh sách điểm của tất cả học sinh trong lớp
+const getClassGrades = async (teacherId, classId, semester) => {
+  try {
+    const token = localStorage.getItem('token');
+    let url = `/teachers/${teacherId}/homeroom-classes/${classId}/grades`;
+    
+    if (semester) {
+      url += `?semester=${encodeURIComponent(semester)}`;
+    }
+    
+    const response = await api.get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching class grades:', error);
+    throw error;
+  }
+};
+
+// Lấy danh sách tất cả các môn học của lớp
+const getClassSubjects = async (classId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await api.get(`/classes/${classId}/subjects`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching class subjects:', error);
+    throw error;
+  }
+};
+
 export {
   getTeacherHomeroomClasses,
   getHomeroomClassStudents,
@@ -211,5 +249,7 @@ export {
   createGradeComponent,
   updateTeacherGradeComponent,
   deleteGradeComponent,
-  initializeGradeComponents
+  initializeGradeComponents,
+  getClassGrades,
+  getClassSubjects
 }; 
