@@ -1195,7 +1195,7 @@ ALTER TABLE ONLY public.users ALTER COLUMN "UserID" SET DEFAULT nextval('public.
 --
 
 COPY public.access_permissions ("AccessID", "Name", "Description", "UserID") FROM stdin;
-\.
+
 
 
 --
@@ -1208,7 +1208,7 @@ COPY public.administrative_staffs ("AdminID", "Note") FROM stdin;
 39	\N
 40	\N
 41	\N
-\.
+
 
 
 --
@@ -1218,7 +1218,7 @@ COPY public.administrative_staffs ("AdminID", "Note") FROM stdin;
 --
 
 COPY public.class_posts ("PostID", "Title", "Type", "Content", "EventDate", "CreatedAt", "TeacherID", "ClassID") FROM stdin;
-\.
+
 
 
 --
@@ -1240,7 +1240,7 @@ COPY public.class_subjects ("ClassSubjectID", "TeacherID", "ClassID", "SubjectID
 12	26	2	4	HK1	2022-2023	2025-05-10 09:07:18.666068
 13	26	2	9	HK1	2022-2023	2025-05-10 09:09:13.660003
 14	26	6	1	HK2	2022-2023	2025-05-10 09:58:14.230657
-\.
+
 
 
 --
@@ -1254,7 +1254,7 @@ COPY public.classes ("ClassID", "ClassName", "GradeLevel", "AcademicYear", "Home
 6	A1	11	22	28
 2	A1*	12	22	26
 11	A1	11	22	44
-\.
+
 
 
 --
@@ -1269,7 +1269,7 @@ COPY public.conversations ("ConversationID", "CreatedAt", "Name", "NumOfParticip
 4	2025-05-08 19:33:10.739888	Phụ huynh Lớp A1	1
 5	2025-05-08 19:33:10.786494	Học sinh Lớp A1	3
 1	2025-05-08 11:00:18.399398	HEHE	3
-\.
+
 
 
 --
@@ -1279,7 +1279,7 @@ COPY public.conversations ("ConversationID", "CreatedAt", "Name", "NumOfParticip
 --
 
 COPY public.daily_progress ("DailyID", "Overall", "Attendance", "StudyOutcome", "Reprimand", "Date", "TeacherID", "StudentID") FROM stdin;
-\.
+
 
 
 --
@@ -1292,7 +1292,7 @@ COPY public.departments ("DepartmentID", "DepartmentName", "Description") FROM s
 1	BGH	Ban giám hiệu
 3	Toán Tin	\N
 2	Lý Hóa Sinh	HEHE1
-\.
+
 
 
 --
@@ -1302,7 +1302,7 @@ COPY public.departments ("DepartmentID", "DepartmentName", "Description") FROM s
 --
 
 COPY public.event_files ("FileID", "FileName", "FilePath", "FileSize", "ContentType", "SubmittedAt", "EventID") FROM stdin;
-\.
+
 
 
 --
@@ -1312,7 +1312,7 @@ COPY public.event_files ("FileID", "FileName", "FilePath", "FileSize", "ContentT
 --
 
 COPY public.events ("EventID", "Title", "Type", "Content", "EventDate", "CreatedAt", "AdminID") FROM stdin;
-\.
+
 
 
 --
@@ -1382,7 +1382,7 @@ COPY public.grade_components ("ComponentID", "ComponentName", "GradeID", "Weight
 48	Điểm hệ số 3	8	3	10	2025-05-10 09:09:13.725746
 47	Điểm hệ số 2 #2	8	2	8	2025-05-10 09:09:13.725746
 46	Điểm hệ số 2 #1	8	2	8	2025-05-10 09:09:13.725746
-\.
+
 
 
 --
@@ -1402,7 +1402,7 @@ COPY public.grades ("GradeID", "StudentID", "ClassSubjectID", "FinalScore", "Sem
 2	11	12	9.580000000000002	HK1	2025-05-10 09:35:28.533805
 7	11	13	7.833333333333333	HK1	2025-05-10 09:39:18.888271
 8	13	13	8.9	HK1	2025-05-10 09:48:53.36096
-\.
+
 
 
 --
@@ -1412,7 +1412,7 @@ COPY public.grades ("GradeID", "StudentID", "ClassSubjectID", "FinalScore", "Sem
 --
 
 COPY public.message_files ("FileID", "FileName", "FileSize", "ContentType", "SubmittedAt", "MessageID") FROM stdin;
-\.
+
 
 
 --
@@ -1436,7 +1436,7 @@ COPY public.messages ("MessageID", "ConversationID", "Content", "SentAt", "UserI
 12	5	hello	2025-05-08 19:39:30.649652	26
 13	3	ê	2025-05-09 07:31:48.333925	1
 14	3	hello	2025-05-09 07:31:53.352619	1
-\.
+
 
 
 --
@@ -1449,7 +1449,7 @@ COPY public.parent_students ("RelationshipID", "Relationship", "ParentID", "Stud
 1	\N	3	10
 2	\N	3	1
 3	\N	19	1
-\.
+
 
 
 --
@@ -1462,7 +1462,7 @@ COPY public.parents ("ParentID", "Occupation") FROM stdin;
 19	Kỹ sư
 23	Bác sĩ
 3	12345
-\.
+
 
 
 --
@@ -1484,7 +1484,7 @@ COPY public.participations ("ParticipationID", "ConversationID", "UserID", "Join
 10	5	26	2025-05-08 19:33:10.788918
 11	5	12	2025-05-08 19:39:00.526233
 13	1	3	2025-05-09 08:06:33.814844
-\.
+
 
 
 --
@@ -1494,7 +1494,7 @@ COPY public.participations ("ParticipationID", "ConversationID", "UserID", "Join
 --
 
 COPY public.petition_files ("FileID", "FileName", "FilePath", "FileSize", "ContentType", "SubmittedAt", "PetitionID") FROM stdin;
-\.
+
 
 
 --
@@ -1504,7 +1504,7 @@ COPY public.petition_files ("FileID", "FileName", "FilePath", "FileSize", "Conte
 --
 
 COPY public.petitions ("PetitionID", "ParentID", "AdminID", "Title", "Content", "Status", "SubmittedAt", "Response") FROM stdin;
-\.
+
 
 
 --
@@ -1514,7 +1514,7 @@ COPY public.petitions ("PetitionID", "ParentID", "AdminID", "Title", "Content", 
 --
 
 COPY public.post_files ("FileID", "FileName", "FilePath", "FileSize", "ContentType", "SubmittedAt", "PostID") FROM stdin;
-\.
+
 
 
 --
@@ -1524,7 +1524,7 @@ COPY public.post_files ("FileID", "FileName", "FilePath", "FileSize", "ContentTy
 --
 
 COPY public.reward_punishments ("RecordID", "Title", "Type", "Description", "Date", "Semester", "Week", "StudentID", "AdminID") FROM stdin;
-\.
+
 
 
 --
@@ -1543,7 +1543,7 @@ COPY public.students ("StudentID", "ClassID", "EnrollmentDate", "YtDate") FROM s
 12	11	2025-05-08 18:04:04.741486	\N
 17	2	2025-05-08 18:36:30.662385	\N
 16	2	2025-05-08 18:36:30.162978	\N
-\.
+
 
 
 --
@@ -1558,7 +1558,7 @@ COPY public.subject_schedules ("SubjectScheduleID", "ClassSubjectID", "StartPeri
 3	5	1	3	Tuesday
 4	3	8	8	Monday
 5	10	9	10	Monday
-\.
+
 
 
 --
@@ -1577,7 +1577,7 @@ COPY public.subjects ("SubjectID", "SubjectName", "Description") FROM stdin;
 1	Toán	khó vch\n
 8	Mỹ Thuật	
 9	Lịch sử	
-\.
+
 
 
 --
@@ -1593,7 +1593,7 @@ COPY public.teachers ("TeacherID", "DepartmentID", "Graduate", "Degree", "Positi
 44	2	Cao đẳng	\N	Trưởng phòng
 8	2	123	123	string
 29	2	123	\N	Trưởng phòng
-\.
+
 
 
 --
@@ -1625,7 +1625,7 @@ COPY public.users ("UserID", "FirstName", "LastName", "Street", "District", "Cit
 29	Nam	Phan Hữu	\N	\N	\N	nam.ph@example.com	$2b$12$TSfECDeEXu.Npnm4NndmF.XMu0.4l4Wf64CLjIy.2PSLZUykO0Rfy	0943210987	1975-11-30 07:00:00	\N	MALE	333 Đường STU, Q.PN	2025-05-08 18:39:26.962891	2025-05-09 11:11:49.52086	ACTIVE	teacher
 16	An	Nguyễn Văn	\N	\N	\N	an.nv@example.com	$2b$12$LBVwteKrgLWL79Zrngkf3uogcJfN8.J1eBXR.Rp8WgHGVV8GbXsYm	0901234567	2005-08-14 07:00:00	\N	MALE	123 Đường ABC, Q1	2025-05-08 18:36:30.160978	2025-05-09 16:28:55.989428	ACTIVE	student
 1	Dat	Phan	Việt Nam		Hà Nội	phandat01666603376@gmail.com	$2b$12$ZefaGZmy/fHQfktR4vij/O8u1.blC6OMK/6scW9JvqKaldYExgTcG	0366603376	2004-05-30 07:00:00	Phúc Yên	MALE	Việt Nam 1	2025-05-07 20:12:30.130931	2025-05-10 07:34:24.232028	ACTIVE	student
-\.
+
 
 
 --

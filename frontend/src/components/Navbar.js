@@ -41,8 +41,10 @@ import {
     Assessment as ReportsIcon,
     SupervisorAccount as PrincipalIcon,
     ClassOutlined as ClassIcon,
+    Announcement as AnnouncementIcon,
     Grading as GradingIcon,
     MenuBook as MenuBookIcon,
+
 } from '@mui/icons-material';
 
 /**
@@ -241,10 +243,22 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['teacher', 'parent', 'student'],
         },
         {
+            text: 'Thông báo lớp',
+            icon: <AnnouncementIcon />,
+            path: '/teacher/class-events',
+            roles: ['teacher'],
+        },
+        {
+            text: 'Thông báo lớp',
+            icon: <AnnouncementIcon />,
+            path: '/student/class-events',
+            roles: ['student'],
+        },
+        {
             text: 'Khen thưởng/Kỷ luật',
             icon: <EmojiEventsIcon />,
             path: '/rewards-discipline',
-            roles: ['teacher', 'parent', 'student'],
+            roles: ['admin', 'teacher', 'parent', 'student'],
         },
         {
             text: 'Sổ liên lạc',
@@ -269,6 +283,18 @@ const Navbar = ({ onLayoutChange }) => {
             icon: <ReportsIcon />,
             path: '/reports-statistics',
             roles: ['admin', 'principal', 'bgh', 'teacher'],
+        },
+        {
+            text: 'Đơn thỉnh cầu',
+            icon: <AssignmentIcon />,
+            path: '/petitions',
+            roles: ['parent'],
+        },
+        {
+            text: 'Quản lý đơn thỉnh cầu',
+            icon: <AssignmentIcon />,
+            path: '/petitions-management',
+            roles: ['admin'],
         },
         {
             text: 'Giám sát (BGH)',

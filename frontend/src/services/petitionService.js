@@ -132,7 +132,7 @@ const petitionService = {
      * @param {number} petitionId - ID của đơn thỉnh cầu
      * @param {Object} update - Thông tin cập nhật
      * @param {string} update.Status - Trạng thái mới
-     * @param {string} update.Notes - Ghi chú/lý do
+     * @param {string} update.Response - Phản hồi/lý do
      * @returns {Promise<Object>} - Đơn thỉnh cầu đã được cập nhật
      */
     updatePetitionStatus: async (petitionId, update) => {

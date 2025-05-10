@@ -26,6 +26,10 @@ import DepartmentManagementPage from '../pages/Admin/DepartmentManagementPage';
 import TimetableManagementPage from '../pages/Admin/TimetableManagementPage';
 import GradeManagementPage from '../pages/Admin/GradeManagementPage';
 import TimetableViewComponent from '../components/Timetable/TimetableViewComponent';
+import ClassEventsPage from '../pages/ClassEventsPage';
+import TeacherClassEventsPage from '../pages/Teacher/TeacherClassEventsPage';
+import StudentClassEventsPage from '../pages/Student/StudentClassEventsPage';
+
 
 // Teacher Pages
 import HomeroomClassPage from '../pages/Teacher/HomeroomClassPage';
@@ -90,12 +94,17 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
                 <Route path="petitions" element={
-                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                    <ProtectedRoute roles={['parent']}>
+                        <Petitions />
+                    </ProtectedRoute>
+                } />
+                <Route path="petitions-management" element={
+                    <ProtectedRoute roles={[ 'admin']}>
                         <Petitions />
                     </ProtectedRoute>
                 } />
                 <Route path="rewards-discipline" element={
-                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                    <ProtectedRoute roles={[ 'admin', 'teacher', 'parent', 'student']}>
                         <RewardsDisciplinePage />
                     </ProtectedRoute>
                 } />
@@ -170,6 +179,32 @@ const AppRoutes = () => {
                     }
                 />
 
+                {/* Class Events Routes */}
+                <Route
+                    path="class-events/:classId"
+                    element={
+                        <ProtectedRoute roles={['admin', 'teacher', 'student', 'parent']}>
+                            <ClassEventsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="teacher/class-events"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <TeacherClassEventsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="student/class-events"
+                    element={
+                        <ProtectedRoute roles={['student']}>
+                            <StudentClassEventsPage />
+                        </ProtectedRoute>
+                    }
+                />
+
                 <Route
                     path="user-management"
                     element={
@@ -205,7 +240,7 @@ const AppRoutes = () => {
                 <Route
                     path="timetable-management"
                     element={
-                        <ProtectedRoute roles={['admin']}>
+                        <ProtectedRoute roles={['admin', 'teacher', 'student', 'parent']}>
                             <TimetableManagementPage />
                         </ProtectedRoute>
                     }
@@ -252,4 +287,4 @@ const AppRoutes = () => {
     );
 };
 
-export default AppRoutes; 
+export default AppRoutes;
