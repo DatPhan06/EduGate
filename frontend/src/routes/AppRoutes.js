@@ -18,6 +18,7 @@ import UserProfile from '../pages/Users/UserProfile';
 import Login from '../pages/Auth/Login';
 import UserManagementPage from '../pages/Admin/UserManagementPage';
 import EventSchedulePage from '../pages/EventSchedule/EventSchedulePage';
+import EventDetailPage from '../pages/EventSchedule/EventDetailPage';
 import RewardsDisciplinePage from '../pages/RewardsDiscipline/RewardsDisciplinePage';
 import DailyLogPage from '../pages/DailyLog/DailyLogPage';
 import AcademicResultsPage from '../pages/AcademicResults/AcademicResultsPage';
@@ -32,7 +33,7 @@ import TimetableViewComponent from '../components/Timetable/TimetableViewCompone
 import ClassEventsPage from '../pages/ClassEventsPage';
 import TeacherClassEventsPage from '../pages/Teacher/TeacherClassEventsPage';
 import StudentClassEventsPage from '../pages/Student/StudentClassEventsPage';
-
+import EventManagementPage from '../pages/Admin/EventManagementPage';
 
 // Teacher Pages
 import HomeroomClassPage from '../pages/Teacher/HomeroomClassPage';
@@ -100,8 +101,13 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
                 <Route path="event-schedule" element={
-                                        <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
                         <EventSchedulePage />
+                    </ProtectedRoute>
+                } />
+                <Route path="event-schedule/:eventId" element={
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <EventDetailPage />
                     </ProtectedRoute>
                 } />
                 <Route path="petitions" element={
@@ -312,6 +318,15 @@ const AppRoutes = () => {
                         }
                     />
                 )}
+
+                <Route
+                    path="admin/event-management"
+                    element={
+                        <ProtectedRoute roles={['admin']}>
+                            <EventManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
             </Route>
 
             {/* 404 Route */}

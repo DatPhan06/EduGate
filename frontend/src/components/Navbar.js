@@ -44,6 +44,8 @@ import {
     ClassOutlined as ClassIcon,
     Grading as GradingIcon,
     MenuBook as MenuBookIcon,
+    Dashboard as DashboardIcon,
+    Admin as AdminIcon,
 } from '@mui/icons-material';
 import { useBGHTeacher } from '../contexts/BGHTeacherContext';
 
@@ -200,6 +202,12 @@ const Navbar = ({ onLayoutChange }) => {
             text: 'Quản lý Phòng ban',
             icon: <PeopleIcon />,
             path: '/department-management',
+            roles: ['admin'],
+        },
+        {
+            text: 'Quản lý sự kiện',
+            icon: <EventIcon />,
+            path: '/admin/event-management',
             roles: ['admin'],
         },
         {

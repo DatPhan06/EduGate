@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query, Response
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
@@ -8,7 +9,7 @@ from ..models.event import Event
 from ..models.event_file import EventFile
 from ..schemas.event_schema import EventCreate, EventUpdate, EventSchema, EventListSchema, EventFileSchema, EventWithFilesSchema
 from ..services import event_service
-from ..services.auth_service import get_current_admin_staff
+from ..services.auth_service import get_current_admin_staff, get_current_user
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -112,4 +113,23 @@ async def delete_file_from_event(
     Delete a file attachment from an event (requires admin permissions)
     """
     event_service.delete_event_file(db, file_id)
-    return {"detail": "File deleted successfully"} 
+    return {"detail": "File deleted successfully"}
+
+# Download a file from an event
+@router.get("/{event_id}/files/{file_id}/download")
+async def download_file_from_event(
+    event_id: int,
+    file_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Download a file attachment from an event
+    """
+    file_info = event_service.download_event_file(db, file_id)
+    
+    return FileResponse(
+        path=file_info["file_path"],
+        filename=file_info["file_name"],
+        media_type=file_info["content_type"]
+    ) 

@@ -173,4 +173,37 @@ def delete_event_file(db: Session, file_id: int) -> bool:
 def get_event_files(db: Session, event_id: int) -> List[EventFile]:
     # Verify event exists
     event = get_event_by_id(db, event_id)
-    return event.event_files 
+    return event.event_files
+
+# Get a specific file by ID
+def get_event_file_by_id(db: Session, file_id: int) -> EventFile:
+    file = db.query(EventFile).filter(EventFile.FileID == file_id).first()
+    if not file:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"File with ID {file_id} not found")
+    return file
+
+# Download a file
+def download_event_file(db: Session, file_id: int):
+    try:
+        # Get file record
+        file_record = get_event_file_by_id(db, file_id)
+        
+        # Check if file exists on disk
+        if not os.path.exists(file_record.FilePath):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail=f"File not found on server"
+            )
+            
+        return {
+            "file_path": file_record.FilePath,
+            "file_name": file_record.FileName,
+            "content_type": file_record.ContentType
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Error downloading file: {str(e)}"
+        ) 
