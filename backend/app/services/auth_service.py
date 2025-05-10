@@ -149,3 +149,30 @@ async def get_current_student(authorization: str = Header(None), db: Session = D
         if not hasattr(student, key):
             setattr(student, key, value)
     return student
+
+async def get_current_admin_staff(authorization: str = Header(None), db: Session = Depends(get_db)):
+    """Get the current user and ensure they are an admin staff member"""
+    user = await get_current_active_user(authorization, db)
+    
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: User is not an administrative staff member"
+        )
+        
+    # Get admin record linked to this user
+    admin = db.query(models.AdministrativeStaff).filter(models.AdministrativeStaff.AdminID == user.UserID).first()
+    if not admin:
+        # Nếu không tìm thấy bản ghi admin, tạo một bản ghi mới
+        admin = models.AdministrativeStaff(AdminID=user.UserID)
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
+        
+    # Set role for permission checking
+    setattr(admin, "role", "admin")
+    # also attach all user attributes to admin object for easier access in router
+    for key, value in user.__dict__.items():
+        if not hasattr(admin, key):
+            setattr(admin, key, value)
+    return admin
