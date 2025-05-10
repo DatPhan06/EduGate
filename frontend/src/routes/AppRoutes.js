@@ -28,7 +28,7 @@ import GradeManagementPage from '../pages/Admin/GradeManagementPage';
 import TimetableViewComponent from '../components/Timetable/TimetableViewComponent';
 import ClassEventsPage from '../pages/ClassEventsPage';
 import TeacherClassEventsPage from '../pages/Teacher/TeacherClassEventsPage';
-import StudentClassEventsPage from '../pages/student/StudentClassEventsPage';
+import StudentClassEventsPage from '../pages/Student/StudentClassEventsPage';
 
 // Teacher Pages
 import HomeroomClassPage from '../pages/Teacher/HomeroomClassPage';
