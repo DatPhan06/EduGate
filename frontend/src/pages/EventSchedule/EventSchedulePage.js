@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Box, Typography, Container, Paper, Grid, Card, CardContent,
-  CardActions, Button, Chip, TextField, FormControl,
+  CardActions, Button, Chip, TextField, FormControl, Tabs, Tab,
   InputLabel, MenuItem, Select, CircularProgress, 
   Pagination, Divider, Alert, IconButton
 } from '@mui/material';
@@ -11,6 +11,7 @@ import {
   Search as SearchIcon,
   CalendarMonth as CalendarIcon,
   School as SchoolIcon,
+  Schedule as ScheduleIcon,
   ArrowForward as ArrowForwardIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
@@ -18,12 +19,37 @@ import vi from 'date-fns/locale/vi';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import eventService from '../../services/eventService';
+import TimetableViewComponent from '../../components/Timetable/TimetableViewComponent';
+
+// TabPanel component for switching between Event List and Timetable views
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`timetable-tabpanel-${index}`}
+      aria-labelledby={`timetable-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ pt: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
 
 const EventSchedulePage = () => {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Tab state
+  const [tabValue, setTabValue] = useState(0);
 
   // Các state cho bộ lọc
   const [search, setSearch] = useState('');
@@ -45,42 +71,49 @@ const EventSchedulePage = () => {
     { value: 'announcement', label: 'Thông báo', color: 'info' },
     { value: 'other', label: 'Khác', color: 'default' }
   ];
+  
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
 
   // Fetch events từ API
   useEffect(() => {
-    const fetchEvents = async () => {
-      setLoading(true);
-      try {
-        // Chuẩn bị params
-        const params = {
-          page,
-          limit: eventsPerPage
-        };
-        
-        if (search) params.search = search;
-        if (eventType) params.event_type = eventType;
-        if (dateFilter) {
-          // Format date để filter
-          const formattedDate = format(dateFilter, 'yyyy-MM-dd');
-          params.date = formattedDate;
-        }
-        
-        const response = await eventService.getEvents(params);
-        
-        setEvents(response.data || []);
-        setTotalPages(response.total_pages || 1);
-        setTotalEvents(response.total || 0);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching events:', err);
-        setError('Không thể tải danh sách sự kiện. Vui lòng thử lại sau.');
-      } finally {
-        setLoading(false);
+    if (tabValue === 0) {
+      fetchEvents();
+    }
+  }, [tabValue, page, search, eventType, dateFilter]);
+  
+  const fetchEvents = async () => {
+    setLoading(true);
+    try {
+      // Chuẩn bị params
+      const params = {
+        page,
+        limit: eventsPerPage
+      };
+      
+      if (search) params.search = search;
+      if (eventType) params.event_type = eventType;
+      if (dateFilter) {
+        // Format date để filter
+        const formattedDate = format(dateFilter, 'yyyy-MM-dd');
+        params.date = formattedDate;
       }
-    };
-
-    fetchEvents();
-  }, [page, search, eventType, dateFilter]);
+      
+      const response = await eventService.getEvents(params);
+      
+      setEvents(response.data || []);
+      setTotalPages(response.total_pages || 1);
+      setTotalEvents(response.total || 0);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      setError('Không thể tải danh sách sự kiện. Vui lòng thử lại sau.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Reset page khi thay đổi filter
   useEffect(() => {
@@ -106,16 +139,10 @@ const EventSchedulePage = () => {
     navigate(`/event-schedule/${eventId}`);
   };
 
-  return (
-    <Container maxWidth="lg">
-      <Box sx={{ my: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <CalendarIcon sx={{ fontSize: 32, mr: 2, color: 'primary.main' }} />
-          <Typography variant="h4" component="h1">
-            Lịch và Sự kiện Trường học
-          </Typography>
-        </Box>
-
+  // Render event list
+  const renderEventList = () => {
+    return (
+      <>
         {/* Bộ lọc */}
         <Paper sx={{ p: 2, mb: 4 }}>
           <Grid container spacing={2} alignItems="center">
@@ -309,6 +336,44 @@ const EventSchedulePage = () => {
             />
           </Box>
         )}
+      </>
+    );
+  };
+
+  return (
+    <Container maxWidth="lg">
+      <Box sx={{ my: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+          <CalendarIcon sx={{ fontSize: 32, mr: 2, color: 'primary.main' }} />
+          <Typography variant="h4" component="h1">
+            Lịch và Sự kiện Trường học
+          </Typography>
+        </Box>
+        
+        {/* Tabs for switching between Events and Timetable */}
+        <Paper sx={{ mb: 3 }}>
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            variant="fullWidth"
+            indicatorColor="primary"
+            textColor="primary"
+            aria-label="schedule tabs"
+          >
+            <Tab icon={<EventIcon />} label="Sự kiện" />
+            <Tab icon={<ScheduleIcon />} label="Thời khóa biểu" />
+          </Tabs>
+        </Paper>
+        
+        {/* Event List Panel */}
+        <TabPanel value={tabValue} index={0}>
+          {renderEventList()}
+        </TabPanel>
+        
+        {/* Timetable Panel */}
+        <TabPanel value={tabValue} index={1}>
+          <TimetableViewComponent />
+        </TabPanel>
       </Box>
     </Container>
   );
