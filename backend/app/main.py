@@ -11,6 +11,8 @@ from .routers import departments_router, subjects_router, timetable_router
 from .routers import parent_student_router, class_post_router
 from .routers import grade_router, class_subjects_router
 from .database import engine, Base
+from fastapi.staticfiles import StaticFiles
+import os
 
 # Tạo bảng trong database
 Base.metadata.create_all(bind=engine)
@@ -27,6 +29,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+)
+
+# Mount static files for /public
+app.mount(
+    "/public",
+    StaticFiles(directory=os.path.join(os.path.dirname(__file__), "../public")),
+    name="public"
 )
 
 @app.get("/")

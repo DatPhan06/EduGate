@@ -103,25 +103,35 @@ const petitionService = {
     },
 
     /**
-     * Tạo đơn thỉnh cầu mới
+     * Tạo đơn thỉnh cầu mới (hỗ trợ upload file)
      * @param {Object} petition - Thông tin đơn thỉnh cầu
      * @param {string} petition.Title - Tiêu đề đơn
      * @param {string} petition.Content - Nội dung đơn
-     * @param {number} petition.ParentID - ID phụ huynh
+     * @param {File[]} [files] - Danh sách file đính kèm
      * @returns {Promise<Object>} - Đơn thỉnh cầu đã được tạo
      */
-    createPetition: async (petition) => {
-        if (!petition.ParentID || isNaN(petition.ParentID)) {
-            throw new Error('Invalid ParentID: ParentID must be a valid number');
-        }
+    createPetition: async (petition, files) => {
         try {
-            const response = await axios.post(`${API_URL}/petitions`, petition, getAuthHeader());
+            const formData = new FormData();
+            formData.append('Title', petition.Title);
+            formData.append('Content', petition.Content);
+            if (files && files.length > 0) {
+                for (let i = 0; i < files.length; i++) {
+                    formData.append('files', files[i]);
+                }
+            }
+            const token = authService.getToken();
+            const response = await axios.post(`${API_URL}/petitions`, formData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
             return response.data;
         } catch (error) {
             if (error.response?.status === 401) {
                 await authService.refreshToken();
-                const response = await axios.post(`${API_URL}/petitions`, petition, getAuthHeader());
-                return response.data;
+                return petitionService.createPetition(petition, files);
             }
             throw error.response?.data?.detail || error.message || 'Failed to create petition';
         }

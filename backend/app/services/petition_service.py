@@ -6,6 +6,7 @@ from typing import List, Optional
 from datetime import datetime
 from sqlalchemy import func
 import logging
+from ..models.petition_file import PetitionFile
 
 # Thiết lập logging để debug
 logging.basicConfig(level=logging.DEBUG)
@@ -39,7 +40,7 @@ class PetitionService:
         # Eager load relationship parent và parent.user
         query = db.query(Petition).options(
             joinedload(Petition.parent).joinedload(Parent.user)
-        ).filter(Petition.ParentID == parent_id)
+        ).filter(Petition.ParentID == parent_id).order_by(Petition.SubmittedAt.desc())
         total = query.count()
         petitions = query.offset((page - 1) * size).limit(size).all()
         return petitions, total
@@ -81,6 +82,7 @@ class PetitionService:
             query = query.filter(Petition.SubmittedAt >= start_date)
         if end_date:
             query = query.filter(Petition.SubmittedAt <= end_date)
+        query = query.order_by(Petition.SubmittedAt.desc())
             
         total = query.count()
         petitions = query.offset((page - 1) * size).limit(size).all()
@@ -216,3 +218,24 @@ class PetitionService:
 
         logger.debug(f"Final stats: {stats}")
         return stats
+
+    @staticmethod
+    def create_petition_file(
+        db: Session,
+        petition_id: int,
+        file_name: str,
+        file_path: str,
+        file_size: int,
+        content_type: str
+    ) -> PetitionFile:
+        petition_file = PetitionFile(
+            PetitionID=petition_id,
+            FileName=file_name,
+            FilePath=file_path,
+            FileSize=file_size,
+            ContentType=content_type
+        )
+        db.add(petition_file)
+        db.commit()
+        db.refresh(petition_file)
+        return petition_file
