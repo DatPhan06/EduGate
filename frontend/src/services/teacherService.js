@@ -41,12 +41,17 @@ const getHomeroomClassStudents = async (teacherId, classId) => {
 };
 
 // Get grades for a student
-const getStudentGrades = async (studentId, semester) => {
+const getStudentGrades = async (studentId, semester, academicYear) => {
   try {
     const token = localStorage.getItem('token');
+    const params = new URLSearchParams();
+    
+    if (semester) params.append('semester', semester);
+    if (academicYear) params.append('academic_year', academicYear);
+    
     let url = `/grades/student/${studentId}`;
-    if (semester) {
-      url += `?semester=${encodeURIComponent(semester)}`;
+    if (params.toString()) {
+      url += `?${params}`;
     }
     
     const response = await api.get(url, {
@@ -54,6 +59,29 @@ const getStudentGrades = async (studentId, semester) => {
         Authorization: `Bearer ${token}`
       }
     });
+    
+    console.log('API response for student grades:', response.data);
+    
+    // Process the data to include additional fields needed by the UI
+    if (response.data && Array.isArray(response.data)) {
+      // Enhance grade data with necessary fields
+      const enhancedData = response.data.map(grade => {
+        return {
+          ...grade,
+          id: grade.GradeID,
+          studentId: grade.StudentID,
+          subjectId: grade.subjectId || grade.ClassSubjectID, 
+          subjectName: grade.subjectName || `Subject ${grade.ClassSubjectID}`,
+          finalGrade: grade.FinalScore,
+          semester: grade.Semester,
+          components: grade.grade_components || []
+        };
+      });
+      
+      console.log('Enhanced grade data:', enhancedData);
+      return enhancedData;
+    }
+    
     return response.data;
   } catch (error) {
     console.error('Error fetching student grades:', error);
@@ -347,6 +375,22 @@ const getStudentById = async (studentId) => {
   }
 };
 
+// Get subject information by class subject ID
+const getSubjectByClassSubjectId = async (classSubjectId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await api.get(`/class-subjects/${classSubjectId}/subject`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching subject information:', error);
+    throw error;
+  }
+};
+
 export {
   getTeacherHomeroomClasses,
   getHomeroomClassStudents,
@@ -365,5 +409,6 @@ export {
   getClassGrades,
   getClassSubjects,
   getStudentById,
-  getClassSubjectsInfo
+  getClassSubjectsInfo,
+  getSubjectByClassSubjectId
 }; 

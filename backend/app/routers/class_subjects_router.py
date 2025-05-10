@@ -221,4 +221,51 @@ def initialize_grades_for_class_subject(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+
+@router.get("/{class_subject_id}/subject", status_code=status.HTTP_200_OK)
+def get_subject_from_class_subject(
+    class_subject_id: int,
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Get subject information from a class subject ID
+    """
+    # Check authentication
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    
+    token = authorization.split(" ")[1]
+    try:
+        # Get current user
+        email = auth_service.get_current_user_email(token)
+        current_user = user_service.get_user_by_email(db, email)
+        
+        # Check if user is authenticated (all roles can access this information)
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid user"
+            )
+        
+        # Get subject information from class subject ID
+        subject_info = class_subject_service.get_subject_by_class_subject_id(db, class_subject_id)
+        if not subject_info:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Class subject not found"
+            )
+        
+        return subject_info
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
         ) 

@@ -62,8 +62,13 @@ def get_grade(grade_id: int, db: Session = Depends(get_db)):
     return db_grade
 
 @router.get("/student/{student_id}", response_model=List[GradeResponse])
-def get_student_grades(student_id: int, semester: Optional[str] = None, db: Session = Depends(get_db)):
-    grades = grade_service.get_grades_by_student(db, student_id=student_id, semester=semester)
+def get_student_grades(
+    student_id: int, 
+    semester: Optional[str] = None, 
+    academic_year: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    grades = grade_service.get_grades_by_student(db, student_id=student_id, semester=semester, academic_year=academic_year)
     if not grades: # Depending on if service returns empty list or None for no student found
         # Check if student exists at all might be a good idea if an empty list is a valid response for a student with no grades
         # For now, assume an empty list is a valid response and a 404 is not needed unless student_id itself is invalid

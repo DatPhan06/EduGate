@@ -72,14 +72,18 @@ def get_grade_by_id(db: Session, grade_id: int) -> Optional[Grade]:
         joinedload(Grade.grade_components)
     ).filter(Grade.GradeID == grade_id).first()
 
-def get_grades_by_student(db: Session, student_id: int, semester: Optional[str]) -> List[Grade]:
+def get_grades_by_student(db: Session, student_id: int, semester: Optional[str] = None, academic_year: Optional[str] = None) -> List[Grade]:
     """
-    Get all grades for a specific student, optionally filtered by semester.
+    Get all grades for a specific student, optionally filtered by semester and academic year.
     Includes related class_subject and components.
     """
     query = db.query(Grade).filter(Grade.StudentID == student_id)
     if semester:
         query = query.filter(Grade.Semester == semester)
+    
+    # Join with ClassSubject to filter by academic year if needed
+    if academic_year:
+        query = query.join(Grade.class_subject).filter(ClassSubject.AcademicYear == academic_year)
     
     return query.options(
         joinedload(Grade.class_subject).joinedload(ClassSubject.subject),

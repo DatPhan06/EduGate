@@ -1,9 +1,11 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from ..models.class_subject import ClassSubject
 from ..models.subject_schedule import SubjectSchedule
+from ..models.subject import Subject
+from ..models.class_ import Class
 from ..schemas.class_subject_schema import ClassSubjectCreate, ClassSubjectUpdate
 from ..services import grade_service
 
@@ -160,4 +162,40 @@ def get_class_subject_with_schedules(db: Session, class_subject_id: int):
         SubjectSchedule.ClassSubjectID == class_subject_id
     ).all()
     
-    return db_class_subject 
+    return db_class_subject
+
+# Get subject information from class subject ID
+def get_subject_by_class_subject_id(db: Session, class_subject_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Get subject information from a class subject ID
+    
+    Args:
+        db: Database session
+        class_subject_id: The ID of the class-subject
+        
+    Returns:
+        Dictionary with subject information or None if not found
+    """
+    # Get the class subject with the subject loaded
+    class_subject = db.query(ClassSubject).options(
+        joinedload(ClassSubject.subject),
+        joinedload(ClassSubject.class_)
+    ).filter(
+        ClassSubject.ClassSubjectID == class_subject_id
+    ).first()
+    
+    if not class_subject:
+        return None
+    
+    # Create response with subject information and context
+    return {
+        "subject_id": class_subject.SubjectID,
+        "subject_name": class_subject.subject.SubjectName if class_subject.subject else None,
+        "subject_description": class_subject.subject.Description if class_subject.subject else None,
+        "class_subject_id": class_subject.ClassSubjectID,
+        "class_id": class_subject.ClassID,
+        "class_name": class_subject.class_.ClassName if class_subject.class_ else None,
+        "semester": class_subject.Semester,
+        "academic_year": class_subject.AcademicYear,
+        "teacher_id": class_subject.TeacherID
+    } 
