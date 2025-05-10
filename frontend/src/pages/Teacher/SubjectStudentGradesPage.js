@@ -17,7 +17,8 @@ import {
   Delete as DeleteIcon
 } from '@mui/icons-material';
 import { 
-  getStudentGradesForTeacher,
+  getStudentGrades,
+  getGradeComponents,
   updateTeacherGradeComponent,
   createGradeComponent,
   deleteGradeComponent,
@@ -32,7 +33,7 @@ const SubjectStudentGradesPage = () => {
   const [grades, setGrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeSemester, setActiveSemester] = useState('Học kỳ 1');
+  const [activeSemester, setActiveSemester] = useState('HK1');
   const [editingKey, setEditingKey] = useState('');
   const [editValue, setEditValue] = useState(null);
   const { enqueueSnackbar } = useSnackbar();
@@ -53,17 +54,30 @@ const SubjectStudentGradesPage = () => {
     const fetchStudentGrades = async () => {
       try {
         setLoading(true);
-        const data = await getStudentGradesForTeacher(
-          teacherId, 
+        const data = await getStudentGrades(
           studentId,
-          classSubjectId,
           activeSemester
         );
         
-        if (data && data.length > 0) {
-          const grade = data[0]; // Get the first grade record
+        // Filter grades to only show for the current class subject
+        const filteredGrades = data.filter(grade => grade.ClassSubjectID == classSubjectId);
+        
+        if (filteredGrades && filteredGrades.length > 0) {
+          const grade = filteredGrades[0]; // Get the first grade record
           setCurrentGradeId(grade.GradeID);
-          setGrades(data);
+          setGrades(filteredGrades);
+          
+          // Fetch grade components separately
+          const components = await getGradeComponents(grade.GradeID);
+          
+          // Update the grade with components
+          setGrades(prevGrades => 
+            prevGrades.map(g => 
+              g.GradeID === grade.GradeID 
+                ? { ...g, grade_components: components } 
+                : g
+            )
+          );
           
           // Extract student info if available
           setStudentData({
@@ -87,10 +101,10 @@ const SubjectStudentGradesPage = () => {
       }
     };
     
-    if (teacherId && studentId && classSubjectId) {
+    if (studentId && classSubjectId) {
       fetchStudentGrades();
     }
-  }, [teacherId, studentId, classSubjectId, activeSemester]);
+  }, [studentId, classSubjectId, activeSemester]);
   
   const handleAddComponent = () => {
     setDialogOpen(true);
@@ -103,6 +117,27 @@ const SubjectStudentGradesPage = () => {
       Weight: 1,
       Score: null
     });
+  };
+  
+  // Function to refresh components
+  const refreshGradeComponents = async () => {
+    if (currentGradeId) {
+      try {
+        const components = await getGradeComponents(currentGradeId);
+        
+        // Update the grade with components
+        setGrades(prevGrades => 
+          prevGrades.map(g => 
+            g.GradeID === currentGradeId 
+              ? { ...g, grade_components: components } 
+              : g
+          )
+        );
+      } catch (error) {
+        console.error('Error refreshing grade components:', error);
+        enqueueSnackbar('Không thể cập nhật thành phần điểm. Vui lòng thử lại.', { variant: 'error' });
+      }
+    }
   };
   
   const handleCreateComponent = async () => {
@@ -120,14 +155,8 @@ const SubjectStudentGradesPage = () => {
       // Create the component
       await createGradeComponent(teacherId, currentGradeId, newComponent);
       
-      // Refresh the grades
-      const data = await getStudentGradesForTeacher(
-        teacherId, 
-        studentId,
-        classSubjectId,
-        activeSemester
-      );
-      setGrades(data);
+      // Refresh the components
+      await refreshGradeComponents();
       
       enqueueSnackbar('Thêm thành phần điểm thành công!', { variant: 'success' });
       handleCloseDialog();
@@ -147,14 +176,8 @@ const SubjectStudentGradesPage = () => {
       // Initialize standard components
       await initializeGradeComponents(teacherId, currentGradeId);
       
-      // Refresh the grades
-      const data = await getStudentGradesForTeacher(
-        teacherId, 
-        studentId,
-        classSubjectId,
-        activeSemester
-      );
-      setGrades(data);
+      // Refresh the components
+      await refreshGradeComponents();
       
       enqueueSnackbar('Khởi tạo cấu trúc điểm thành công!', { variant: 'success' });
     } catch (error) {
@@ -168,14 +191,8 @@ const SubjectStudentGradesPage = () => {
       // Delete the component
       await deleteGradeComponent(teacherId, componentId);
       
-      // Refresh the grades
-      const data = await getStudentGradesForTeacher(
-        teacherId, 
-        studentId,
-        classSubjectId,
-        activeSemester
-      );
-      setGrades(data);
+      // Refresh the components
+      await refreshGradeComponents();
       
       enqueueSnackbar('Xóa thành phần điểm thành công!', { variant: 'success' });
     } catch (error) {
@@ -206,14 +223,8 @@ const SubjectStudentGradesPage = () => {
       // Update the component
       await updateTeacherGradeComponent(teacherId, componentId, { Score: editValue });
       
-      // Refresh the grades
-      const data = await getStudentGradesForTeacher(
-        teacherId, 
-        studentId,
-        classSubjectId,
-        activeSemester
-      );
-      setGrades(data);
+      // Refresh the components
+      await refreshGradeComponents();
       
       setEditingKey('');
       setEditValue(null);
@@ -320,8 +331,8 @@ const SubjectStudentGradesPage = () => {
               onChange={handleSemesterChange}
               label="Học kỳ"
             >
-              <MenuItem value="Học kỳ 1">Học kỳ 1</MenuItem>
-              <MenuItem value="Học kỳ 2">Học kỳ 2</MenuItem>
+              <MenuItem value="HK1">Học kỳ 1</MenuItem>
+              <MenuItem value="HK2">Học kỳ 2</MenuItem>
             </Select>
           </FormControl>
           <Button 
@@ -337,7 +348,7 @@ const SubjectStudentGradesPage = () => {
       {grades.length === 0 ? (
         <Alert severity="info">
           <Typography variant="subtitle1">
-            Chưa có dữ liệu điểm số cho {activeSemester}
+            Chưa có dữ liệu điểm số cho {activeSemester === 'HK1' ? 'Học kỳ 1' : 'Học kỳ 2'}
           </Typography>
         </Alert>
       ) : (

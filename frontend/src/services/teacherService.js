@@ -61,6 +61,22 @@ const getStudentGrades = async (studentId, semester) => {
   }
 };
 
+// Get grade components for a specific grade
+const getGradeComponents = async (gradeId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await api.get(`/grades/${gradeId}/components`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching grade components:', error);
+    throw error;
+  }
+};
+
 // Update grade component
 const updateGradeComponent = async (componentId, data) => {
   try {
@@ -242,6 +258,7 @@ export {
   getTeacherHomeroomClasses,
   getHomeroomClassStudents,
   getStudentGrades,
+  getGradeComponents,
   updateGradeComponent,
   getTeacherSubjects,
   getStudentsInClassSubject,

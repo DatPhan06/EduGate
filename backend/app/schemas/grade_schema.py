@@ -6,7 +6,7 @@ from datetime import datetime
 class GradeComponentBase(BaseModel):
     ComponentName: str
     Weight: float
-    Score: float
+    Score: Optional[float] = None
 
 
 class GradeComponentCreate(GradeComponentBase):

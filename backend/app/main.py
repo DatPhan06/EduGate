@@ -8,7 +8,7 @@ from .config import settings
 from .routers import auth, user, reward_punishment, petition, message
 from .routers import classes_router, students_router, teachers_router, admin_conversation_router
 from .routers import departments_router, subjects_router, timetable_router
-from .routers import parent_student_router, grade_router
+from .routers import parent_student_router, grade_router, class_subjects_router
 from .database import engine, Base
 
 # Tạo bảng trong database
@@ -51,6 +51,7 @@ app.include_router(admin_conversation_router.router)
 # Add timetable management routers
 app.include_router(subjects_router.router)
 app.include_router(timetable_router.router)
+app.include_router(class_subjects_router.router)
 
 # Add grade management router
 app.include_router(grade_router.router)

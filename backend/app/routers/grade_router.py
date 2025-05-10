@@ -139,6 +139,29 @@ def add_grade_component(
             detail=f"An unexpected error occurred: {str(e)}"
         )
 
+@router.get("/{grade_id}/components", response_model=List[GradeComponentResponse])
+def get_grade_components(
+    grade_id: int,
+    db: Session = Depends(get_db)
+):
+    try:
+        # First check if the grade exists
+        grade = grade_service.get_grade_by_id(db, grade_id=grade_id)
+        if grade is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Grade with ID {grade_id} not found"
+            )
+        
+        # Get components for the grade
+        components = grade_service.get_grade_components(db, grade_id=grade_id)
+        return components
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred: {str(e)}"
+        )
+
 @router.put("/components/{component_id}", response_model=GradeComponentResponse)
 def update_grade_component(
     component_id: int, 

@@ -1,11 +1,11 @@
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session, aliased, joinedload
 from sqlalchemy import select, and_, join, func
 from ..models.teacher import Teacher
 from ..models.user import User
-from ..models.class_subject import ClassSubject
 from ..models.class_ import Class
-from ..models.subject import Subject
 from ..models.student import Student
+from ..models.subject import Subject
+from ..models.class_subject import ClassSubject
 from ..models.grade import Grade
 from ..models.grade_component import GradeComponent
 from ..schemas.teacher_schema import TeacherRead, TeacherUpdate
@@ -390,7 +390,12 @@ def get_student_grades_for_teacher(
         class_subjects = [cs[0] for cs in class_subjects]
     
     # Get grades for this student in the class-subjects taught by this teacher
-    query = db.query(Grade).filter(
+    query = db.query(Grade).options(
+        joinedload(Grade.student).joinedload(Student.user),
+        joinedload(Grade.class_subject).joinedload(ClassSubject.subject),
+        joinedload(Grade.class_subject).joinedload(ClassSubject.class_),
+        joinedload(Grade.grade_components)
+    ).filter(
         Grade.StudentID == student_id,
         Grade.ClassSubjectID.in_(class_subjects)
     )

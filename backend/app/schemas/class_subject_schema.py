@@ -6,7 +6,6 @@ from .subject_schema import SubjectBasicInfo
 
 # Base ClassSubject schema with common attributes
 class ClassSubjectBase(BaseModel):
-    TeacherID: int
     ClassID: int
     SubjectID: int
     Semester: str
@@ -14,7 +13,7 @@ class ClassSubjectBase(BaseModel):
 
 # Schema for creating a new class subject
 class ClassSubjectCreate(ClassSubjectBase):
-    pass
+    TeacherID: Optional[int] = None
 
 # Schema for updating an existing class subject
 class ClassSubjectUpdate(BaseModel):
@@ -25,10 +24,11 @@ class ClassSubjectUpdate(BaseModel):
 # Schema for reading class subject data
 class ClassSubjectRead(ClassSubjectBase):
     ClassSubjectID: int
+    TeacherID: Optional[int] = None
     UpdatedAt: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 # Extended schema that includes subject schedules
 class ClassSubjectWithSchedules(ClassSubjectRead):

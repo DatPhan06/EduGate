@@ -8,6 +8,7 @@ from ..models.student import Student
 from ..models.user import User # For student names via relationship
 from ..models.class_subject import ClassSubject
 from ..models.subject import Subject # Corrected import
+from ..models.class_ import Class
 
 from ..schemas.grade_schema import GradeCreate, GradeUpdate, GradeComponentCreate, GradeComponentUpdate
 
@@ -214,4 +215,138 @@ def delete_grade_component_by_id(db: Session, component_id: int) -> bool:
         return True
     except IntegrityError:
         db.rollback()
-        raise 
+        raise
+
+def get_grade_components(db: Session, grade_id: int) -> List[GradeComponent]:
+    """
+    Get all components for a specific grade.
+    Returns a list of components or an empty list if no components found.
+    """
+    return db.query(GradeComponent).filter(GradeComponent.GradeID == grade_id).all()
+
+def initialize_grades_for_class_subject(db: Session, class_subject_id: int, semester: str = "Học kỳ 1") -> List[Grade]:
+    """
+    Initialize grade records for all students in a class when a teacher is assigned to a class_subject.
+    Does not set actual grade values, just creates the structure.
+    
+    Args:
+        db: Database session
+        class_subject_id: The ID of the class-subject
+        semester: The semester ("Học kỳ 1" or "Học kỳ 2")
+        
+    Returns:
+        List of created Grade records
+    """
+    # Get the class_subject
+    class_subject = db.query(ClassSubject).filter(ClassSubject.ClassSubjectID == class_subject_id).first()
+    if not class_subject:
+        return []
+    
+    # Get all students in this class
+    students = db.query(Student).filter(Student.ClassID == class_subject.ClassID).all()
+    if not students:
+        return []
+    
+    created_grades = []
+    
+    # For each student, create a grade record if it doesn't exist
+    for student in students:
+        # Check if grade already exists
+        existing_grade = db.query(Grade).filter(
+            Grade.StudentID == student.StudentID,
+            Grade.ClassSubjectID == class_subject_id,
+            Grade.Semester == semester
+        ).first()
+        
+        if not existing_grade:
+            # Create new grade record
+            new_grade = Grade(
+                StudentID=student.StudentID,
+                ClassSubjectID=class_subject_id,
+                Semester=semester,
+                FinalScore=None
+            )
+            
+            db.add(new_grade)
+            db.flush()  # Flush to get the ID for the new grade
+            
+            created_grades.append(new_grade)
+    
+    if created_grades:
+        db.commit()
+        # Refresh all created grades to get their IDs
+        for grade in created_grades:
+            db.refresh(grade)
+    
+    return created_grades
+
+def initialize_standard_components_for_grades(db: Session, grade_ids: List[int]) -> dict:
+    """
+    Initialize standard grade components for multiple grades at once:
+    - 3 components with weight 1
+    - 2 components with weight 2
+    - 1 component with weight 3
+    
+    Args:
+        db: Database session
+        grade_ids: List of grade IDs to initialize components for
+        
+    Returns:
+        Dictionary with count of grades and components created
+    """
+    if not grade_ids:
+        return {"grades_processed": 0, "components_created": 0}
+    
+    components_created = 0
+    
+    for grade_id in grade_ids:
+        # Check if grade exists
+        grade = db.query(Grade).filter(Grade.GradeID == grade_id).first()
+        if not grade:
+            continue
+            
+        # Check if components already exist
+        existing_components = db.query(GradeComponent).filter(GradeComponent.GradeID == grade_id).all()
+        if existing_components:
+            # Skip grades that already have components
+            continue
+            
+        # Create the standard components
+        # 3 components with weight 1
+        for i in range(1, 4):
+            component = GradeComponent(
+                ComponentName=f"Điểm hệ số 1 #{i}",
+                GradeID=grade_id,
+                Weight=1,
+                Score=None
+            )
+            db.add(component)
+            components_created += 1
+        
+        # 2 components with weight 2
+        for i in range(1, 3):
+            component = GradeComponent(
+                ComponentName=f"Điểm hệ số 2 #{i}",
+                GradeID=grade_id,
+                Weight=2,
+                Score=None
+            )
+            db.add(component)
+            components_created += 1
+        
+        # 1 component with weight 3
+        component = GradeComponent(
+            ComponentName="Điểm hệ số 3",
+            GradeID=grade_id,
+            Weight=3,
+            Score=None
+        )
+        db.add(component)
+        components_created += 1
+    
+    db.commit()
+    
+    return {
+        "grades_processed": len(grade_ids),
+        "components_created": components_created
+    } 
