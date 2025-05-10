@@ -241,10 +241,10 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['teacher', 'parent', 'student'],
         },
         {
-            text: 'Khen thưởng/Kỷ luật',
+            text: 'Khen thưởng - kỷ luậtluật',
             icon: <EmojiEventsIcon />,
             path: '/rewards-discipline',
-            roles: ['teacher', 'parent', 'student'],
+            roles: ['admin', 'teacher', 'parent', 'student'],
         },
         {
             text: 'Sổ liên lạc',

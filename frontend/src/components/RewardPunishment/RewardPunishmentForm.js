@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Box,
     TextField,
@@ -10,7 +10,8 @@ import {
     Grid,
     Typography,
     CircularProgress,
-    Alert
+    Alert,
+    Snackbar
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -20,6 +21,7 @@ import rewardPunishmentService from '../../services/rewardPunishmentService';
 // import classService from '../../services/classService'; // Optional: for fetching classes
 
 const RewardPunishmentForm = ({ targetType, onSuccess, onError }) => {
+    
     const initialFormData = {
         Title: '',
         Type: 'REWARD', // Default to reward
@@ -34,12 +36,26 @@ const RewardPunishmentForm = ({ targetType, onSuccess, onError }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [currentUser, setCurrentUser] = useState(null);
+    const [openSnackbar, setOpenSnackbar] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
     // Optional states for dropdowns
     // const [students, setStudents] = useState([]);
     // const [classes, setClasses] = useState([]);
 
     // Optional: Fetch students or classes for dropdowns
     // useEffect(() => { ... fetch logic ... }, [targetType]);
+    useEffect(() => {
+        try {
+            const userJson = localStorage.getItem('user');
+            if (userJson) {
+                const user = JSON.parse(userJson);
+                setCurrentUser(user);
+            }
+        } catch (error) {
+            console.error('Error loading user from localStorage:', error);
+        }
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -51,51 +67,64 @@ const RewardPunishmentForm = ({ targetType, onSuccess, onError }) => {
     const handleDateChange = (newDate) => {
         setFormData(prev => ({ ...prev, Date: newDate }));
     };
+    const handleCloseSnackbar = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setOpenSnackbar(false);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
         setSuccess('');
-
-        // Prepare data based on targetType
+    
+        // Điều chỉnh dữ liệu phù hợp với cấu trúc backend yêu cầu
         const dataToSend = {
-            Title: formData.Title,
-            Type: formData.Type,
-            Description: formData.Description || null, // Send null if empty
-            Date: formData.Date ? formData.Date.toISOString() : new Date().toISOString(), // Format date for backend
-            Semester: formData.Semester || null,
-            Week: formData.Week ? parseInt(formData.Week, 10) : null, // Ensure integer or null
+            // Các trường trong RewardPunishmentBase
+            type: formData.Type === 'REWARD' ? 'reward' : 'punishment',
+            description: formData.Description || "",
+            date: formData.Date ? formData.Date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            issuer_id: currentUser?.id || currentUser?.UserID || 1,
+            
+            // Trường cho StudentRewardPunishmentCreate
+            student_id: formData.StudentID ? parseInt(formData.StudentID, 10) : null,
         };
-
+    
         try {
             let response;
             if (targetType === 'student') {
                 if (!formData.StudentID) {
                     throw new Error("Vui lòng nhập ID Học sinh.");
                 }
-                dataToSend.StudentID = parseInt(formData.StudentID, 10);
+                
+                console.log("Sending data to backend:", dataToSend); // Log để debug
+                
                 response = await rewardPunishmentService.createStudentRewardPunishment(dataToSend);
                 setSuccess(`Khen thưởng/Kỷ luật cho học sinh ID ${formData.StudentID} đã được tạo thành công!`);
             } else if (targetType === 'class') {
-                 if (!formData.ClassID) {
+                if (!formData.ClassID) {
                     throw new Error("Vui lòng nhập ID Lớp học.");
                 }
-                dataToSend.ClassID = parseInt(formData.ClassID, 10);
+                dataToSend.class_id = parseInt(formData.ClassID, 10);
+                // Loại bỏ student_id khi gửi dữ liệu class_id
+                delete dataToSend.student_id;
+                
                 response = await rewardPunishmentService.createClassRewardPunishment(dataToSend);
                 setSuccess(`Khen thưởng/Kỷ luật cho lớp ID ${formData.ClassID} đã được tạo thành công!`);
-            } else {
-                throw new Error("Loại mục tiêu không hợp lệ.");
             }
 
-            setFormData(initialFormData); // Reset form on success
-            if (onSuccess) onSuccess(response.data); // Callback for parent component
-
+            setSnackbarMessage(successMessage);
+            setOpenSnackbar(true);
+            setFormData(initialFormData);
+            if (onSuccess) onSuccess(response.data);
         } catch (err) {
             console.error("Error creating reward/punishment:", err);
-            const errorMsg = err.response?.data?.detail || err.message || `Không thể tạo ${targetType === 'student' ? 'khen thưởng/kỷ luật học sinh' : 'khen thưởng/kỷ luật lớp'}.`;
+            const errorMsg = err.response?.data?.detail || err.message || 
+                `Không thể tạo ${targetType === 'student' ? 'khen thưởng/kỷ luật học sinh' : 'khen thưởng/kỷ luật lớp'}.`;
             setError(errorMsg);
-            if (onError) onError(errorMsg); // Callback for parent component
+            if (onError) onError(errorMsg);
         } finally {
             setLoading(false);
         }
@@ -221,6 +250,20 @@ const RewardPunishmentForm = ({ targetType, onSuccess, onError }) => {
                 >
                     {loading ? <CircularProgress size={24} /> : `Tạo ${targetType === 'student' ? 'RNP Học sinh' : 'RNP Lớp'}`}
                 </Button>
+
+                {/* Thêm Snackbar hiển thị thông báo tạo thành công */}
+                <Snackbar
+                    open={openSnackbar}
+                    autoHideDuration={6000}
+                    onClose={handleCloseSnackbar}
+                    message={snackbarMessage}
+                    anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                >
+                    <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: '100%' }}>
+                        {snackbarMessage}
+                    </Alert>
+                </Snackbar>
+
             </Box>
         </LocalizationProvider>
     );

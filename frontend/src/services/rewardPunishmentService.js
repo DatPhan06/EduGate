@@ -22,15 +22,31 @@ const createClassRewardPunishment = (data) => {
     return api.post(`${API_URL}/class`, data, { headers: getAuthHeaders() });
 };
 
-// Thêm các hàm khác nếu cần (ví dụ: getRewardsByStudent, getRewardsByClass, etc.)
-// const getStudentRewards = (studentId) => {
-//     return api.get(`${API_URL}/student/${studentId}`, { headers: getAuthHeaders() });
-// };
+const getStudentRewardPunishments = (studentId) => {
+    return api.get(`${API_URL}/student/${studentId}`, { headers: getAuthHeaders() });
+};
+
+const getClassRewardPunishments = (classId) => {
+    return api.get(`${API_URL}/class/${classId}`, { headers: getAuthHeaders() });
+};
+
+const getMyRewardsPunishments = () => {
+    return api.get(`${API_URL}/me`, { headers: getAuthHeaders() });
+};
+
+const viewStudentRewardPunishments = (studentId) => {
+    return api.get(`${API_URL}/student/${studentId}/view`, { headers: getAuthHeaders() });
+};
+
+// Thêm các hàm khác nếu cần
 
 const rewardPunishmentService = {
     createStudentRewardPunishment,
     createClassRewardPunishment,
-    // getStudentRewards,
+    getStudentRewardPunishments,
+    getClassRewardPunishments,
+    getMyRewardsPunishments,      
+    viewStudentRewardPunishments, 
 };
 
 export default rewardPunishmentService;

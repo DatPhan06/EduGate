@@ -13,11 +13,12 @@ class SubjectSchedule(Base):
 
     # Add constraints to validate data
     __table_args__ = (
-        CheckConstraint('StartPeriod > 0 AND StartPeriod <= 12', name='check_start_period'),
-        CheckConstraint('EndPeriod > 0 AND EndPeriod <= 12', name='check_end_period'),
-        CheckConstraint('EndPeriod >= StartPeriod', name='check_period_order'),
+        CheckConstraint('"StartPeriod" > 0 AND "StartPeriod" <= 12', name='check_start_period'),
+        CheckConstraint('"EndPeriod" > 0 AND "EndPeriod" <= 12', name='check_end_period'),
+        CheckConstraint('"EndPeriod" >= "StartPeriod"', name='check_period_order'),
+        # Sửa đây - thêm dấu ngoặc kép cho "Day"
         CheckConstraint(
-            "Day IN ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')", 
+            '"Day" IN (\'Monday\', \'Tuesday\', \'Wednesday\', \'Thursday\', \'Friday\', \'Saturday\', \'Sunday\')', 
             name='check_valid_day'
         ),
     )

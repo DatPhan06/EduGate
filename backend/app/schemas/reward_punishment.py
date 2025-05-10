@@ -13,6 +13,11 @@ class RewardPunishmentCreate(RewardPunishmentBase):
 
 class RewardPunishmentRead(RewardPunishmentBase):
     RecordID: int
+    Title: str
+    Type: str  # sẽ được hiển thị là "REWARD" hoặc "PUNISHMENT"
+    Semester: Optional[str] = None
+    Week: Optional[int] = None
+    StudentID: Optional[int] = None
     
     model_config = {
         "from_attributes": True
