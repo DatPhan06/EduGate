@@ -228,6 +228,12 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['teacher'],
         },
         {
+            text: 'Thông báo lớp',
+            icon: <AnnouncementIcon />,
+            path: '/student/class-events',
+            roles: ['student'],
+        },
+        {
             text: 'Khen thưởng/Kỷ luật',
             icon: <EmojiEventsIcon />,
             path: '/rewards-discipline',

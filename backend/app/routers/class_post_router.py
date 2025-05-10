@@ -152,42 +152,8 @@ async def get_class_posts_for_class(
     """
     Get all class posts for a specific class.
     Pagination and search functionality included.
-    Only users related to the class (students, parents, teachers) can view the posts.
+    Anyone can view the posts.
     """
-    # Check user permissions based on role
-    user_role = getattr(current_user, "role", None)
-    
-    if user_role == "admin":
-        # Admins can see all class posts
-        pass
-    elif user_role == "teacher":
-        # Check if teacher is homeroom teacher for this class
-        if not class_post_service.check_is_homeroom_teacher(db, current_user.TeacherID, class_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to view posts for this class"
-            )
-    elif user_role == "student":
-        # Check if student belongs to this class
-        if not class_post_service.check_student_in_class(db, current_user.StudentID, class_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to view posts for this class"
-            )
-    elif user_role == "parent":
-        # Check if parent has a student in this class
-        if not class_post_service.check_parent_has_student_in_class(db, current_user.ParentID, class_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to view posts for this class"
-            )
-    else:
-        # Unrecognized role
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Unsupported user role"
-        )
-    
     # Calculate skip parameter for pagination
     skip = (page - 1) * size
     

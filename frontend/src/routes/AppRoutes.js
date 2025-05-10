@@ -27,6 +27,7 @@ import TimetableManagementPage from '../pages/Admin/TimetableManagementPage';
 import TimetableViewComponent from '../components/Timetable/TimetableViewComponent';
 import ClassEventsPage from '../pages/ClassEventsPage';
 import TeacherClassEventsPage from '../pages/teacher/TeacherClassEventsPage';
+import StudentClassEventsPage from '../pages/student/StudentClassEventsPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -94,6 +95,14 @@ const AppRoutes = () => {
                     element={
                         <ProtectedRoute roles={['teacher']}>
                             <TeacherClassEventsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="student/class-events"
+                    element={
+                        <ProtectedRoute roles={['student']}>
+                            <StudentClassEventsPage />
                         </ProtectedRoute>
                     }
                 />
