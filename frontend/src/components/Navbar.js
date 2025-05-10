@@ -42,6 +42,9 @@ import {
     SupervisorAccount as PrincipalIcon,
     ClassOutlined as ClassIcon,
     Announcement as AnnouncementIcon,
+    Grading as GradingIcon,
+    MenuBook as MenuBookIcon,
+
 } from '@mui/icons-material';
 
 /**
@@ -216,10 +219,28 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['admin'],
         },
         {
+            text: 'Quản lý điểm',
+            icon: <GradingIcon />,
+            path: '/grade-management',
+            roles: ['admin'],
+        },
+        {
+            text: 'Lớp chủ nhiệm',
+            icon: <MenuBookIcon />,
+            path: '/teacher/homeroom',
+            roles: ['teacher'],
+        },
+        {
+            text: 'Quản lý điểm môn học',
+            icon: <GradingIcon />,
+            path: '/teacher/subjects',
+            roles: ['teacher'],
+        },
+        {
             text: 'Lịch & Sự kiện',
             icon: <EventIcon />,
             path: '/event-schedule',
-            roles: [],
+            roles: ['teacher', 'parent', 'student'],
         },
         {
             text: 'Thông báo lớp',
@@ -237,19 +258,19 @@ const Navbar = ({ onLayoutChange }) => {
             text: 'Khen thưởng/Kỷ luật',
             icon: <EmojiEventsIcon />,
             path: '/rewards-discipline',
-            roles: [],
+            roles: ['teacher', 'parent', 'student'],
         },
         {
             text: 'Sổ liên lạc',
             icon: <DailyLogIcon />,
             path: '/daily-log',
-            roles: [],
+            roles: ['teacher', 'parent', 'student'],
         },
         {
             text: 'Kết quả học tập',
             icon: <SchoolIcon />,
             path: '/academic-results',
-            roles: [],
+            roles: ['teacher', 'parent', 'student'],
         },
         {
             text: 'Báo cáo & Thống kê',

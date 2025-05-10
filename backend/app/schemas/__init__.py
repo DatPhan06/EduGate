@@ -45,3 +45,14 @@ from .class_subject_schema import (
     ClassSubjectRead,
     ClassSubjectWithSchedules
 )
+
+from .grade_schema import (
+    GradeBase,
+    GradeCreate,
+    GradeUpdate,
+    GradeResponse,
+    GradeComponentBase,
+    GradeComponentCreate,
+    GradeComponentUpdate,
+    GradeComponentResponse
+)

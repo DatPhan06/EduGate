@@ -5,6 +5,7 @@ from typing import List, Optional
 from ..models.class_subject import ClassSubject
 from ..models.subject_schedule import SubjectSchedule
 from ..schemas.class_subject_schema import ClassSubjectCreate, ClassSubjectUpdate
+from ..services import grade_service
 
 # Get all class subjects
 def get_class_subjects(db: Session, skip: int = 0, limit: int = 1000):
@@ -63,6 +64,21 @@ def create_class_subject(db: Session, class_subject: ClassSubjectCreate):
         db.add(db_class_subject)
         db.commit()
         db.refresh(db_class_subject)
+        
+        # Nếu có giáo viên được phân công, tự động tạo dữ liệu điểm
+        if db_class_subject.TeacherID is not None:
+            # Khởi tạo bản ghi điểm cho tất cả học sinh trong lớp
+            created_grades = grade_service.initialize_grades_for_class_subject(
+                db, 
+                db_class_subject.ClassSubjectID,
+                db_class_subject.Semester
+            )
+            
+            # Nếu có bản ghi điểm được tạo, khởi tạo cấu trúc điểm thành phần
+            if created_grades:
+                grade_ids = [grade.GradeID for grade in created_grades]
+                grade_service.initialize_standard_components_for_grades(db, grade_ids)
+        
         return db_class_subject
     except IntegrityError as e:
         db.rollback()
@@ -77,6 +93,11 @@ def update_class_subject(db: Session, class_subject_id: int, class_subject: Clas
     if not db_class_subject:
         return None
     
+    # Kiểm tra nếu giáo viên được phân công mới cho lớp học
+    old_teacher_id = db_class_subject.TeacherID
+    new_teacher_id = class_subject.TeacherID
+    teacher_assigned = new_teacher_id is not None and old_teacher_id != new_teacher_id
+    
     # Update fields
     if class_subject.TeacherID is not None:
         db_class_subject.TeacherID = class_subject.TeacherID
@@ -88,6 +109,21 @@ def update_class_subject(db: Session, class_subject_id: int, class_subject: Clas
     try:
         db.commit()
         db.refresh(db_class_subject)
+        
+        # Nếu giáo viên mới được phân công, tự động tạo dữ liệu điểm
+        if teacher_assigned:
+            # Khởi tạo bản ghi điểm cho tất cả học sinh trong lớp
+            created_grades = grade_service.initialize_grades_for_class_subject(
+                db, 
+                db_class_subject.ClassSubjectID,
+                db_class_subject.Semester
+            )
+            
+            # Nếu có bản ghi điểm được tạo, khởi tạo cấu trúc điểm thành phần
+            if created_grades:
+                grade_ids = [grade.GradeID for grade in created_grades]
+                grade_service.initialize_standard_components_for_grades(db, grade_ids)
+        
         return db_class_subject
     except IntegrityError as e:
         db.rollback()
