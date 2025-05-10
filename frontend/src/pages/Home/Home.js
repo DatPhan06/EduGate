@@ -121,7 +121,7 @@ const Home = () => {
                             Chào mừng đến với EduGate
                         </Typography>
                         <Typography variant="h6" sx={{ maxWidth: 800, mb: 3, opacity: 0.9 }}>
-                            Hệ thống quản lý giáo dục toàn diện, giúp quản lý và theo dõi các hoạt động học tập một cách hiệu quả
+                            EduGate là một hệ thống quản lý giáo dục toàn diện, giúp quản lý và theo dõi các hoạt động học tập một cách hiệu quả
                         </Typography>
                     
                     </Box>

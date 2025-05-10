@@ -378,7 +378,15 @@ const Navbar = ({ onLayoutChange }) => {
                         p:1.5
                     }}
                 >
-                    <SchoolIcon sx={{ fontSize: 32 }}/>
+                    {/* <SchoolIcon sx={{ fontSize: 32 }}/> */}
+                    <img 
+                        src="/logon.png" // Thay thế bằng đường dẫn đến file ảnh của bạn
+                        alt="EduGate Logo" 
+                        style={{ 
+                            width: 32, // Điều chỉnh kích thước nếu cần
+                            height: 32 // Điều chỉnh kích thước nếu cần
+                        }} 
+                    />
                 </IconButton>
                 <Typography
                     variant="h5"
