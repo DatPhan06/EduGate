@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from fastapi import status
 
 from ..database import get_db
 from ..schemas.class_schema import ClassCreate, ClassUpdate, ClassRead
-from ..services import class_service
+from ..services import class_service, class_subject_service
 from ..models.class_ import Class as ClassModel # To avoid confusion with schema
+from ..models.subject import Subject
+from ..services import auth_service, user_service
+from ..enums.user_enums import UserRole
 
 router = APIRouter(
     prefix="/classes",
@@ -89,4 +93,69 @@ def delete_class_endpoint(class_id: int, db: Session = Depends(get_db)):
     if deleted_class is None:
         raise HTTPException(status_code=404, detail="Class not found")
     # Convert to ClassRead; teacherName and totalStudents might be stale or default
-    return ClassRead.model_validate(deleted_class) 
+    return ClassRead.model_validate(deleted_class)
+
+@router.get("/{class_id}/subjects", response_model=List[dict])
+def get_class_subjects_endpoint(
+    class_id: int, 
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all subjects for a specific class
+    """
+    # Authenticate user
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    
+    token = authorization.split(" ")[1]
+    
+    try:
+        # Get current user from token
+        email = auth_service.get_current_user_email(token)
+        current_user = user_service.get_user_by_email(db, email)
+        
+        # Check if user has permission (all roles can access this)
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid user"
+            )
+        
+        # Check if class exists
+        class_check = db.query(ClassModel).filter(ClassModel.ClassID == class_id).first()
+        if not class_check:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Class not found"
+            )
+        
+        # Get subjects for the class
+        class_subjects = class_subject_service.get_class_subjects_by_class(db, class_id)
+        
+        # Format response
+        result = []
+        for cs in class_subjects:
+            # Get subject details
+            subject = db.query(Subject).filter(Subject.SubjectID == cs.SubjectID).first()
+            if subject:
+                result.append({
+                    "id": subject.SubjectID,
+                    "name": subject.SubjectName,
+                    "class_subject_id": cs.ClassSubjectID,
+                    "semester": cs.Semester,
+                    "academic_year": cs.AcademicYear
+                })
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
+        ) 

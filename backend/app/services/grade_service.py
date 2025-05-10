@@ -72,14 +72,18 @@ def get_grade_by_id(db: Session, grade_id: int) -> Optional[Grade]:
         joinedload(Grade.grade_components)
     ).filter(Grade.GradeID == grade_id).first()
 
-def get_grades_by_student(db: Session, student_id: int, semester: Optional[str]) -> List[Grade]:
+def get_grades_by_student(db: Session, student_id: int, semester: Optional[str] = None, academic_year: Optional[str] = None) -> List[Grade]:
     """
-    Get all grades for a specific student, optionally filtered by semester.
+    Get all grades for a specific student, optionally filtered by semester and academic year.
     Includes related class_subject and components.
     """
     query = db.query(Grade).filter(Grade.StudentID == student_id)
     if semester:
         query = query.filter(Grade.Semester == semester)
+    
+    # Join with ClassSubject to filter by academic year if needed
+    if academic_year:
+        query = query.join(Grade.class_subject).filter(ClassSubject.AcademicYear == academic_year)
     
     return query.options(
         joinedload(Grade.class_subject).joinedload(ClassSubject.subject),
@@ -351,4 +355,97 @@ def initialize_standard_components_for_grades(db: Session, grade_ids: List[int])
     return {
         "grades_processed": len(grade_ids),
         "components_created": components_created
-    } 
+    }
+
+def get_student_grades(db: Session, student_id: int, semester: Optional[str] = None, academic_year: Optional[str] = None) -> List[dict]:
+    """
+    Get all grades for a specific student, optionally filtered by semester and academic year.
+    Returns data formatted for API response including subject information.
+    """
+    # Get the grades with all related data
+    query = db.query(Grade).filter(Grade.StudentID == student_id)
+    if semester:
+        query = query.filter(Grade.Semester == semester)
+    
+    # Join with ClassSubject to filter by academic year if needed
+    if academic_year:
+        query = query.join(Grade.class_subject).filter(ClassSubject.AcademicYear == academic_year)
+    
+    grades = query.options(
+        joinedload(Grade.class_subject).joinedload(ClassSubject.subject),
+        joinedload(Grade.class_subject).joinedload(ClassSubject.class_),
+        joinedload(Grade.grade_components)
+    ).all()
+    
+    # Format the response data
+    result = []
+    for grade in grades:
+        grade_data = {
+            "GradeID": grade.GradeID,
+            "StudentID": grade.StudentID,
+            "ClassSubjectID": grade.ClassSubjectID,
+            "Semester": grade.Semester,
+            "FinalScore": grade.FinalScore,
+            "subjectId": grade.class_subject.SubjectID if grade.class_subject else None,
+            "subjectName": grade.class_subject.subject.SubjectName if grade.class_subject and grade.class_subject.subject else None,
+            "className": grade.class_subject.class_.ClassName if grade.class_subject and grade.class_subject.class_ else None,
+            "academicYear": grade.class_subject.AcademicYear if grade.class_subject else None,
+            "grade_components": []
+        }
+        
+        # Add components if they exist
+        if grade.grade_components:
+            for component in grade.grade_components:
+                component_data = {
+                    "ComponentID": component.ComponentID,
+                    "ComponentName": component.ComponentName,
+                    "Weight": component.Weight,
+                    "Score": component.Score
+                }
+                grade_data["grade_components"].append(component_data)
+        
+        result.append(grade_data)
+    
+    return result 
+
+def get_grade_components_by_grade_id(db: Session, grade_id: int) -> List[dict]:
+    """
+    Get all grade components for a specific grade ID.
+    Returns data formatted for API response.
+    
+    Args:
+        db: Database session
+        grade_id: The ID of the grade to get components for
+        
+    Returns:
+        List of component dictionaries with details
+    """
+    # Get the grade with components loaded
+    grade = db.query(Grade).options(
+        joinedload(Grade.grade_components),
+        joinedload(Grade.class_subject).joinedload(ClassSubject.subject),
+        joinedload(Grade.student).joinedload(Student.user)
+    ).filter(
+        Grade.GradeID == grade_id
+    ).first()
+    
+    if not grade:
+        return []
+    
+    # Format the response data
+    grade_components = []
+    if grade.grade_components:
+        for component in grade.grade_components:
+            component_data = {
+                "ComponentID": component.ComponentID,
+                "ComponentName": component.ComponentName,
+                "Weight": component.Weight,
+                "Score": component.Score,
+                "GradeID": component.GradeID
+            }
+            grade_components.append(component_data)
+    
+    # Sort components by weight (highest first) and then by name
+    grade_components.sort(key=lambda x: (-x["Weight"], x["ComponentName"]))
+    
+    return grade_components 

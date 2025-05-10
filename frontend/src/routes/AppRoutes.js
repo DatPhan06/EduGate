@@ -40,6 +40,9 @@ import ClassSubjectStudentsPage from '../pages/Teacher/ClassSubjectStudentsPage'
 import SubjectStudentGradesPage from '../pages/Teacher/SubjectStudentGradesPage';
 import HomeroomClassGradesPage from '../pages/Teacher/HomeroomClassGradesPage';
 
+// Student Pages
+import StudentGradesViewPage from '../pages/Student/StudentGradesViewPage';
+
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
     const currentUser = authService.getCurrentUser();
@@ -245,7 +248,7 @@ const AppRoutes = () => {
                 <Route
                     path="grade-management"
                     element={
-                        <ProtectedRoute roles={['admin', 'teacher']}>
+                        <ProtectedRoute roles={['admin']}>
                             <GradeManagementPage />
                         </ProtectedRoute>
                     }
@@ -266,8 +269,17 @@ const AppRoutes = () => {
                         </ProtectedRoute>
                     }
                 />
+                
+                {/* Student Routes */}
+                <Route
+                    path="student/grades"
+                    element={
+                        <ProtectedRoute roles={['student', 'parent']}>
+                            <StudentGradesViewPage />
+                        </ProtectedRoute>
+                    }
+                />
             </Route>
-
 
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />

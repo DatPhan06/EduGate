@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Header, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
+from typing import List, Optional, Dict, Any, Union
+from pydantic import BaseModel, Field
 
 from ..database import get_db
 from ..schemas.teacher_schema import TeacherRead, TeacherUpdate
@@ -13,6 +13,7 @@ from ..schemas.grade_schema import GradeComponentCreate, GradeComponentUpdate, G
 router = APIRouter(
     prefix="/teachers",
     tags=["teachers"],
+    responses={404: {"description": "Not found"}}
 )
 
 # Define subject response schema
@@ -47,6 +48,28 @@ class StudentResponse(BaseModel):
     classId: Optional[int] = None
     className: Optional[str] = None
     classGrade: Optional[str] = None
+
+# Define class-subject response schema 
+class ClassSubjectResponse(BaseModel):
+    class_id: int
+    class_name: str
+    grade_level: str
+    subject_id: int
+    subject_name: str
+    class_subject_id: int
+
+# Define class with subjects response
+class ClassWithSubjectsResponse(BaseModel):
+    class_id: int
+    class_name: str
+    grade_level: str
+    subjects: List[Dict[str, Any]]
+
+# Define response schema for homeroom class grades
+class HomeroomClassGradesResponse(BaseModel):
+    student_id: int
+    student_name: str
+    grades: List[GradeResponse]
 
 @router.get("/", response_model=List[TeacherRead])
 def read_teachers_endpoint(
@@ -693,6 +716,83 @@ def initialize_grade_components(
         components = teacher_service.initialize_standard_grade_components(db, grade_id)
         
         return {"message": "Grade components initialized successfully", "count": len(components)}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
+        )
+
+@router.get("/{teacher_id}/homeroom-classes/{class_id}/grades", response_model=List[Dict[str, Any]])
+def get_homeroom_class_grades_endpoint(
+    teacher_id: int,
+    class_id: int,
+    semester: Optional[str] = Query(None, description="Filter by semester (e.g., 'HK1' or 'HK2')"),
+    academic_year: Optional[str] = Query(None, description="Filter by academic year (e.g., '2023-2024')"),
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Get grades for all students in a class where the teacher is the homeroom teacher
+    """
+    # Authenticate user
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    
+    token = authorization.split(" ")[1]
+    
+    try:
+        # Get current user from token
+        email = auth_service.get_current_user_email(token)
+        current_user = user_service.get_user_by_email(db, email)
+        
+        # Check if user has permission (admin or the teacher themselves)
+        if (current_user.role != UserRole.ADMIN and 
+            current_user.role != UserRole.TEACHER):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this resource"
+            )
+        
+        # If teacher, ensure they're accessing their own data
+        if current_user.role == UserRole.TEACHER and current_user.UserID != teacher_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Teachers can only access their own class data"
+            )
+        
+        # First, verify that the teacher is actually the homeroom teacher for this class
+        class_check = teacher_service.verify_homeroom_teacher(db, teacher_id, class_id)
+        if not class_check:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Teacher is not the homeroom teacher for this class"
+            )
+        
+        # Get students in the class
+        students = teacher_service.get_homeroom_class_students(db, teacher_id, class_id)
+        
+        # Get grades for all students in the class
+        result = []
+        for student in students:
+            # Get all grades for this student
+            student_grades = grade_service.get_student_grades(db, student["id"], semester, academic_year)
+            
+            # Create a response object for each student with their grades
+            student_data = {
+                "student_id": student["id"],
+                "student_name": student["name"],
+                "grades": student_grades
+            }
+            
+            result.append(student_data)
+        
+        return result
         
     except HTTPException:
         raise

@@ -273,6 +273,12 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['teacher', 'parent', 'student'],
         },
         {
+            text: 'Xem điểm số',
+            icon: <GradingIcon />,
+            path: '/student/grades',
+            roles: ['student'],
+        },
+        {
             text: 'Báo cáo & Thống kê',
             icon: <ReportsIcon />,
             path: '/reports-statistics',
