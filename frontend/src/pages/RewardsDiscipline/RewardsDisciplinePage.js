@@ -16,7 +16,11 @@ import {
   Avatar,
   Badge,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import { 
   EmojiEvents as RewardIcon, 
@@ -33,6 +37,7 @@ import {
 import RewardPunishmentForm from '../../components/RewardPunishment/RewardPunishmentForm';
 import RewardPunishmentList from '../../components/RewardPunishment/RewardPunishmentList';
 import authService from '../../services/authService';
+import userService from '../../services/userService';
 import rewardPunishmentService from '../../services/rewardPunishmentService';
 import { Link } from 'react-router-dom';
 
@@ -77,6 +82,7 @@ const RewardsDisciplinePage = () => {
     recentPunishments: []
   });
   const [loading, setLoading] = useState(false);
+  const [childrenList, setChildrenList] = useState([]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -90,13 +96,17 @@ const RewardsDisciplinePage = () => {
           if (user.role === 'student') {
             setStudentIdForView(user.UserID || user.id);
           }
-          // Parent sẽ cần chọn con (hoặc mặc định là con đầu tiên)
+          // Parent sẽ lấy danh sách con và mặc định chọn con đầu tiên
           else if (user.role === 'parent') {
-            // Uncomment when parentService is available
-            // const response = await parentService.getChildren();
-            // if (response.data && response.data.length > 0) {
-            //   setStudentIdForView(response.data[0].StudentID);
-            // }
+            try {
+              const response = await userService.getParentStudents(user.UserID);
+              setChildrenList(response || []);
+              if (response && response.length > 0) {
+                setStudentIdForView(response[0].UserID);
+              }
+            } catch (error) {
+              console.error("Error fetching parent's children:", error);
+            }
           }
         }
       } catch (error) {
@@ -242,6 +252,11 @@ const RewardsDisciplinePage = () => {
 
   const canManageRewards = userRole === 'admin'; // Chỉ admin có thể quản lý trực tiếp
 
+  // Hàm xử lý khi phụ huynh chọn học sinh khác để xem
+  const handleStudentChange = (event) => {
+    setStudentIdForView(event.target.value);
+  };
+
   if (!currentUser) {
     return (
       <Container maxWidth="xl" sx={{ width: '100%', px: { xs: 2, sm: 4 } }}>
@@ -333,6 +348,28 @@ const RewardsDisciplinePage = () => {
   // Student dashboard stats and timeline
   const renderStudentDashboard = () => (
     <>
+      {/* Select student dropdown for parents */}
+      {userRole === 'parent' && childrenList.length > 0 && (
+        <Box sx={{ mb: 4 }}>
+          <FormControl fullWidth variant="outlined">
+            <InputLabel id="student-select-label">Chọn học sinh</InputLabel>
+            <Select
+              labelId="student-select-label"
+              id="student-select"
+              value={studentIdForView || ''}
+              onChange={handleStudentChange}
+              label="Chọn học sinh"
+            >
+              {childrenList.map((child) => (
+                <MenuItem key={child.UserID} value={child.UserID}>
+                  {child.FirstName} {child.LastName} {child.ClassName ? `- Lớp ${child.ClassName}` : ''}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      )}
+
       {/* Stats cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={6} sm={4}>
