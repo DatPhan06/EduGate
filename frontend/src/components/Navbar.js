@@ -41,8 +41,10 @@ import {
     Assessment as ReportsIcon,
     SupervisorAccount as PrincipalIcon,
     ClassOutlined as ClassIcon,
+    Announcement as AnnouncementIcon,
     Grading as GradingIcon,
     MenuBook as MenuBookIcon,
+
 } from '@mui/icons-material';
 
 /**
@@ -241,7 +243,19 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['teacher', 'parent', 'student'],
         },
         {
-            text: 'Khen thưởng - kỷ luậtluật',
+            text: 'Thông báo lớp',
+            icon: <AnnouncementIcon />,
+            path: '/teacher/class-events',
+            roles: ['teacher'],
+        },
+        {
+            text: 'Thông báo lớp',
+            icon: <AnnouncementIcon />,
+            path: '/student/class-events',
+            roles: ['student'],
+        },
+        {
+            text: 'Khen thưởng/Kỷ luật',
             icon: <EmojiEventsIcon />,
             path: '/rewards-discipline',
             roles: ['admin', 'teacher', 'parent', 'student'],

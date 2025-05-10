@@ -26,6 +26,9 @@ import DepartmentManagementPage from '../pages/Admin/DepartmentManagementPage';
 import TimetableManagementPage from '../pages/Admin/TimetableManagementPage';
 import GradeManagementPage from '../pages/Admin/GradeManagementPage';
 import TimetableViewComponent from '../components/Timetable/TimetableViewComponent';
+import ClassEventsPage from '../pages/ClassEventsPage';
+import TeacherClassEventsPage from '../pages/teacher/TeacherClassEventsPage';
+import StudentClassEventsPage from '../pages/student/StudentClassEventsPage';
 
 // Teacher Pages
 import HomeroomClassPage from '../pages/Teacher/HomeroomClassPage';
@@ -167,6 +170,32 @@ const AppRoutes = () => {
                     }
                 />
 
+                {/* Class Events Routes */}
+                <Route
+                    path="class-events/:classId"
+                    element={
+                        <ProtectedRoute roles={['admin', 'teacher', 'student', 'parent']}>
+                            <ClassEventsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="teacher/class-events"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <TeacherClassEventsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="student/class-events"
+                    element={
+                        <ProtectedRoute roles={['student']}>
+                            <StudentClassEventsPage />
+                        </ProtectedRoute>
+                    }
+                />
+
                 <Route
                     path="user-management"
                     element={
@@ -240,4 +269,4 @@ const AppRoutes = () => {
     );
 };
 
-export default AppRoutes; 
+export default AppRoutes;
