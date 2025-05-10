@@ -95,7 +95,7 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
                 <Route path="rewards-discipline" element={
-                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                    <ProtectedRoute roles={[ 'admin']}>
                         <RewardsDisciplinePage />
                     </ProtectedRoute>
                 } />
@@ -231,7 +231,7 @@ const AppRoutes = () => {
                 <Route
                     path="timetable-management"
                     element={
-                        <ProtectedRoute roles={['admin']}>
+                        <ProtectedRoute roles={['admin', 'teacher', 'student', 'parent']}>
                             <TimetableManagementPage />
                         </ProtectedRoute>
                     }
