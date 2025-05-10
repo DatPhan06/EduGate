@@ -127,12 +127,8 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
                 <Route path="daily-log" element={
-                    <ProtectedRoute roles={['teacher', 'parent', 'student']}>
-                        {currentUser?.role === 'teacher' ? (
-                            <ManageDailyLogPage />
-                        ) : (
-                            <ViewDailyLogPage />
-                        )}
+                    <ProtectedRoute roles={['teacher', 'parent', 'student']}>              
+                        <ViewDailyLogPage />             
                     </ProtectedRoute>
                 } />
                 <Route path="academic-results" element={
