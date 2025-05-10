@@ -19,10 +19,16 @@ import {
   Chip,
   IconButton,
   Tooltip,
-  Grid
+  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Divider
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import CloseIcon from '@mui/icons-material/Close';
 import rewardPunishmentService from '../../services/rewardPunishmentService';
 
 const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) => {
@@ -31,6 +37,9 @@ const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) 
   const [error, setError] = useState('');
   // internalSearchId is for admin's manual search
   const [internalSearchId, setInternalSearchId] = useState(''); 
+  // State for detail modal
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
   
   const isViewOnlyMode = !!studentIdForView;
   // The ID displayed in the search box or used for fetching
@@ -173,6 +182,17 @@ const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) 
     return typeStr === 'reward' ? 'success' : 'error'; 
   }
 
+  // Handle clicking on a row
+  const handleRowClick = (item) => {
+    setSelectedItem(item);
+    setDetailModalOpen(true);
+  };
+
+  // Close the detail modal
+  const handleCloseDetailModal = () => {
+    setDetailModalOpen(false);
+  };
+
   return (
     <Box sx={{ width: '100%' }}>
       {!isViewOnlyMode && (
@@ -260,7 +280,11 @@ const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) 
               {data.map((item) => (
                 <TableRow 
                   key={item.RecordID || item.RewardPunishmentID || item.id}
-                  sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}
+                  sx={{ 
+                    '&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
+                    '&:hover': { backgroundColor: '#f0f7ff', cursor: 'pointer' }
+                  }}
+                  onClick={() => handleRowClick(item)}
                 >
                   <TableCell align="center">{item.RecordID || item.RewardPunishmentID || item.id}</TableCell>
                   <TableCell>{item.Title || item.title || ''}</TableCell>
@@ -287,6 +311,115 @@ const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) 
           {isViewOnlyMode ? 'Không có dữ liệu khen thưởng/kỷ luật.' : effectiveId ? 'Không tìm thấy dữ liệu khen thưởng/kỷ luật.' : 'Không có dữ liệu khen thưởng/kỷ luật nào trong hệ thống.'}
         </Typography>
       )}
+
+      {/* Detail Modal */}
+      <Dialog 
+        open={detailModalOpen} 
+        onClose={handleCloseDetailModal}
+        maxWidth="md"
+        fullWidth
+      >
+        {selectedItem && (
+          <>
+            <DialogTitle sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              bgcolor: (selectedItem.Type || selectedItem.type || '').toLowerCase() === 'reward' ? '#e8f5e9' : '#ffebee',
+              color: (selectedItem.Type || selectedItem.type || '').toLowerCase() === 'reward' ? '#2e7d32' : '#d32f2f'
+            }}>
+              <Typography variant="h6">
+                Chi tiết {(selectedItem.Type || selectedItem.type || '').toLowerCase() === 'reward' ? 'Khen thưởng' : 'Kỷ luật'}
+              </Typography>
+              <IconButton onClick={handleCloseDetailModal} size="small">
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent dividers>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Typography variant="h5" gutterBottom>
+                    {selectedItem.Title || selectedItem.title || 'Không có tiêu đề'}
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Mã bản ghi:
+                  </Typography>
+                  <Typography variant="body1" gutterBottom>
+                    {selectedItem.RecordID || selectedItem.RewardPunishmentID || selectedItem.id || 'N/A'}
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Loại:
+                  </Typography>
+                  <Chip
+                    label={getTypeDisplayText(selectedItem.Type || selectedItem.type)}
+                    color={(selectedItem.Type || selectedItem.type || '').toLowerCase() === 'reward' ? 'success' : 'error'}
+                    size="small"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Học sinh ID:
+                  </Typography>
+                  <Typography variant="body1" gutterBottom>
+                    {selectedItem.StudentID || selectedItem.student_id || 'N/A'}
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Ngày:
+                  </Typography>
+                  <Typography variant="body1" gutterBottom>
+                    {formatDate(selectedItem.Date || selectedItem.date)}
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Học kỳ:
+                  </Typography>
+                  <Typography variant="body1" gutterBottom>
+                    {selectedItem.Semester || selectedItem.semester || 'N/A'}
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Tuần:
+                  </Typography>
+                  <Typography variant="body1" gutterBottom>
+                    {selectedItem.Week || selectedItem.week || 'N/A'}
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Mô tả chi tiết:
+                  </Typography>
+                  <Paper elevation={0} sx={{ p: 2, bgcolor: '#f9f9f9', mt: 1 }}>
+                    <Typography variant="body1" style={{ whiteSpace: 'pre-line' }}>
+                      {selectedItem.Description || selectedItem.description || 'Không có mô tả chi tiết.'}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseDetailModal} color="primary">
+                Đóng
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Box>
   );
 };
