@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from .. import models
 from ..database import get_db
 from ..services import user_service
+from ..enums.user_enums import UserRole
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -64,4 +65,87 @@ async def get_current_active_user(authorization: str = Header(None), db: Session
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     
-    return user 
+    return user
+
+# Add the missing functions that class_post_router.py is trying to import
+async def get_current_user(authorization: str = Header(None), db: Session = Depends(get_db)):
+    """Get the current user regardless of their role"""
+    return await get_current_active_user(authorization, db)
+
+async def get_current_teacher(authorization: str = Header(None), db: Session = Depends(get_db)):
+    """Get the current user and ensure they are a teacher"""
+    user = await get_current_active_user(authorization, db)
+    
+    if user.role != UserRole.TEACHER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: User is not a teacher"
+        )
+        
+    # Get teacher record linked to this user
+    teacher = db.query(models.Teacher).filter(models.Teacher.TeacherID == user.UserID).first()
+    if not teacher:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Teacher record not found"
+        )
+        
+    # Set role for permission checking
+    setattr(teacher, "role", "teacher") # Keep this to attach role for permission checks if needed elsewhere
+    # also attach all user attributes to teacher object for easier access in router
+    for key, value in user.__dict__.items():
+        if not hasattr(teacher, key):
+            setattr(teacher, key, value)
+    return teacher
+
+async def get_current_parent(authorization: str = Header(None), db: Session = Depends(get_db)):
+    """Get the current user and ensure they are a parent"""
+    user = await get_current_active_user(authorization, db)
+    
+    if user.role != UserRole.PARENT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: User is not a parent"
+        )
+        
+    # Get parent record linked to this user
+    parent = db.query(models.Parent).filter(models.Parent.ParentID == user.UserID).first()
+    if not parent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Parent record not found"
+        )
+        
+    # Set role for permission checking
+    setattr(parent, "role", "parent")
+    # also attach all user attributes to parent object for easier access in router
+    for key, value in user.__dict__.items():
+        if not hasattr(parent, key):
+            setattr(parent, key, value)
+    return parent
+
+async def get_current_student(authorization: str = Header(None), db: Session = Depends(get_db)):
+    """Get the current user and ensure they are a student"""
+    user = await get_current_active_user(authorization, db)
+    
+    if user.role != UserRole.STUDENT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: User is not a student"
+        )
+        
+    # Get student record linked to this user
+    student = db.query(models.Student).filter(models.Student.StudentID == user.UserID).first()
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student record not found"
+        )
+        
+    # Set role for permission checking
+    setattr(student, "role", "student")
+    # also attach all user attributes to student object for easier access in router
+    for key, value in user.__dict__.items():
+        if not hasattr(student, key):
+            setattr(student, key, value)
+    return student

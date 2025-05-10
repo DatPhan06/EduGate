@@ -25,6 +25,8 @@ import ConversationMonitorPage from '../pages/Admin/ConversationMonitorPage';
 import DepartmentManagementPage from '../pages/Admin/DepartmentManagementPage';
 import TimetableManagementPage from '../pages/Admin/TimetableManagementPage';
 import TimetableViewComponent from '../components/Timetable/TimetableViewComponent';
+import ClassEventsPage from '../pages/ClassEventsPage';
+import TeacherClassEventsPage from '../pages/teacher/TeacherClassEventsPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -77,6 +79,24 @@ const AppRoutes = () => {
                 <Route path="daily-log" element={<DailyLogPage />} />
                 <Route path="academic-results" element={<AcademicResultsPage />} />
                 <Route path="reports-statistics" element={<ReportsPage />} />
+
+                {/* Class Events Routes */}
+                <Route
+                    path="class-events/:classId"
+                    element={
+                        <ProtectedRoute roles={['admin', 'teacher', 'student', 'parent']}>
+                            <ClassEventsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="teacher/class-events"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <TeacherClassEventsPage />
+                        </ProtectedRoute>
+                    }
+                />
 
                 <Route
                     path="user-management"
@@ -143,4 +163,4 @@ const AppRoutes = () => {
     );
 };
 
-export default AppRoutes; 
+export default AppRoutes;

@@ -41,6 +41,7 @@ import {
     Assessment as ReportsIcon,
     SupervisorAccount as PrincipalIcon,
     ClassOutlined as ClassIcon,
+    Announcement as AnnouncementIcon,
 } from '@mui/icons-material';
 
 /**
@@ -219,6 +220,12 @@ const Navbar = ({ onLayoutChange }) => {
             icon: <EventIcon />,
             path: '/event-schedule',
             roles: [],
+        },
+        {
+            text: 'Thông báo lớp',
+            icon: <AnnouncementIcon />,
+            path: '/teacher/class-events',
+            roles: ['teacher'],
         },
         {
             text: 'Khen thưởng/Kỷ luật',
