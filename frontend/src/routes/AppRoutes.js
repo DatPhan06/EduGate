@@ -136,6 +136,11 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
 
+                <Route path="reports-statistics" element={
+                    <ProtectedRoute roles={['admin']}>
+                        <ReportsPage />
+                    </ProtectedRoute>
+                } />
                 {/* Teacher Homeroom Routes */}
                 <Route
                     path="teacher/homeroom"
