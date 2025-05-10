@@ -68,6 +68,39 @@ def get_users(
 ):
     return user_service.get_users(db, skip=skip, limit=limit, role=role, search=search)
 
+@router.get("/is-bgh-teacher")
+def is_bgh_teacher(
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Trả về true nếu user hiện tại là giáo viên thuộc phòng ban BGH
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    token = authorization.split(" ")[1]
+    try:
+        email = auth_service.get_current_user_email(token)
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token"
+            )
+        user = user_service.get_user_by_email(db, email)
+        if not user or user.role != UserRole.TEACHER or not user.teacher or not user.teacher.department:
+            return {"is_bgh_teacher": False}
+        if user.teacher.department.DepartmentName == "BGH":
+            return {"is_bgh_teacher": True}
+        return {"is_bgh_teacher": False}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials"
+        )
+
 @router.get("/{user_id}", response_model=User)
 def get_user(user_id: int, db: Session = Depends(get_db)):
     user = user_service.get_user_by_id(db, user_id)

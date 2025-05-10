@@ -42,7 +42,7 @@ import petitionService from "../../services/petitionService"; // Giữ lại imp
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 // Component này nhận userId (của admin) từ props
-const AdminPetitionsView = ({ userId }) => {
+const AdminPetitionsView = ({ userId, readOnly = false }) => {
   const [loadingPetitions, setLoadingPetitions] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
   const [error, setError] = useState(null);
@@ -328,14 +328,16 @@ const AdminPetitionsView = ({ userId }) => {
                   <TableCell sx={{ width: '10%', minWidth: 110 }}>Trạng thái</TableCell>
                   <TableCell sx={{ width: '10%', minWidth: 100 }}>Thời gian</TableCell>
                   <TableCell sx={{ width: '10%', minWidth: 110 }}>Ngày tạo</TableCell>
-                  <TableCell sx={{ width: '10%', minWidth: 110 }}>Thao tác</TableCell>
+                  {!readOnly && (
+                    <TableCell sx={{ width: '10%', minWidth: 110 }}>Thao tác</TableCell>
+                  )}
                   <TableCell sx={{ width: '10%', minWidth: 90 }}>Chi tiết</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {petitions.length === 0 ? (
                      <TableRow>
-                        <TableCell colSpan={9} align="center">Không tìm thấy đơn thỉnh cầu nào khớp với bộ lọc.</TableCell>
+                        <TableCell colSpan={readOnly ? 8 : 9} align="center">Không tìm thấy đơn thỉnh cầu nào khớp với bộ lọc.</TableCell>
                      </TableRow>
                 ) : (
                     petitions.map((petition) => (
@@ -369,20 +371,22 @@ const AdminPetitionsView = ({ userId }) => {
                         </TableCell>
                         <TableCell>{formatTime(petition.SubmittedAt)}</TableCell>
                         <TableCell>{formatDate(petition.SubmittedAt)}</TableCell>
-                        <TableCell>
-                          {petition.Status === "PENDING" && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              size="small"
-                              onClick={() => handleOpenStatusDialog(petition.PetitionID)}
-                              sx={{ whiteSpace: "nowrap" }}
-                            >
-                              Cập nhật
-                            </Button>
-                          )}
-                           {/* Có thể thêm nút khác ở đây nếu cần */}
-                        </TableCell>
+                        {!readOnly && (
+                          <TableCell>
+                            {petition.Status === "PENDING" && (
+                              <Button
+                                variant="contained"
+                                color="primary"
+                                size="small"
+                                onClick={() => handleOpenStatusDialog(petition.PetitionID)}
+                                sx={{ whiteSpace: "nowrap" }}
+                              >
+                                Cập nhật
+                              </Button>
+                            )}
+                             {/* Có thể thêm nút khác ở đây nếu cần */}
+                          </TableCell>
+                        )}
                          <TableCell>
                              <Tooltip title="Xem chi tiết">
                                <IconButton
