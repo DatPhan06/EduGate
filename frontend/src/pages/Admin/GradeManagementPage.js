@@ -42,6 +42,39 @@ import {
     Grade as GradeIcon
 } from '@mui/icons-material';
 import gradeService from '../../services/gradeService';
+import { api } from '../../services/api';
+
+// Utility function to fetch subject info from class_subject_id
+const getSubjectFromClassSubject = async (classSubjectId) => {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await api.get(`/class-subjects/${classSubjectId}/subject`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching subject for class subject ${classSubjectId}:`, error);
+        return null;
+    }
+};
+
+// Utility function to fetch grade components by grade id
+const getGradeComponentsByGradeId = async (gradeId) => {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await api.get(`/grades/grade/${gradeId}/components`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching components for grade ${gradeId}:`, error);
+        return [];
+    }
+};
 
 const GradeManagementPage = () => {
     // Main data states
@@ -138,8 +171,41 @@ const GradeManagementPage = () => {
         
         setLoadingStudentGrades(true);
         try {
+            // Get the basic grade data
             const data = await gradeService.getStudentGrades(studentId);
-            setStudentGrades(data || []);
+            
+            // Enhanced data with subject information and components
+            const enhancedData = await Promise.all(data.map(async (grade) => {
+                // Make a copy of the grade object
+                let enhancedGrade = { ...grade };
+                
+                // Fetch subject information
+                if (grade.ClassSubjectID) {
+                    try {
+                        const subjectInfo = await getSubjectFromClassSubject(grade.ClassSubjectID);
+                        if (subjectInfo) {
+                            enhancedGrade.subjectName = subjectInfo.subject_name || grade.subjectName;
+                            enhancedGrade.className = subjectInfo.class_name || grade.className;
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching subject info for ClassSubjectID ${grade.ClassSubjectID}:`, error);
+                    }
+                }
+                
+                // Fetch grade components
+                if (grade.GradeID) {
+                    try {
+                        const components = await getGradeComponentsByGradeId(grade.GradeID);
+                        enhancedGrade.grade_components = components;
+                    } catch (error) {
+                        console.error(`Error fetching components for grade ${grade.GradeID}:`, error);
+                    }
+                }
+                
+                return enhancedGrade;
+            }));
+            
+            setStudentGrades(enhancedData || []);
         } catch (error) {
             showSnackbar(`Không thể tải điểm cho học sinh (ID: ${studentId})`, 'error');
             setStudentGrades([]);
@@ -187,93 +253,69 @@ const GradeManagementPage = () => {
     const handleAccordionChange = (subjectId) => (event, isExpanded) => {
         setExpandedSubject(isExpanded ? subjectId : false);
     };
-
-    // Client-side filtering
+    
+    // ===== Filtered Students =====
     const filteredStudents = students.filter(student => {
-        // Debug values for first student
-        if (student.studentId === 1) {
-            console.log("Filter values:", {
-                classFilter, 
-                gradeFilter, 
-                studentClassId: student.classId,
-                studentClassGrade: student.classGrade
-            });
-        }
+        // Apply search filter
+        const matchesSearch = !searchTerm || 
+            student.name?.toLowerCase().includes(searchTerm) ||
+            student.Email?.toLowerCase().includes(searchTerm) ||
+            String(student.studentId).includes(searchTerm);
         
-        const studentId = student.studentId ? String(student.studentId) : '';
-        const name = student.name ? student.name.toLowerCase() : '';
-        const className = student.className ? student.className.toLowerCase() : '';
-        const classGrade = student.classGrade ? student.classGrade.toLowerCase() : '';
-        const email = student.Email ? student.Email.toLowerCase() : '';
+        // Apply class filter
+        const matchesClass = !classFilter || student.classId === Number(classFilter);
         
-        // Class filter logic - using toString() to compare numbers and strings
-        const classMatch = !classFilter || 
-                           (student.classId && student.classId.toString() === classFilter);
+        // Apply grade filter
+        const matchesGrade = !gradeFilter || student.classGrade === gradeFilter;
         
-        // Grade filter logic - direct string comparison
-        const gradeMatch = !gradeFilter || student.classGrade === gradeFilter;
-
-        // Search term logic
-        const searchMatch = !searchTerm || 
-                            name.includes(searchTerm) ||
-                            studentId.includes(searchTerm) ||
-                            className.includes(searchTerm) ||
-                            classGrade.includes(searchTerm) ||
-                            email.includes(searchTerm);
-        
-        return classMatch && gradeMatch && searchMatch;
+        return matchesSearch && matchesClass && matchesGrade;
     });
 
     // ===== Render Methods =====
-    
-    const renderStudentTable = () => {
-        if (loadingStudents) {
-            return (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px', mt: 2 }}>
-                    <CircularProgress />
-                </Box>
-            );
-        }
-        
-        return (
-            <Paper sx={{ mt: 2, p: 2 }}>
-                <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+    const renderFilters = () => (
+        <Paper sx={{ p: 2, mb: 2 }}>
+            <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} md={4}>
                     <TextField
-                        sx={{ flexGrow: 1 }}
+                        fullWidth
+                        label="Tìm kiếm"
+                        placeholder="Tên, Email, Mã học sinh"
                         variant="outlined"
-                        label="Tìm kiếm học sinh (Tên, ID, Lớp, Khối, Email)"
+                        value={searchTerm}
                         onChange={handleSearchChange}
                         InputProps={{
-                            startAdornment: (
-                                <SearchIcon sx={{ mr: 1, color: 'action.active' }} />
-                            ),
+                            startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
                         }}
                     />
-                    <FormControl sx={{ minWidth: 150 }} size="small">
-                        <InputLabel>Lọc theo lớp</InputLabel>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                    <FormControl fullWidth>
+                        <InputLabel id="class-select-label">Lọc theo lớp</InputLabel>
                         <Select
+                            labelId="class-select-label"
                             value={classFilter}
                             label="Lọc theo lớp"
                             onChange={handleClassFilterChange}
-                            disabled={loadingStudents}
                         >
                             <MenuItem value="">
                                 <em>Tất cả các lớp</em>
                             </MenuItem>
-                            {uniqueClasses.map((cls) => (
-                                <MenuItem key={cls.id} value={cls.id.toString()}>
-                                    {cls.name} {cls.grade ? `(Khối ${cls.grade})` : ''}
+                            {uniqueClasses.map((classItem) => (
+                                <MenuItem key={classItem.id} value={classItem.id}>
+                                    {classItem.name} (Khối {classItem.grade})
                                 </MenuItem>
                             ))}
                         </Select>
                     </FormControl>
-                    <FormControl sx={{ minWidth: 150 }} size="small">
-                        <InputLabel>Lọc theo khối</InputLabel>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                    <FormControl fullWidth>
+                        <InputLabel id="grade-select-label">Lọc theo khối</InputLabel>
                         <Select
+                            labelId="grade-select-label"
                             value={gradeFilter}
                             label="Lọc theo khối"
                             onChange={handleGradeFilterChange}
-                            disabled={loadingStudents}
                         >
                             <MenuItem value="">
                                 <em>Tất cả các khối</em>
@@ -285,23 +327,41 @@ const GradeManagementPage = () => {
                             ))}
                         </Select>
                     </FormControl>
+                </Grid>
+            </Grid>
+        </Paper>
+    );
+
+    const renderStudentTable = () => {
+        return (
+            <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+                <Box p={2} display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="h6" component="div">
+                        Danh sách học sinh {classFilter ? `- Lớp ${uniqueClasses.find(c => c.id === Number(classFilter))?.name}` : ''}
+                    </Typography>
                 </Box>
-
-                {filteredStudents.length === 0 && !loadingStudents && (
-                     <Typography sx={{ textAlign: 'center', p: 2 }}>Không tìm thấy học sinh nào.</Typography>
-                )}
-
-                {filteredStudents.length > 0 && (
-                    <TableContainer>
+                
+                {loadingStudents ? (
+                    <Box display="flex" justifyContent="center" p={3}>
+                        <CircularProgress />
+                    </Box>
+                ) : filteredStudents.length === 0 ? (
+                    <Box p={3} textAlign="center">
+                        <Typography variant="body1" color="textSecondary">
+                            Không tìm thấy học sinh nào phù hợp với điều kiện tìm kiếm.
+                        </Typography>
+                    </Box>
+                ) : (
+                    <TableContainer sx={{ maxHeight: 'calc(100vh - 250px)' }}>
                         <Table stickyHeader>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell>ID</TableCell>
-                                    <TableCell>Họ và Tên</TableCell>
+                                    <TableCell>Mã học sinh</TableCell>
+                                    <TableCell>Tên học sinh</TableCell>
                                     <TableCell>Lớp</TableCell>
                                     <TableCell>Khối</TableCell>
                                     <TableCell>Email</TableCell>
-                                    <TableCell align="center">Hành động</TableCell>
+                                    <TableCell align="center">Quản lý điểm</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -338,8 +398,10 @@ const GradeManagementPage = () => {
         const gradesBySubject = {};
         studentGrades.forEach(grade => {
             const subjectKey = grade.ClassSubjectID;
-            const subjectName = grade.class_subject?.subject?.SubjectName || 'Chưa có tên môn học';
-            const className = grade.class_subject?.class?.ClassName || 'N/A';
+            const subjectName = grade.subjectName || 
+                             (grade.class_subject?.subject?.SubjectName) || 
+                             `Môn học ${grade.ClassSubjectID}`;
+            const className = grade.className || grade.class_subject?.class?.ClassName || 'N/A';
             const semester = grade.Semester || 'Không xác định';
             
             if (!gradesBySubject[subjectKey]) {
@@ -403,26 +465,22 @@ const GradeManagementPage = () => {
                                             <strong>Khối:</strong> {selectedStudent?.classGrade || 'N/A'}
                                         </Typography>
                                     </Grid>
-                                    <Grid item xs={12} sm={6}>
-                                        <Typography variant="body1">
-                                            <strong>Mã học sinh:</strong> {selectedStudent?.studentId || 'N/A'}
-                                        </Typography>
-                                    </Grid>
+                                    
                                 </Grid>
                             </Box>
                             
                             {/* Grades by subject */}
-                            <Typography variant="h6" sx={{ mb: 2 }}>Điểm theo môn học:</Typography>
-                            
                             {Object.entries(gradesBySubject).map(([subjectKey, subjectData]) => (
                                 <Accordion 
-                                    key={subjectKey} 
-                                    expanded={expandedSubject === subjectKey} 
+                                    key={subjectKey}
+                                    expanded={expandedSubject === subjectKey}
                                     onChange={handleAccordionChange(subjectKey)}
-                                    sx={{ mb: 1 }}
+                                    sx={{ mb: 2 }}
                                 >
                                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                        <Typography variant="subtitle1">{subjectData.subjectName}</Typography>
+                                        <Typography variant="subtitle1">
+                                            {subjectData.subjectName}
+                                        </Typography>
                                     </AccordionSummary>
                                     <AccordionDetails>
                                         {/* Organize by semester */}
@@ -446,35 +504,35 @@ const GradeManagementPage = () => {
                                                 {semesterGrades.map((grade) => (
                                                     <Paper 
                                                         key={grade.GradeID} 
-                                                        variant="outlined" 
-                                                        sx={{ p: 2, mb: 2 }}
+                                                        elevation={1} 
+                                                        sx={{ 
+                                                            p: 2, 
+                                                            mb: 2, 
+                                                            border: 1,
+                                                            borderColor: 'divider'
+                                                        }}
                                                     >
                                                         <Grid container spacing={2}>
                                                             <Grid item xs={12} sm={6}>
-                                                                <Typography variant="body2" color="text.secondary">
-                                                                    Điểm tổng kết:
-                                                                </Typography>
-                                                                <Box sx={{ mt: 0.5 }}>
-                                                                    <Chip 
-                                                                        label={grade.FinalScore?.toFixed(2) || 'N/A'} 
-                                                                        color={
-                                                                            grade.FinalScore >= 8 ? 'success' : 
-                                                                            grade.FinalScore >= 6.5 ? 'primary' :
-                                                                            grade.FinalScore >= 5 ? 'warning' : 'error'
-                                                                        }
-                                                                        size="medium"
-                                                                        sx={{ fontWeight: 'bold' }}
+                                                                <Typography variant="body1">
+                                                                    <strong>Điểm trung bình:</strong> 
+                                                                    <Chip
+                                                                        label={grade.FinalScore !== null && grade.FinalScore !== undefined ? 
+                                                                            Number(grade.FinalScore).toFixed(1) : 'Chưa có điểm'}
+                                                                        color={grade.FinalScore >= 8 ? 'success' : 
+                                                                            grade.FinalScore >= 6.5 ? 'info' : 
+                                                                            grade.FinalScore >= 5 ? 'warning' : 'error'}
+                                                                        size="small"
+                                                                        sx={{ ml: 1 }}
                                                                     />
-                                                                </Box>
+                                                                </Typography>
                                                             </Grid>
                                                             <Grid item xs={12} sm={6}>
-                                                                <Typography variant="body2" color="text.secondary">
-                                                                    Cập nhật:
-                                                                </Typography>
                                                                 <Typography variant="body1">
-                                                                    {new Date(grade.UpdatedAt).toLocaleDateString()}
+                                                                    <strong>Học kỳ:</strong> {grade.Semester}
                                                                 </Typography>
                                                             </Grid>
+                                                            
                                                             <Grid item xs={12}>
                                                                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                                                                     Thành phần điểm:
@@ -491,13 +549,19 @@ const GradeManagementPage = () => {
                                                                                 </TableRow>
                                                                             </TableHead>
                                                                             <TableBody>
-                                                                                {grade.grade_components.map(comp => (
-                                                                                    <TableRow key={comp.ComponentID}>
-                                                                                        <TableCell>{comp.ComponentName}</TableCell>
-                                                                                        <TableCell align="center">{comp.Score.toFixed(2)}</TableCell>
-                                                                                        <TableCell align="center">{(comp.Weight*100).toFixed(0)}%</TableCell>
+                                                                                {grade.grade_components.sort((a, b) => b.Weight - a.Weight).map((component) => (
+                                                                                    <TableRow key={component.ComponentID}>
+                                                                                        <TableCell>{component.ComponentName}</TableCell>
+                                                                                        <TableCell align="center">
+                                                                                            {component.Score !== null && component.Score !== undefined ? 
+                                                                                                Number(component.Score).toFixed(1) : '-'}
+                                                                                        </TableCell>
+                                                                                        <TableCell align="center">
+                                                                                            {component.Weight}
+                                                                                        </TableCell>
                                                                                         <TableCell align="right">
-                                                                                            {(comp.Score * comp.Weight).toFixed(2)}
+                                                                                            {component.Score !== null && component.Score !== undefined ? 
+                                                                                                (component.Score * component.Weight).toFixed(1) : '-'}
                                                                                         </TableCell>
                                                                                     </TableRow>
                                                                                 ))}
@@ -505,8 +569,8 @@ const GradeManagementPage = () => {
                                                                         </Table>
                                                                     </TableContainer>
                                                                 ) : (
-                                                                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                                                        Không có thông tin về thành phần điểm
+                                                                    <Typography color="text.secondary" variant="body2">
+                                                                        Chưa có thành phần điểm nào được ghi nhận.
                                                                     </Typography>
                                                                 )}
                                                             </Grid>
@@ -533,17 +597,17 @@ const GradeManagementPage = () => {
     
     return (
         <Box sx={{ p: 3 }}>
-            <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <GradingIcon sx={{ mr: 1 }} /> Quản lý điểm - Danh sách học sinh
+            <Typography variant="h4" component="h1" gutterBottom>
+                Quản lý điểm
             </Typography>
             
+            {renderFilters()}
             {renderStudentTable()}
             {renderGradeDetailsDialog()}
             
-            {/* Snackbar for notifications */}
             <Snackbar 
                 open={snackbar.open} 
-                autoHideDuration={3000} 
+                autoHideDuration={6000} 
                 onClose={handleCloseSnackbar}
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             >
