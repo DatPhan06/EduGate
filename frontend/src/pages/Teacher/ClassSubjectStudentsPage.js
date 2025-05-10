@@ -5,14 +5,14 @@ import {
   CircularProgress, Alert, Breadcrumbs, Link, 
   Paper, Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow, TablePagination, Box,
-  InputAdornment
+  InputAdornment, FormControl, InputLabel, MenuItem, Select
 } from '@mui/material';
 import { 
   Search as SearchIcon, 
   ArrowBack as ArrowBackIcon, 
   Assessment as AssessmentIcon
 } from '@mui/icons-material';
-import { getStudentsInClassSubject } from '../../services/teacherService';
+import { getStudentsInClassSubject, getStudentGradesForTeacher } from '../../services/teacherService';
 
 const ClassSubjectStudentsPage = () => {
   const { classSubjectId } = useParams();
@@ -24,6 +24,9 @@ const ClassSubjectStudentsPage = () => {
   const [searchText, setSearchText] = useState('');
   const [className, setClassName] = useState('');
   const [subjectName, setSubjectName] = useState('');
+  const [activeSemester, setActiveSemester] = useState('HK1');
+  const [studentGrades, setStudentGrades] = useState({});
+  const [loadingGrades, setLoadingGrades] = useState(false);
   
   // Pagination state
   const [page, setPage] = useState(0);
@@ -46,8 +49,7 @@ const ClassSubjectStudentsPage = () => {
         // Set class and subject names if available in the first student
         if (data.length > 0) {
           setClassName(data[0].className || '');
-          // Note: We'll need to update this once we have subject information
-          setSubjectName(''); // This will be updated when we have subject data
+          setSubjectName(data[0].subjectName || '');
         }
         
         setError(null);
@@ -66,6 +68,48 @@ const ClassSubjectStudentsPage = () => {
       setLoading(false);
     }
   }, [teacherId, classSubjectId]);
+  
+  // Fetch grades for all students in the class
+  useEffect(() => {
+    const fetchStudentGrades = async () => {
+      if (!students.length) return;
+      
+      try {
+        setLoadingGrades(true);
+        const gradesMap = {};
+        
+        // Fetch grades for each student
+        for (const student of students) {
+          try {
+            const grades = await getStudentGradesForTeacher(
+              teacherId,
+              student.id,
+              classSubjectId,
+              activeSemester
+            );
+            
+            // If there are grades for this student and this subject, store the final score
+            if (grades && grades.length > 0) {
+              const gradeForThisSubject = grades.find(g => g.ClassSubjectID == classSubjectId);
+              if (gradeForThisSubject) {
+                gradesMap[student.id] = gradeForThisSubject.FinalScore;
+              }
+            }
+          } catch (e) {
+            console.error(`Error fetching grades for student ${student.id}:`, e);
+          }
+        }
+        
+        setStudentGrades(gradesMap);
+      } catch (error) {
+        console.error('Error fetching student grades:', error);
+      } finally {
+        setLoadingGrades(false);
+      }
+    };
+    
+    fetchStudentGrades();
+  }, [students, teacherId, classSubjectId, activeSemester]);
   
   useEffect(() => {
     if (searchText) {
@@ -100,6 +144,10 @@ const ClassSubjectStudentsPage = () => {
     setPage(0);
   };
   
+  const handleSemesterChange = (event) => {
+    setActiveSemester(event.target.value);
+  };
+  
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('vi-VN');
@@ -107,6 +155,26 @@ const ClassSubjectStudentsPage = () => {
   
   const renderGender = (gender) => {
     return gender === 'MALE' ? 'Nam' : gender === 'FEMALE' ? 'Nữ' : '-';
+  };
+  
+  const renderFinalGrade = (studentId) => {
+    if (loadingGrades) return <CircularProgress size={16} />;
+    
+    const grade = studentGrades[studentId];
+    if (grade !== undefined && grade !== null) {
+      return (
+        <Typography 
+          variant="body1" 
+          style={{ 
+            fontWeight: 'bold', 
+            color: grade >= 5 ? '#2e7d32' : '#d32f2f' 
+          }}
+        >
+          {grade.toFixed(1)}
+        </Typography>
+      );
+    }
+    return <Typography variant="body2" color="textSecondary">Chưa có</Typography>;
   };
   
   if (loading) {
@@ -152,16 +220,30 @@ const ClassSubjectStudentsPage = () => {
             Tổng số: {students.length} học sinh
           </Typography>
         </Box>
-        <Button 
-          variant="outlined" 
-          startIcon={<ArrowBackIcon />} 
-          onClick={handleBackClick}
-        >
-          Quay lại
-        </Button>
+        <Box display="flex" alignItems="center">
+          <FormControl variant="outlined" size="small" style={{ width: 120, marginRight: 16 }}>
+            <InputLabel id="semester-select-label">Học kỳ</InputLabel>
+            <Select
+              labelId="semester-select-label"
+              value={activeSemester}
+              onChange={handleSemesterChange}
+              label="Học kỳ"
+            >
+              <MenuItem value="HK1">Học kỳ 1</MenuItem>
+              <MenuItem value="HK2">Học kỳ 2</MenuItem>
+            </Select>
+          </FormControl>
+          <Button 
+            variant="outlined" 
+            startIcon={<ArrowBackIcon />} 
+            onClick={handleBackClick}
+          >
+            Quay lại
+          </Button>
+        </Box>
       </Box>
       
-      <Box mb={3}>
+      <Box mb={3} display="flex" justifyContent="space-between" alignItems="center">
         <TextField
           placeholder="Tìm kiếm theo tên hoặc mã học sinh"
           value={searchText}
@@ -175,6 +257,10 @@ const ClassSubjectStudentsPage = () => {
             ),
           }}
         />
+        <Typography variant="subtitle1">
+          {loadingGrades && <CircularProgress size={20} style={{ marginRight: 8 }} />}
+          Đang hiển thị điểm {activeSemester === 'HK1' ? 'Học kỳ 1' : 'Học kỳ 2'}
+        </Typography>
       </Box>
       
       <TableContainer component={Paper}>
@@ -187,6 +273,7 @@ const ClassSubjectStudentsPage = () => {
               <TableCell>Ngày sinh</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Số điện thoại</TableCell>
+              <TableCell align="center">Điểm tổng kết</TableCell>
               <TableCell align="center">Thao tác</TableCell>
             </TableRow>
           </TableHead>
@@ -201,6 +288,7 @@ const ClassSubjectStudentsPage = () => {
                   <TableCell>{formatDate(student.dob)}</TableCell>
                   <TableCell>{student.email || '-'}</TableCell>
                   <TableCell>{student.phoneNumber || '-'}</TableCell>
+                  <TableCell align="center">{renderFinalGrade(student.id)}</TableCell>
                   <TableCell align="center">
                     <Button
                       variant="contained"
