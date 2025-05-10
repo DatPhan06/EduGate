@@ -160,7 +160,7 @@ class PetitionService:
             
         petition.Status = update.Status
         petition.AdminID = admin_id
-        petition.Notes = update.Notes
+        petition.Response = update.Response
         db.commit()
         db.refresh(petition)
         return petition

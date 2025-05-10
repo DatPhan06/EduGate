@@ -311,7 +311,7 @@ const ParentPetitionsView = ({ userId }) => {
               <TextField label="Trạng thái" value={selectedPetition.Status || "N/A"} fullWidth InputProps={{ readOnly: true }} variant="outlined"/>
               <TextField label="Ngày tạo" value={formatDate(selectedPetition.SubmittedAt) || "N/A"} fullWidth InputProps={{ readOnly: true }} variant="outlined"/>
               <TextField label="Thời gian tạo" value={formatTime(selectedPetition.SubmittedAt) || "N/A"} fullWidth InputProps={{ readOnly: true }} variant="outlined"/>
-              <TextField label="Ghi chú (Admin)" value={selectedPetition.Notes || "Không có ghi chú"} fullWidth multiline rows={2} InputProps={{ readOnly: true }} variant="outlined"/>
+              <TextField label="Phản hồi (Admin)" value={selectedPetition.Response || "Chưa có phản hồi"} fullWidth multiline rows={2} InputProps={{ readOnly: true }} variant="outlined"/>
             </Box>
           ) : (
             <Box display="flex" justifyContent="center" my={3}><CircularProgress /></Box> // Loading indicator for details

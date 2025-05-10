@@ -30,6 +30,7 @@ import ClassEventsPage from '../pages/ClassEventsPage';
 import TeacherClassEventsPage from '../pages/Teacher/TeacherClassEventsPage';
 import StudentClassEventsPage from '../pages/Student/StudentClassEventsPage';
 
+
 // Teacher Pages
 import HomeroomClassPage from '../pages/Teacher/HomeroomClassPage';
 import HomeroomStudentsPage from '../pages/Teacher/HomeroomStudentsPage';
@@ -90,7 +91,12 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
                 <Route path="petitions" element={
-                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                    <ProtectedRoute roles={['parent']}>
+                        <Petitions />
+                    </ProtectedRoute>
+                } />
+                <Route path="petitions-management" element={
+                    <ProtectedRoute roles={[ 'admin']}>
                         <Petitions />
                     </ProtectedRoute>
                 } />

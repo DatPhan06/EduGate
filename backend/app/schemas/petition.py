@@ -19,7 +19,7 @@ class PetitionBase(BaseModel):
     Title: str
     Content: str
     Status: PetitionStatus = PetitionStatus.PENDING
-    Notes: Optional[str] = None
+    Response: Optional[str] = None
 
     model_config = {
         "use_enum_values": True
@@ -35,7 +35,7 @@ class PetitionCreate(BaseModel):
 
 class PetitionUpdate(BaseModel):
     Status: PetitionStatus
-    Notes: Optional[str] = None
+    Response: Optional[str] = None
 
     model_config = {
         "use_enum_values": True
@@ -57,7 +57,7 @@ class PetitionResponse(PetitionBase):
     Status: PetitionStatus
     SubmittedAt: datetime
     AdminID: Optional[int] = None
-    Notes: Optional[str] = None
+    Response: Optional[str] = None
     parent: User
 
     model_config = {
@@ -68,7 +68,7 @@ class PetitionListResponse(BaseModel):
     items: List[PetitionResponse]
     total: int
     page: int
-    size: int 
+    size: int
 
 class PetitionStatisticsResponse(BaseModel):
     PENDING: int
