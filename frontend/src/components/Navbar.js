@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBell, faUser } from "@fortawesome/free-solid-svg-icons";
 import styles from "./Navbar.module.css";
 import authService from "../services/authService";
+import axios from 'axios';
 import {
     AppBar,
     Toolbar,
@@ -46,6 +47,7 @@ import {
     MenuBook as MenuBookIcon,
 
 } from '@mui/icons-material';
+import { useBGHTeacher } from '../contexts/BGHTeacherContext';
 
 /**
  * Thành phần Navbar hiển thị thanh điều hướng của trang web.
@@ -125,6 +127,8 @@ const Navbar = ({ onLayoutChange }) => {
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
     const currentUser = authService.getCurrentUser();
+    // Check if the current user is a BGH teacher
+    const { isBGHTeacher } = useBGHTeacher();
 
     const expandedDrawerWidth = 260;
     const collapsedDrawerWidth = isMobile ? 0 : 60;
@@ -297,6 +301,13 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['admin'],
         },
         {
+            text: 'Đơn thỉnh cầu BGH',
+            icon: <AssignmentIcon />,
+            path: '/bgh-petitions',
+            roles: ['teacher'],
+            bghOnly: true,
+        },
+        {
             text: 'Giám sát (BGH)',
             icon: <PrincipalIcon />,
             path: '/principal-dashboard',
@@ -305,9 +316,20 @@ const Navbar = ({ onLayoutChange }) => {
     ];
 
     const userRole = currentUser?.role;
-    const accessibleMenuItems = menuItems.filter(item => 
-        item.roles.length === 0 || (userRole && item.roles.includes(userRole))
-    );
+    const accessibleMenuItems = menuItems.filter(item => {
+        // Nếu menu item có flag bghOnly = true
+        if (item.bghOnly) {
+            // Chỉ hiển thị khi:
+            // 1. user là giáo viên (userRole === 'teacher')
+            // 2. VÀ user là giáo viên BGH (isBGHTeacher === true)
+            return userRole === 'teacher' && isBGHTeacher;
+        }
+        
+        // Với các menu item thông thường:
+        // 1. Hoặc là menu public (roles.length === 0)
+        // 2. Hoặc user có role nằm trong danh sách roles của menu item
+        return item.roles.length === 0 || (userRole && item.roles.includes(userRole));
+    });
 
     const userActionItems = [
         {

@@ -187,7 +187,7 @@ async def get_petitions(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Retrieve list of petitions with optional filters (ADMIN only).
+    Retrieve list of petitions with optional filters (ADMIN or BGH teacher only).
 
     Args:
         status: Filter by petition status (e.g., PENDING, APPROVED)
@@ -201,18 +201,25 @@ async def get_petitions(
 
     Raises:
         HTTPException:
-            - 403 if user is not an ADMIN
+            - 403 if user is not an ADMIN or BGH teacher
             - 400 for invalid filter parameters
             - 500 for internal server errors
 
     Returns:
         PetitionListResponse: List of petitions with pagination info
     """
-    # Check if user is ADMIN
-    if current_user.role != UserRole.ADMIN:
+    # Check if user is ADMIN or BGH teacher
+    if not (
+        current_user.role == UserRole.ADMIN or
+        (current_user.role == UserRole.TEACHER and
+         hasattr(current_user, "teacher") and
+         current_user.teacher and
+         current_user.teacher.department and
+         current_user.teacher.department.DepartmentName == "BGH")
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only ADMIN can access this endpoint"
+            detail="Only ADMIN or BGH teachers can access this endpoint"
         )
 
     try:
@@ -289,8 +296,16 @@ async def get_petition(
         if not petition:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Petition not found")
 
-        # Check authorization: only petition owner or admin
-        if current_user.role != UserRole.ADMIN and petition.ParentID != current_user.UserID:
+        # Check authorization: only petition owner, admin, or BGH teacher
+        if not (
+            current_user.role == UserRole.ADMIN or
+            (current_user.role == UserRole.TEACHER and
+             hasattr(current_user, "teacher") and
+             current_user.teacher and
+             current_user.teacher.department and
+             current_user.teacher.department.DepartmentName == "BGH") or
+            petition.ParentID == current_user.UserID
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to view this petition"
@@ -481,7 +496,7 @@ async def get_petition_statistics(
     current_user: User= Depends(get_current_active_user)
 ):
     """
-    Retrieve statistics of petitions by status (ADMIN only).
+    Retrieve statistics of petitions by status (ADMIN or BGH teacher only).
 
     Args:
         start_date: Start date for filtering petitions (optional)
@@ -491,17 +506,24 @@ async def get_petition_statistics(
 
     Raises:
         HTTPException:
-            - 403 if user is not an ADMIN
+            - 403 if user is not an ADMIN or BGH teacher
             - 400 for invalid date range (e.g., start_date > end_date)
             - 500 for internal server errors
 
     Returns:
         PetitionStatisticsResponse: Dictionary with count of petitions by status
     """
-    if current_user.role != UserRole.ADMIN:
+    if not (
+        current_user.role == UserRole.ADMIN or
+        (current_user.role == UserRole.TEACHER and
+         hasattr(current_user, "teacher") and
+         current_user.teacher and
+         current_user.teacher.department and
+         current_user.teacher.department.DepartmentName == "BGH")
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only ADMIN can access statistics"
+            detail="Only ADMIN or BGH teachers can access statistics"
         )
 
     if start_date and end_date and start_date > end_date:
