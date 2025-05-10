@@ -78,7 +78,21 @@ const HomeroomClassGradesPage = () => {
     const fetchSubjects = async () => {
       try {
         const data = await getClassSubjects(classId);
-        setSubjects(data);
+        console.log('Original subjects from API:', data);
+        
+        // Remove duplicate subjects based on subject ID
+        const uniqueSubjects = [];
+        const subjectIds = new Set();
+        
+        data.forEach(subject => {
+          if (!subjectIds.has(subject.id)) {
+            subjectIds.add(subject.id);
+            uniqueSubjects.push(subject);
+          }
+        });
+        
+        console.log('Unique subjects after filtering:', uniqueSubjects);
+        setSubjects(uniqueSubjects);
       } catch (error) {
         console.error('Error fetching subjects:', error);
         enqueueSnackbar('Không thể tải danh sách môn học', { variant: 'error' });
@@ -88,7 +102,7 @@ const HomeroomClassGradesPage = () => {
     if (classId) {
       fetchSubjects();
     }
-  }, [classId]);
+  }, [classId, enqueueSnackbar]);
 
   // Fetch grades when semester, academic year, or students change
   useEffect(() => {
