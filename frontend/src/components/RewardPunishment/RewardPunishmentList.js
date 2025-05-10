@@ -13,9 +13,22 @@ import {
   CircularProgress,
   Alert,
   Button,
-  // IconButton // Not used in provided snippet
+  Card,
+  CardContent,
+  InputAdornment,
+  Chip,
+  IconButton,
+  Tooltip,
+  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Divider
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import CloseIcon from '@mui/icons-material/Close';
 import rewardPunishmentService from '../../services/rewardPunishmentService';
 
 const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) => {
@@ -24,15 +37,37 @@ const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) 
   const [error, setError] = useState('');
   // internalSearchId is for admin's manual search
   const [internalSearchId, setInternalSearchId] = useState(''); 
+  // State for detail modal
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
   
   const isViewOnlyMode = !!studentIdForView;
   // The ID displayed in the search box or used for fetching
   const effectiveId = isViewOnlyMode ? String(studentIdForView || '') : internalSearchId;
 
-  const fetchData = async (idToFetch) => {
-    if (!idToFetch) {
+  // Hàm lấy tất cả khen thưởng kỷ luật
+  const fetchAllData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await rewardPunishmentService.getAllRewardPunishments();
+      console.log("All rewards/punishments API response:", response);
+      setData(response.data || []);
+    } catch (err) {
+      console.error("Error fetching all reward/punishment data:", err);
+      const errorDetail = err.response?.data?.detail || err.message || 'Không thể tải dữ liệu';
+      setError(`Lỗi: ${errorDetail}`);
       setData([]);
-      if (isViewOnlyMode) setError('Chưa có ID học sinh để xem.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Hàm lấy khen thưởng kỷ luật theo ID
+  const fetchSpecificData = async (idToFetch) => {
+    if (!idToFetch) {
+      // If no ID is provided, show all data instead of clearing
+      fetchAllData();
       return;
     }
     
@@ -51,6 +86,24 @@ const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) 
       // Sử dụng chung một endpoint cho tất cả vai trò - backend sẽ xử lý phân quyền
       if (targetType === 'student') {
         response = await rewardPunishmentService.getStudentRewardPunishments(studentId);
+        // Process the nested data structure from the student endpoints
+        if (response.data && Array.isArray(response.data)) {
+          // Check if data has reward_punishment nested object structure
+          if (response.data.length > 0 && response.data[0].reward_punishment) {
+            // Unwrap the nested reward_punishment data
+            const processedData = response.data.map(item => ({
+              // Keep the original ID fields
+              RecordID: item.RecordID,
+              StudentRNPID: item.StudentRNPID,
+              StudentID: item.StudentID,
+              // Extract fields from nested reward_punishment object
+              ...item.reward_punishment
+            }));
+            console.log("Processed unwrapped data:", processedData);
+            setData(processedData);
+            return; // Exit early since we've already set the data
+          }
+        }
       } else if (targetType === 'class') {
         response = await rewardPunishmentService.getClassRewardPunishments(studentId);
       } else {
@@ -80,30 +133,28 @@ const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) 
   };
 
   useEffect(() => {
-    const idToUse = isViewOnlyMode ? studentIdForView : internalSearchId;
-    if (idToUse) {
-      fetchData(idToUse);
-    } else {
-      setData([]); // Clear data if no ID is applicable
-      if (!isViewOnlyMode) setError(''); // Clear error for admin if search is empty
+    // Nếu đang ở view-only mode (student hoặc parent), luôn fetch theo studentId
+    if (isViewOnlyMode && studentIdForView) {
+      fetchSpecificData(studentIdForView);
+    } 
+    // Otherwise, always load all data by default
+    else {
+      fetchAllData();
     }
-  // Fetch when the effective ID changes (studentIdForView, internalSearchId) or when refresh is triggered.
-  // Also re-fetch if targetType changes (though less likely in this specific page flow).
-  }, [studentIdForView, internalSearchId, isViewOnlyMode, refreshTrigger, targetType]);
+  }, [studentIdForView, isViewOnlyMode, refreshTrigger, targetType]);
 
-
-  const handleAdminSearch = () => {
+  const handleSearch = () => {
     if (!isViewOnlyMode && internalSearchId) {
-      // Fetch is handled by the useEffect when internalSearchId changes
-      // This button click primarily ensures internalSearchId is set if user types and clicks
-      // For explicit re-fetch on button click even if ID hasn't changed, call fetchData here:
-       fetchData(internalSearchId);
+      fetchSpecificData(internalSearchId);
+    } else if (!isViewOnlyMode && !internalSearchId) {
+      // If search field is cleared, show all data
+      fetchAllData();
     }
   };
 
-  const handleAdminKeyPress = (e) => {
+  const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !isViewOnlyMode) {
-      handleAdminSearch();
+      handleSearch();
     }
   };
 
@@ -114,29 +165,94 @@ const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) 
     return date.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
   };
 
+  // Function to get the type display text
+  const getTypeDisplayText = (typeValue) => {
+    // Check all possible variations of type values for 'reward'
+    const typeStr = String(typeValue || '').toLowerCase();
+    return typeStr === 'reward' ? 'Khen thưởng' : 'Kỷ luật';
+  };
+
+  const getTypeIcon = (typeValue) => {
+    const typeStr = String(typeValue || '').toLowerCase();
+    return typeStr === 'reward' ? <RewardIcon /> : <PunishmentIcon />;
+  }
+
+  const getTypeColor = (typeValue) => {
+    const typeStr = String(typeValue || '').toLowerCase();
+    return typeStr === 'reward' ? 'success' : 'error'; 
+  }
+
+  // Handle clicking on a row
+  const handleRowClick = (item) => {
+    setSelectedItem(item);
+    setDetailModalOpen(true);
+  };
+
+  // Close the detail modal
+  const handleCloseDetailModal = () => {
+    setDetailModalOpen(false);
+  };
+
   return (
-    <Box>
+    <Box sx={{ width: '100%' }}>
       {!isViewOnlyMode && (
-        <Box sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
-          <TextField
-            label={`ID ${targetType === 'student' ? 'Học sinh' : 'Lớp học'}`}
-            value={internalSearchId}
-            onChange={(e) => setInternalSearchId(e.target.value)}
-            onKeyPress={handleAdminKeyPress}
-            type="number"
-            size="small"
-            sx={{ mr: 2 }}
-            disabled={isViewOnlyMode}
-          />
-          <Button
-            variant="contained"
-            onClick={handleAdminSearch}
-            startIcon={<SearchIcon />}
-            disabled={isViewOnlyMode || !internalSearchId}
-          >
-            Tìm kiếm
-          </Button>
-        </Box>
+        <Paper sx={{ 
+          mb: 3,
+          p: 2, 
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2,
+          borderBottom: '1px solid #e0e0e0',
+        }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={5}>
+              <TextField
+                label={`ID ${targetType === 'student' ? 'Học sinh' : 'Lớp học'} (không bắt buộc)`}
+                value={internalSearchId}
+                onChange={(e) => setInternalSearchId(e.target.value)}
+                onKeyPress={handleKeyPress}
+                type="number"
+                size="small"
+                fullWidth
+                disabled={isViewOnlyMode}
+                placeholder="Để trống để xem tất cả"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={6} md={2}>
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleSearch}
+                disabled={isViewOnlyMode}
+              >
+                Tìm kiếm
+              </Button>
+            </Grid>
+            <Grid item xs={6} md={1}>
+              <Tooltip title="Làm mới dữ liệu">
+                <IconButton 
+                  color="primary" 
+                  onClick={fetchAllData}
+                >
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+            </Grid>
+            <Grid item xs={12} md={4} textAlign="right">
+              <Typography variant="subtitle2" color="text.secondary">
+                Tổng số bản ghi: <strong>{data.length}</strong>
+              </Typography>
+            </Grid>
+          </Grid>
+        </Paper>
       )}
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -146,60 +262,164 @@ const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) 
           <CircularProgress />
         </Box>
       ) : data.length > 0 ? (
-        <TableContainer component={Paper}>
-          <Table>
+        <TableContainer component={Paper} sx={{ mt: 2, overflowX: 'auto' }}>
+          <Table sx={{ minWidth: 900 }}>
             <TableHead>
-              <TableRow>
-                <TableCell>ID Khen thưởng/Kỷ luật</TableCell>
-                <TableCell>Tiêu đề</TableCell>
-                <TableCell>Loại</TableCell>
-                <TableCell>Ngày</TableCell>
-                <TableCell>Học kỳ</TableCell>
-                <TableCell>Tuần</TableCell>
-                <TableCell>Mô tả</TableCell>
+              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                <TableCell align="center" width="5%">ID</TableCell>
+                <TableCell width="20%">Tiêu đề</TableCell>
+                <TableCell align="center" width="10%">Loại</TableCell>
+                <TableCell width="15%">Ngày</TableCell>
+                <TableCell width="10%">Học kỳ</TableCell>
+                <TableCell align="center" width="5%">Tuần</TableCell>
+                <TableCell width="25%">Mô tả</TableCell>
+                <TableCell align="center" width="10%">Học sinh ID</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {data.map((item) => (
-                // The structure of 'item' might be directly RewardPunishment data
-                // or nested like item.reward_punishment depending on the API response.
-                // Assuming StudentRNPRead and ClassRNPRead schemas return a flat structure
-                // or you adjust accessors like item.Title, item.Type etc.
-                // The existing code uses item.reward_punishment?.Title, so let's keep that pattern
-                // if your schemas StudentRNPRead/ClassRNPRead have a nested 'reward_punishment' field.
-                // If not, it should be item.Title, item.Type etc.
-                // For this example, I'll assume the API returns a list of objects where
-                // reward/punishment details are directly on the item or nested under `reward_punishment`.
-                // Let's assume the API for /student/{student_id} returns List[schemas.RewardPunishment]
-                // or schemas.StudentRNPRead which directly contains the fields.
-                // If StudentRNPRead is { RecordID: int, reward_punishment: schemas.RewardPunishmentBase }
-                // then item.reward_punishment.Title is correct.
-                // If StudentRNPRead is schemas.RewardPunishment itself, then item.Title is correct.
-                // Given the original code, I'll stick to item.reward_punishment?.
-                 <TableRow key={item.RecordID || item.RewardPunishmentID}> {/* Use a unique key */}
-                  <TableCell>{item.RecordID || item.RewardPunishmentID}</TableCell>
-                  <TableCell>{item.reward_punishment?.Title || item.Title}</TableCell>
-                  <TableCell>
-                    {(item.reward_punishment?.Type || item.Type) === 'REWARD' ? 'Khen thưởng' : 'Kỷ luật'}
+                <TableRow 
+                  key={item.RecordID || item.RewardPunishmentID || item.id}
+                  sx={{ 
+                    '&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
+                    '&:hover': { backgroundColor: '#f0f7ff', cursor: 'pointer' }
+                  }}
+                  onClick={() => handleRowClick(item)}
+                >
+                  <TableCell align="center">{item.RecordID || item.RewardPunishmentID || item.id}</TableCell>
+                  <TableCell>{item.Title || item.title || ''}</TableCell>
+                  <TableCell align="center">
+                    <Chip
+                      label={getTypeDisplayText(item.Type || item.type)}
+                      color={(item.Type || item.type || '').toLowerCase() === 'reward' ? 'success' : 'error'}
+                      size="small"
+                      variant="outlined"
+                    />
                   </TableCell>
-                  <TableCell>{formatDate(item.reward_punishment?.Date || item.Date)}</TableCell>
-                  <TableCell>{item.reward_punishment?.Semester || item.Semester}</TableCell>
-                  <TableCell>{item.reward_punishment?.Week || item.Week}</TableCell>
-                  <TableCell>{item.reward_punishment?.Description || item.Description}</TableCell>
+                  <TableCell>{formatDate(item.Date || item.date)}</TableCell>
+                  <TableCell>{item.Semester || item.semester || ''}</TableCell>
+                  <TableCell align="center">{item.Week || item.week || ''}</TableCell>
+                  <TableCell>{item.Description || item.description || ''}</TableCell>
+                  <TableCell align="center">{item.StudentID || item.student_id || ''}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
-      ) : effectiveId || isViewOnlyMode ? ( // If an ID was searched/provided but no data
+      ) : (
         <Typography variant="body1" color="text.secondary" align="center" sx={{ my: 3 }}>
-          Không tìm thấy dữ liệu khen thưởng/kỷ luật nào.
-        </Typography>
-      ) : ( // Admin view, no search ID entered yet
-        <Typography variant="body1" color="text.secondary" align="center" sx={{ my: 3 }}>
-          {isViewOnlyMode ? 'Đang tải hoặc không có dữ liệu.' : `Nhập ID ${targetType === 'student' ? 'học sinh' : 'lớp học'} để xem danh sách khen thưởng/kỷ luật.`}
+          {isViewOnlyMode ? 'Không có dữ liệu khen thưởng/kỷ luật.' : effectiveId ? 'Không tìm thấy dữ liệu khen thưởng/kỷ luật.' : 'Không có dữ liệu khen thưởng/kỷ luật nào trong hệ thống.'}
         </Typography>
       )}
+
+      {/* Detail Modal */}
+      <Dialog 
+        open={detailModalOpen} 
+        onClose={handleCloseDetailModal}
+        maxWidth="md"
+        fullWidth
+      >
+        {selectedItem && (
+          <>
+            <DialogTitle sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              bgcolor: (selectedItem.Type || selectedItem.type || '').toLowerCase() === 'reward' ? '#e8f5e9' : '#ffebee',
+              color: (selectedItem.Type || selectedItem.type || '').toLowerCase() === 'reward' ? '#2e7d32' : '#d32f2f'
+            }}>
+              <Typography variant="h6">
+                Chi tiết {(selectedItem.Type || selectedItem.type || '').toLowerCase() === 'reward' ? 'Khen thưởng' : 'Kỷ luật'}
+              </Typography>
+              <IconButton onClick={handleCloseDetailModal} size="small">
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent dividers>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Typography variant="h5" gutterBottom>
+                    {selectedItem.Title || selectedItem.title || 'Không có tiêu đề'}
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Mã bản ghi:
+                  </Typography>
+                  <Typography variant="body1" gutterBottom>
+                    {selectedItem.RecordID || selectedItem.RewardPunishmentID || selectedItem.id || 'N/A'}
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Loại:
+                  </Typography>
+                  <Chip
+                    label={getTypeDisplayText(selectedItem.Type || selectedItem.type)}
+                    color={(selectedItem.Type || selectedItem.type || '').toLowerCase() === 'reward' ? 'success' : 'error'}
+                    size="small"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Học sinh ID:
+                  </Typography>
+                  <Typography variant="body1" gutterBottom>
+                    {selectedItem.StudentID || selectedItem.student_id || 'N/A'}
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Ngày:
+                  </Typography>
+                  <Typography variant="body1" gutterBottom>
+                    {formatDate(selectedItem.Date || selectedItem.date)}
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Học kỳ:
+                  </Typography>
+                  <Typography variant="body1" gutterBottom>
+                    {selectedItem.Semester || selectedItem.semester || 'N/A'}
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Tuần:
+                  </Typography>
+                  <Typography variant="body1" gutterBottom>
+                    {selectedItem.Week || selectedItem.week || 'N/A'}
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Mô tả chi tiết:
+                  </Typography>
+                  <Paper elevation={0} sx={{ p: 2, bgcolor: '#f9f9f9', mt: 1 }}>
+                    <Typography variant="body1" style={{ whiteSpace: 'pre-line' }}>
+                      {selectedItem.Description || selectedItem.description || 'Không có mô tả chi tiết.'}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseDetailModal} color="primary">
+                Đóng
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Box>
   );
 };
