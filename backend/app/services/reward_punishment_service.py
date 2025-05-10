@@ -62,3 +62,50 @@ def get_rewards_and_punishments_for_student(db: Session, student_id: int) -> Lis
         print(f"Error in get_rewards_and_punishments_for_student: {str(e)}")
         # Trả về danh sách trống để tránh lỗi
         return []
+    
+def get_student_rnps(db: Session, student_id: int) -> List[schemas.StudentRNPRead]:
+    db_records = db.query(models.RewardPunishment).filter(models.RewardPunishment.StudentID == student_id).all()
+    
+    result: List[schemas.StudentRNPRead] = []
+    if not db_records:
+        return result
+
+    for record in db_records:
+        record_type_str = ""
+        if isinstance(record.Type, RNPType):
+            record_type_str = record.Type.value
+        elif isinstance(record.Type, str): # Handle if it's already a string (e.g. from older data)
+             record_type_str = record.Type
+
+        # Ensure date is handled correctly (date vs datetime)
+        record_date = None
+        if record.Date:
+            if hasattr(record.Date, 'date'): # If it's a datetime object
+                record_date = record.Date.date()
+            else: # If it's already a date object
+                record_date = record.Date
+
+        reward_punishment_data = schemas.RewardPunishmentRead(
+            RecordID=record.RecordID,
+            Title=record.Title,
+            Type=record_type_str, 
+            description=record.Description, # Changed from Description
+            date=record_date,             # Changed from Date
+            Semester=record.Semester,
+            Week=record.Week,
+            StudentID=record.StudentID,
+            # Fields from RewardPunishmentBase
+            type=record_type_str, 
+            issuer_id=record.AdminID 
+        )
+        
+        # For StudentRNPBase: StudentRNPID, RecordID, StudentID
+        # Assuming StudentRNPID can be the same as RecordID if no other unique ID for this link exists
+        student_rnp_item = schemas.StudentRNPRead(
+            StudentRNPID=record.RecordID, 
+            RecordID=record.RecordID,
+            StudentID=record.StudentID,
+            reward_punishment=reward_punishment_data
+        )
+        result.append(student_rnp_item)
+    return result

@@ -48,12 +48,8 @@ const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) 
       
       console.log(`Fetching data for ${targetType} with ID: ${studentId}`);
       
-      // Nếu đang trong view-only mode (student/parent), sử dụng API view riêng
-      if (isViewOnlyMode && targetType === 'student') {
-        response = await rewardPunishmentService.viewStudentRewardPunishments(studentId);
-      } 
-      // Nếu admin/teacher đang tìm kiếm
-      else if (targetType === 'student') {
+      // Sử dụng chung một endpoint cho tất cả vai trò - backend sẽ xử lý phân quyền
+      if (targetType === 'student') {
         response = await rewardPunishmentService.getStudentRewardPunishments(studentId);
       } else if (targetType === 'class') {
         response = await rewardPunishmentService.getClassRewardPunishments(studentId);
@@ -69,8 +65,10 @@ const RewardPunishmentList = ({ targetType, refreshTrigger, studentIdForView }) 
       console.error("Error detail:", errorDetail);
       
       // Cải thiện thông báo lỗi hiển thị cho người dùng
-      if (errorDetail.includes("not found")) {
+      if (errorDetail.includes("not found") || errorDetail.includes("404")) {
         setError(`Không tìm thấy ${targetType === 'student' ? 'học sinh' : 'lớp học'} với ID này`);
+      } else if (errorDetail.includes("permission") || errorDetail.includes("403")) {
+        setError(`Bạn không có quyền xem thông tin ${targetType === 'student' ? 'học sinh' : 'lớp học'} này`);
       } else {
         setError(`Lỗi: ${errorDetail}`);
       }
