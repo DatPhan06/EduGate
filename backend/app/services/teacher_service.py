@@ -530,4 +530,15 @@ def initialize_standard_grade_components(db: Session, grade_id: int) -> List[Gra
     for component in components:
         db.refresh(component)
     
-    return components 
+    return components
+
+def verify_homeroom_teacher(db: Session, teacher_id: int, class_id: int) -> bool:
+    """
+    Verify that the teacher is the homeroom teacher for the specified class
+    """
+    class_check = db.query(Class).filter(
+        Class.ClassID == class_id,
+        Class.HomeroomTeacherID == teacher_id
+    ).first()
+    
+    return class_check is not None 

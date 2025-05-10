@@ -31,7 +31,8 @@ const HomeroomClassGradesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [className, setClassName] = useState('');
-  const [activeSemester, setActiveSemester] = useState('Học kỳ 1');
+  const [activeSemester, setActiveSemester] = useState('HK1');
+  const [activeAcademicYear, setActiveAcademicYear] = useState('2023-2024');
   const [activeSubject, setActiveSubject] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const { enqueueSnackbar } = useSnackbar();
@@ -89,38 +90,60 @@ const HomeroomClassGradesPage = () => {
     }
   }, [classId]);
 
-  // Fetch grades when semester or students change
+  // Fetch grades when semester, academic year, or students change
   useEffect(() => {
     const fetchAllStudentsGrades = async () => {
-      if (students.length === 0) return;
+      if (!classId) return;
       
       try {
         setLoading(true);
+        
+        // Get all grades for the class in one API call
+        const classGradesData = await getClassGrades(teacherId, classId, activeSemester, activeAcademicYear);
+        console.log('Class grades data:', classGradesData);
+        
+        // Transform the data into the format expected by the component
         const gradesData = {};
         
-        // For each student fetch their grades
-        for (const student of students) {
-          const studentGrades = await getStudentGrades(student.id, activeSemester);
-          gradesData[student.id] = studentGrades;
-        }
+        classGradesData.forEach(studentGradeData => {
+          const studentId = studentGradeData.student_id;
+          gradesData[studentId] = studentGradeData.grades.map(grade => ({
+            id: grade.GradeID,
+            studentId: grade.StudentID,
+            subjectId: grade.subjectId,
+            subjectName: grade.subjectName,
+            finalGrade: grade.FinalScore,
+            semester: grade.Semester,
+            components: grade.grade_components?.map(component => ({
+              id: component.ComponentID,
+              name: component.ComponentName,
+              weight: component.Weight,
+              score: component.Score
+            })) || []
+          }));
+        });
         
         setGrades(gradesData);
         setError(null);
       } catch (error) {
-        console.error('Error fetching grades:', error);
+        console.error('Error fetching class grades:', error);
         setError('Không thể tải dữ liệu điểm số. Vui lòng thử lại sau.');
       } finally {
         setLoading(false);
       }
     };
     
-    if (students.length > 0 && activeSemester) {
+    if (classId && activeSemester && activeAcademicYear) {
       fetchAllStudentsGrades();
     }
-  }, [students, activeSemester]);
+  }, [classId, teacherId, activeSemester, activeAcademicYear]);
 
   const handleSemesterChange = (event) => {
     setActiveSemester(event.target.value);
+  };
+  
+  const handleAcademicYearChange = (event) => {
+    setActiveAcademicYear(event.target.value);
   };
   
   const handleSubjectChange = (event, newValue) => {
@@ -166,7 +189,7 @@ const HomeroomClassGradesPage = () => {
     const studentGrades = grades[studentId];
     const subjectGrade = studentGrades.find(grade => grade.subjectId === subjectId);
     
-    return subjectGrade && subjectGrade.finalGrade !== undefined ? 
+    return subjectGrade && subjectGrade.finalGrade !== undefined && subjectGrade.finalGrade !== null ? 
       subjectGrade.finalGrade.toFixed(1) : '-';
   };
   
@@ -231,8 +254,21 @@ const HomeroomClassGradesPage = () => {
               onChange={handleSemesterChange}
               label="Học kỳ"
             >
-              <MenuItem value="Học kỳ 1">Học kỳ 1</MenuItem>
-              <MenuItem value="Học kỳ 2">Học kỳ 2</MenuItem>
+              <MenuItem value="HK1">Học kỳ 1</MenuItem>
+              <MenuItem value="HK2">Học kỳ 2</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl variant="outlined" size="small" style={{ width: 150, marginRight: 16 }}>
+            <InputLabel id="academic-year-select-label">Năm học</InputLabel>
+            <Select
+              labelId="academic-year-select-label"
+              value={activeAcademicYear}
+              onChange={handleAcademicYearChange}
+              label="Năm học"
+            >
+              <MenuItem value="2022-2023">2022-2023</MenuItem>
+              <MenuItem value="2023-2024">2023-2024</MenuItem>
+              <MenuItem value="2024-2025">2024-2025</MenuItem>
             </Select>
           </FormControl>
           <Button 
@@ -360,6 +396,9 @@ const HomeroomClassGradesPage = () => {
                 </Typography>
                 <Typography variant="subtitle1">
                   <strong>Học kỳ:</strong> {activeSemester}
+                </Typography>
+                <Typography variant="subtitle1">
+                  <strong>Năm học:</strong> {activeAcademicYear}
                 </Typography>
               </Box>
               

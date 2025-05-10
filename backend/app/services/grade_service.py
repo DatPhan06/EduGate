@@ -351,4 +351,55 @@ def initialize_standard_components_for_grades(db: Session, grade_ids: List[int])
     return {
         "grades_processed": len(grade_ids),
         "components_created": components_created
-    } 
+    }
+
+def get_student_grades(db: Session, student_id: int, semester: Optional[str] = None, academic_year: Optional[str] = None) -> List[dict]:
+    """
+    Get all grades for a specific student, optionally filtered by semester and academic year.
+    Returns data formatted for API response including subject information.
+    """
+    # Get the grades with all related data
+    query = db.query(Grade).filter(Grade.StudentID == student_id)
+    if semester:
+        query = query.filter(Grade.Semester == semester)
+    
+    # Join with ClassSubject to filter by academic year if needed
+    if academic_year:
+        query = query.join(Grade.class_subject).filter(ClassSubject.AcademicYear == academic_year)
+    
+    grades = query.options(
+        joinedload(Grade.class_subject).joinedload(ClassSubject.subject),
+        joinedload(Grade.class_subject).joinedload(ClassSubject.class_),
+        joinedload(Grade.grade_components)
+    ).all()
+    
+    # Format the response data
+    result = []
+    for grade in grades:
+        grade_data = {
+            "GradeID": grade.GradeID,
+            "StudentID": grade.StudentID,
+            "ClassSubjectID": grade.ClassSubjectID,
+            "Semester": grade.Semester,
+            "FinalScore": grade.FinalScore,
+            "subjectId": grade.class_subject.SubjectID if grade.class_subject else None,
+            "subjectName": grade.class_subject.subject.SubjectName if grade.class_subject and grade.class_subject.subject else None,
+            "className": grade.class_subject.class_.ClassName if grade.class_subject and grade.class_subject.class_ else None,
+            "academicYear": grade.class_subject.AcademicYear if grade.class_subject else None,
+            "grade_components": []
+        }
+        
+        # Add components if they exist
+        if grade.grade_components:
+            for component in grade.grade_components:
+                component_data = {
+                    "ComponentID": component.ComponentID,
+                    "ComponentName": component.ComponentName,
+                    "Weight": component.Weight,
+                    "Score": component.Score
+                }
+                grade_data["grade_components"].append(component_data)
+        
+        result.append(grade_data)
+    
+    return result 

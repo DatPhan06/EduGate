@@ -290,13 +290,17 @@ const initializeGradeComponents = async (teacherId, gradeId) => {
 };
 
 // Lấy danh sách điểm của tất cả học sinh trong lớp
-const getClassGrades = async (teacherId, classId, semester) => {
+const getClassGrades = async (teacherId, classId, semester, academicYear) => {
   try {
     const token = localStorage.getItem('token');
     let url = `/teachers/${teacherId}/homeroom-classes/${classId}/grades`;
     
-    if (semester) {
-      url += `?semester=${encodeURIComponent(semester)}`;
+    const params = new URLSearchParams();
+    if (semester) params.append('semester', semester);
+    if (academicYear) params.append('academic_year', academicYear);
+    
+    if (params.toString()) {
+      url += `?${params.toString()}`;
     }
     
     const response = await api.get(url, {
