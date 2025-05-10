@@ -27,7 +27,8 @@ import {
   initializeGradeComponents,
   updateGrade,
   deleteGrade,
-  updateGradeComponent
+  updateGradeComponent,
+  getStudentById
 } from '../../services/teacherService';
 import { useSnackbar } from 'notistack';
 
@@ -59,6 +60,26 @@ const SubjectStudentGradesPage = () => {
   
   // Fetch student info and grades
   useEffect(() => {
+    const fetchStudentData = async () => {
+      try {
+        // Fetch student information directly
+        const studentData = await getStudentById(studentId);
+        
+        if (studentData) {
+          setStudentData({
+            id: studentData.id,
+            studentId: studentData.id,
+            name: studentData.name,
+            className: studentData.className,
+            classGrade: studentData.classGrade
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching student data:', error);
+        enqueueSnackbar('Không thể tải thông tin học sinh. Vui lòng thử lại sau.', { variant: 'error' });
+      }
+    };
+
     const fetchStudentGrades = async () => {
       try {
         setLoading(true);
@@ -96,15 +117,6 @@ const SubjectStudentGradesPage = () => {
                 : g
             )
           );
-          
-          // Extract student info if available
-          setStudentData({
-            id: grade.StudentID,
-            studentId: grade.StudentID,
-            name: grade.student ? grade.student.name : 'N/A',
-            className: grade.class_subject ? grade.class_subject.class.ClassName : 'N/A',
-            classGrade: grade.class_subject ? grade.class_subject.class.GradeLevel : 'N/A'
-          });
         } else {
           // No grades yet, will need to create them
           setGrades([]);
@@ -120,9 +132,10 @@ const SubjectStudentGradesPage = () => {
     };
     
     if (studentId && classSubjectId) {
+      fetchStudentData();
       fetchStudentGrades();
     }
-  }, [studentId, classSubjectId, activeSemester]);
+  }, [studentId, classSubjectId, activeSemester, enqueueSnackbar]);
   
   const handleAddComponent = () => {
     setDialogOpen(true);

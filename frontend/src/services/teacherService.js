@@ -286,6 +286,22 @@ const getClassSubjects = async (classId) => {
   }
 };
 
+// Get student details by ID
+const getStudentById = async (studentId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await api.get(`/students/${studentId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching student details:', error);
+    throw error;
+  }
+};
+
 export {
   getTeacherHomeroomClasses,
   getHomeroomClassStudents,
@@ -302,5 +318,6 @@ export {
   deleteGradeComponent,
   initializeGradeComponents,
   getClassGrades,
-  getClassSubjects
+  getClassSubjects,
+  getStudentById
 }; 
