@@ -137,7 +137,7 @@ const AppRoutes = () => {
                 } />
 
                 <Route path="reports-statistics" element={
-                    <ProtectedRoute roles={[]}>
+                    <ProtectedRoute roles={['admin']}>
                         <ReportsPage />
                     </ProtectedRoute>
                 } />
