@@ -33,6 +33,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SchoolIcon from '@mui/icons-material/School';
 import CommentIcon from '@mui/icons-material/Comment';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import ManageDailyLogPage from './ManageDailyLogPage';
+
 
 const ViewDailyLogPage = () => {
     const [loading, setLoading] = useState(true);
@@ -230,40 +232,7 @@ const ViewDailyLogPage = () => {
 
             {currentUser.role === 'teacher' ? (
                 // Giao diện cho giáo viên
-                <TableContainer component={Paper} elevation={2}>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Họ và tên</TableCell>
-                                <TableCell>Lớp</TableCell>
-                                <TableCell>Email</TableCell>
-                                <TableCell>Số điện thoại</TableCell>
-                                <TableCell align="center">Thao tác</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {students.map((student) => (
-                                <TableRow key={student.StudentID} hover>
-                                    <TableCell>{`${student.LastName} ${student.FirstName}`}</TableCell>
-                                    <TableCell>{student.ClassName}</TableCell>
-                                    <TableCell>{student.Email}</TableCell>
-                                    <TableCell>{student.PhoneNumber}</TableCell>
-                                    <TableCell align="center">
-                                        <Tooltip title="Xem sổ liên lạc">
-                                            <IconButton 
-                                                color="primary"
-                                                onClick={() => handleViewProgress(student)}
-                                                size="small"
-                                            >
-                                                <VisibilityIcon />
-                                            </IconButton>
-                                        </Tooltip>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                <ManageDailyLogPage />
             ) : currentUser.role === 'parent' && parentChildren.length > 1 ? (
                 <Box mb={3}>
                     <Typography variant="h6">Chọn học sinh:</Typography>
