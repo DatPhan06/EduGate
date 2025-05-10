@@ -24,6 +24,16 @@ export const getClasses = async (params = {}) => {
     }
 };
 
+export const getClassById = async (classId) => {
+    try {
+        const response = await api.get(`${API_BASE_URL}/classes/${classId}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching class with ID ${classId}:`, error.response ? error.response.data : error.message);
+        throw error;
+    }
+};
+
 export const createClass = async (classData) => {
     try {
         const response = await api.post(`${API_BASE_URL}/classes/`, classData);
@@ -95,4 +105,4 @@ export const deleteStudent = async (studentUserId) => {
         console.error('Error deleting student:', error.response ? error.response.data : error.message);
         throw error;
     }
-}; 
+};
