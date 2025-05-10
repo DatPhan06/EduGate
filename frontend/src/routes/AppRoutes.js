@@ -27,6 +27,11 @@ import TimetableManagementPage from '../pages/Admin/TimetableManagementPage';
 import GradeManagementPage from '../pages/Admin/GradeManagementPage';
 import TimetableViewComponent from '../components/Timetable/TimetableViewComponent';
 
+// Teacher Pages
+import HomeroomClassPage from '../pages/Teacher/HomeroomClassPage';
+import HomeroomStudentsPage from '../pages/Teacher/HomeroomStudentsPage';
+import StudentGradesPage from '../pages/Teacher/StudentGradesPage';
+
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
     const currentUser = authService.getCurrentUser();
@@ -97,6 +102,32 @@ const AppRoutes = () => {
                         <AcademicResultsPage />
                     </ProtectedRoute>
                 } />
+
+                {/* Teacher Homeroom Routes */}
+                <Route
+                    path="teacher/homeroom"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <HomeroomClassPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="teacher/homeroom/:classId/students"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <HomeroomStudentsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="teacher/homeroom/:classId/student/:studentId/grades"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <StudentGradesPage />
+                        </ProtectedRoute>
+                    }
+                />
 
                 <Route
                     path="user-management"

@@ -33,6 +33,20 @@ class HomeroomClassResponse(BaseModel):
     grade: str
     academic_year: str
 
+# Define student response schema
+class StudentResponse(BaseModel):
+    id: int
+    studentId: int
+    name: str
+    email: Optional[str] = None
+    phoneNumber: Optional[str] = None
+    dob: Optional[Any] = None
+    gender: Optional[str] = None
+    enrollmentDate: Optional[Any] = None
+    classId: Optional[int] = None
+    className: Optional[str] = None
+    classGrade: Optional[str] = None
+
 @router.get("/", response_model=List[TeacherRead])
 def read_teachers_endpoint(
     skip: int = 0, 
@@ -63,7 +77,7 @@ def create_teacher_endpoint(
     authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
-    # Authenticate admin/staff
+    # Authenticate admin
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -78,7 +92,7 @@ def create_teacher_endpoint(
         current_user = user_service.get_user_by_email(db, email)
         
         # Check if user has admin role
-        if current_user.role != UserRole.ADMIN and current_user.role != UserRole.STAFF:
+        if current_user.role != UserRole.ADMIN:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to create teachers"
@@ -103,7 +117,7 @@ def update_teacher_endpoint(
     authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
-    # Authenticate admin/staff/teacher
+    # Authenticate admin/teacher
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
@@ -117,8 +131,8 @@ def update_teacher_endpoint(
         email = auth_service.get_current_user_email(token)
         current_user = user_service.get_user_by_email(db, email)
         
-        # Check if user has permission (admin/staff or the teacher themselves)
-        if current_user.role != UserRole.ADMIN and current_user.role != UserRole.STAFF and current_user.UserID != teacher_id:
+        # Check if user has permission (admin or the teacher themselves)
+        if current_user.role != UserRole.ADMIN and current_user.UserID != teacher_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to update this teacher"
@@ -238,4 +252,55 @@ def get_teacher_homeroom_classes_endpoint(
     
     # Get all homeroom classes for the teacher
     classes = teacher_service.get_teacher_homeroom_classes(db, teacher_id)
-    return classes 
+    return classes
+
+@router.get("/{teacher_id}/homeroom-classes/{class_id}/students", response_model=List[StudentResponse])
+def get_homeroom_class_students_endpoint(
+    teacher_id: int,
+    class_id: int,
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Get students from a class where the teacher is the homeroom teacher
+    """
+    # Authenticate user
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    
+    token = authorization.split(" ")[1]
+    
+    try:
+        # Get current user from token
+        email = auth_service.get_current_user_email(token)
+        current_user = user_service.get_user_by_email(db, email)
+        
+        # Check if user has permission (admin or the teacher themselves)
+        if (current_user.role != UserRole.ADMIN and 
+            current_user.role != UserRole.TEACHER):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this resource"
+            )
+        
+        # If teacher, ensure they're accessing their own data
+        if current_user.role == UserRole.TEACHER and current_user.UserID != teacher_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Teachers can only access their own class data"
+            )
+        
+        # Get students in the homeroom class
+        students = teacher_service.get_homeroom_class_students(db, teacher_id, class_id)
+        return students
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
+        ) 

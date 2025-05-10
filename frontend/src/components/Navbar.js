@@ -42,6 +42,7 @@ import {
     SupervisorAccount as PrincipalIcon,
     ClassOutlined as ClassIcon,
     Grading as GradingIcon,
+    MenuBook as MenuBookIcon,
 } from '@mui/icons-material';
 
 /**
@@ -219,7 +220,13 @@ const Navbar = ({ onLayoutChange }) => {
             text: 'Quản lý điểm',
             icon: <GradingIcon />,
             path: '/grade-management',
-            roles: ['admin'],
+            roles: ['admin', 'teacher'],
+        },
+        {
+            text: 'Lớp chủ nhiệm',
+            icon: <MenuBookIcon />,
+            path: '/teacher/homeroom',
+            roles: ['teacher'],
         },
         {
             text: 'Lịch & Sự kiện',

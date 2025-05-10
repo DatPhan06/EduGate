@@ -6,7 +6,10 @@ from ..models.class_subject import ClassSubject
 from ..models.class_ import Class
 from ..models.subject import Subject
 from ..schemas.teacher_schema import TeacherRead, TeacherUpdate
-from typing import List, Optional
+from ..schemas.student_schema import StudentRead
+from ..models.student import Student
+from fastapi import HTTPException, status
+from typing import List, Optional, Dict, Any
 
 def get_teachers(db: Session, skip: int = 0, limit: int = 1000, department_id: Optional[int] = None, search: Optional[str] = None) -> List[TeacherRead]:
     TeacherUser = aliased(User, name="teacher_user_alias")
@@ -192,4 +195,63 @@ def get_teacher_homeroom_classes(db: Session, teacher_id: int) -> List:
             "academic_year": row.AcademicYear
         })
     
-    return classes 
+    return classes
+
+def get_homeroom_class_students(db: Session, teacher_id: int, class_id: int) -> List[StudentRead]:
+    """
+    Get students from a class where the teacher is the homeroom teacher
+    """
+    # First, verify that the teacher is actually the homeroom teacher for this class
+    class_check = db.query(Class).filter(
+        Class.ClassID == class_id,
+        Class.HomeroomTeacherID == teacher_id
+    ).first()
+    
+    if not class_check:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Teacher is not the homeroom teacher for this class"
+        )
+    
+    # Now get all students in this class
+    StudentUser = aliased(User, name="student_user_alias")
+    
+    query = db.query(
+        StudentUser.UserID.label("id"),
+        StudentUser.UserID.label("studentId"),
+        StudentUser.FirstName.label("student_first_name"),
+        StudentUser.LastName.label("student_last_name"),
+        StudentUser.Email.label("Email"),
+        StudentUser.PhoneNumber.label("PhoneNumber"),
+        StudentUser.DOB.label("DOB"),
+        StudentUser.Gender.label("Gender"),
+        Student.EnrollmentDate.label("EnrollmentDate"),
+        Student.ClassID.label("classId"),
+        Class.ClassName.label("className"),
+        Class.GradeLevel.label("classGrade")
+    ).select_from(Student)\
+    .join(StudentUser, Student.StudentID == StudentUser.UserID)\
+    .join(Class, Student.ClassID == Class.ClassID)\
+    .filter(Student.ClassID == class_id)\
+    .order_by(StudentUser.LastName, StudentUser.FirstName)
+    
+    results = query.all()
+    
+    students = []
+    for row in results:
+        student_name = f"{row.student_first_name or ''} {row.student_last_name or ''}".strip()
+        students.append({
+            "id": row.id,
+            "studentId": row.studentId,
+            "name": student_name if student_name else "N/A",
+            "email": row.Email,
+            "phoneNumber": row.PhoneNumber,
+            "dob": row.DOB,
+            "gender": row.Gender,
+            "enrollmentDate": row.EnrollmentDate,
+            "classId": row.classId,
+            "className": row.className,
+            "classGrade": row.classGrade
+        })
+    
+    return students 
