@@ -392,12 +392,13 @@ async def create_petition(
                 file_location = os.path.join(petition_dir, file.filename)
                 with open(file_location, "wb") as f:
                     f.write(await file.read())
-                # Lưu thông tin file vào DB
+                # Lưu file_path là đường dẫn tương đối (public/petitions/...) để không bị tuyệt đối hóa
+                relative_file_path = os.path.join('public', 'petitions', file.filename).replace('\\', '/').replace('\\', '/')
                 petition_file = petition_service.PetitionService.create_petition_file(
                     db=db,
                     petition_id=db_petition.PetitionID,
                     file_name=file.filename,
-                    file_path=file_location,
+                    file_path=relative_file_path,
                     file_size=file.spool_max_size if hasattr(file, 'spool_max_size') else None,
                     content_type=file.content_type
                 )
