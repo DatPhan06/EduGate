@@ -211,4 +211,15 @@ def delete_grade_component(component_id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred: {str(e)}"
-        ) 
+        )
+
+@router.get("/grade/{grade_id}/components", response_model=List[dict])
+def get_components_by_grade_id(
+    grade_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Get all components for a specific grade by its ID
+    """
+    components = grade_service.get_grade_components_by_grade_id(db, grade_id)
+    return components 

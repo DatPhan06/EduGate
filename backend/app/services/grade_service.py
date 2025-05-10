@@ -407,3 +407,45 @@ def get_student_grades(db: Session, student_id: int, semester: Optional[str] = N
         result.append(grade_data)
     
     return result 
+
+def get_grade_components_by_grade_id(db: Session, grade_id: int) -> List[dict]:
+    """
+    Get all grade components for a specific grade ID.
+    Returns data formatted for API response.
+    
+    Args:
+        db: Database session
+        grade_id: The ID of the grade to get components for
+        
+    Returns:
+        List of component dictionaries with details
+    """
+    # Get the grade with components loaded
+    grade = db.query(Grade).options(
+        joinedload(Grade.grade_components),
+        joinedload(Grade.class_subject).joinedload(ClassSubject.subject),
+        joinedload(Grade.student).joinedload(Student.user)
+    ).filter(
+        Grade.GradeID == grade_id
+    ).first()
+    
+    if not grade:
+        return []
+    
+    # Format the response data
+    grade_components = []
+    if grade.grade_components:
+        for component in grade.grade_components:
+            component_data = {
+                "ComponentID": component.ComponentID,
+                "ComponentName": component.ComponentName,
+                "Weight": component.Weight,
+                "Score": component.Score,
+                "GradeID": component.GradeID
+            }
+            grade_components.append(component_data)
+    
+    # Sort components by weight (highest first) and then by name
+    grade_components.sort(key=lambda x: (-x["Weight"], x["ComponentName"]))
+    
+    return grade_components 

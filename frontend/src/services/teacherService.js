@@ -391,6 +391,22 @@ const getSubjectByClassSubjectId = async (classSubjectId) => {
   }
 };
 
+// Get grade components by grade ID
+const getGradeComponentsByGradeId = async (gradeId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await api.get(`/grades/grade/${gradeId}/components`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching grade components:', error);
+    throw error;
+  }
+};
+
 export {
   getTeacherHomeroomClasses,
   getHomeroomClassStudents,
@@ -410,5 +426,6 @@ export {
   getClassSubjects,
   getStudentById,
   getClassSubjectsInfo,
-  getSubjectByClassSubjectId
+  getSubjectByClassSubjectId,
+  getGradeComponentsByGradeId
 }; 
