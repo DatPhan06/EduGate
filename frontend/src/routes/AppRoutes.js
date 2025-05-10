@@ -24,7 +24,17 @@ import ClassManagementPage from '../pages/Admin/ClassManagementPage';
 import ConversationMonitorPage from '../pages/Admin/ConversationMonitorPage';
 import DepartmentManagementPage from '../pages/Admin/DepartmentManagementPage';
 import TimetableManagementPage from '../pages/Admin/TimetableManagementPage';
+import GradeManagementPage from '../pages/Admin/GradeManagementPage';
 import TimetableViewComponent from '../components/Timetable/TimetableViewComponent';
+
+// Teacher Pages
+import HomeroomClassPage from '../pages/Teacher/HomeroomClassPage';
+import HomeroomStudentsPage from '../pages/Teacher/HomeroomStudentsPage';
+import StudentGradesPage from '../pages/Teacher/StudentGradesPage';
+import TeachingSubjectsPage from '../pages/Teacher/TeachingSubjectsPage';
+import ClassSubjectStudentsPage from '../pages/Teacher/ClassSubjectStudentsPage';
+import SubjectStudentGradesPage from '../pages/Teacher/SubjectStudentGradesPage';
+import HomeroomClassGradesPage from '../pages/Teacher/HomeroomClassGradesPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -71,12 +81,91 @@ const AppRoutes = () => {
                         <Messages />
                     </ProtectedRoute>
                 } />
-                <Route path="event-schedule" element={<EventSchedulePage />} />
-                <Route path="petitions" element={<Petitions />} />
-                <Route path="rewards-discipline" element={<RewardsDisciplinePage />} />
-                <Route path="daily-log" element={<DailyLogPage />} />
-                <Route path="academic-results" element={<AcademicResultsPage />} />
-                <Route path="reports-statistics" element={<ReportsPage />} />
+                <Route path="event-schedule" element={
+                                        <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <EventSchedulePage />
+                    </ProtectedRoute>
+                } />
+                <Route path="petitions" element={
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <Petitions />
+                    </ProtectedRoute>
+                } />
+                <Route path="rewards-discipline" element={
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <RewardsDisciplinePage />
+                    </ProtectedRoute>
+                } />
+                <Route path="daily-log" element={
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <DailyLogPage />
+                    </ProtectedRoute>
+                } />
+                <Route path="academic-results" element={
+                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                        <AcademicResultsPage />
+                    </ProtectedRoute>
+                } />
+
+                {/* Teacher Homeroom Routes */}
+                <Route
+                    path="teacher/homeroom"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <HomeroomClassPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="teacher/homeroom/:classId/students"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <HomeroomStudentsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="teacher/homeroom/:classId/grades"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <HomeroomClassGradesPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="teacher/homeroom/:classId/student/:studentId/grades"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <StudentGradesPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Teacher Subject Grade Management Routes */}
+                <Route
+                    path="teacher/subjects"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <TeachingSubjectsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="teacher/subjects/:classSubjectId/students"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <ClassSubjectStudentsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="teacher/subjects/:classSubjectId/student/:studentId/grades"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <SubjectStudentGradesPage />
+                        </ProtectedRoute>
+                    }
+                />
 
                 <Route
                     path="user-management"
@@ -115,6 +204,14 @@ const AppRoutes = () => {
                     element={
                         <ProtectedRoute roles={['admin']}>
                             <TimetableManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="grade-management"
+                    element={
+                        <ProtectedRoute roles={['admin', 'teacher']}>
+                            <GradeManagementPage />
                         </ProtectedRoute>
                     }
                 />
