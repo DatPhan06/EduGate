@@ -20,7 +20,8 @@ import UserManagementPage from '../pages/Admin/UserManagementPage';
 import EventSchedulePage from '../pages/EventSchedule/EventSchedulePage';
 import EventDetailPage from '../pages/EventSchedule/EventDetailPage';
 import RewardsDisciplinePage from '../pages/RewardsDiscipline/RewardsDisciplinePage';
-import DailyLogPage from '../pages/DailyLog/DailyLogPage';
+import ViewDailyLogPage from '../pages/DailyLog/ViewDailyLogPage';
+import ManageDailyLogPage from '../pages/DailyLog/ManageDailyLogPage';
 import AcademicResultsPage from '../pages/AcademicResults/AcademicResultsPage';
 import ReportsPage from '../pages/Reports/ReportsPage';
 import PrincipalDashboardPage from '../pages/Principal/PrincipalDashboardPage';
@@ -126,8 +127,12 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
                 <Route path="daily-log" element={
-                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
-                        <DailyLogPage />
+                    <ProtectedRoute roles={['teacher', 'parent', 'student']}>
+                        {currentUser?.role === 'teacher' ? (
+                            <ManageDailyLogPage />
+                        ) : (
+                            <ViewDailyLogPage />
+                        )}
                     </ProtectedRoute>
                 } />
                 <Route path="academic-results" element={
