@@ -31,6 +31,9 @@ import TimetableViewComponent from '../components/Timetable/TimetableViewCompone
 import HomeroomClassPage from '../pages/Teacher/HomeroomClassPage';
 import HomeroomStudentsPage from '../pages/Teacher/HomeroomStudentsPage';
 import StudentGradesPage from '../pages/Teacher/StudentGradesPage';
+import TeachingSubjectsPage from '../pages/Teacher/TeachingSubjectsPage';
+import ClassSubjectStudentsPage from '../pages/Teacher/ClassSubjectStudentsPage';
+import SubjectStudentGradesPage from '../pages/Teacher/SubjectStudentGradesPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -129,6 +132,32 @@ const AppRoutes = () => {
                     }
                 />
 
+                {/* Teacher Subject Grade Management Routes */}
+                <Route
+                    path="teacher/subjects"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <TeachingSubjectsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="teacher/subjects/:classSubjectId/students"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <ClassSubjectStudentsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="teacher/subjects/:classSubjectId/student/:studentId/grades"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <SubjectStudentGradesPage />
+                        </ProtectedRoute>
+                    }
+                />
+
                 <Route
                     path="user-management"
                     element={
@@ -172,7 +201,7 @@ const AppRoutes = () => {
                 <Route
                     path="grade-management"
                     element={
-                        <ProtectedRoute roles={['admin', 'teacher']}>
+                        <ProtectedRoute roles={['admin']}>
                             <GradeManagementPage />
                         </ProtectedRoute>
                     }

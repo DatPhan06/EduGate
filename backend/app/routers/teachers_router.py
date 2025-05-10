@@ -6,8 +6,9 @@ from pydantic import BaseModel
 from ..database import get_db
 from ..schemas.teacher_schema import TeacherRead, TeacherUpdate
 from ..schemas.user import UserCreate
-from ..services import teacher_service, user_service, auth_service
+from ..services import teacher_service, user_service, auth_service, grade_service
 from ..enums.user_enums import UserRole
+from ..schemas.grade_schema import GradeComponentCreate, GradeComponentUpdate, GradeComponentResponse, GradeResponse
 
 router = APIRouter(
     prefix="/teachers",
@@ -296,6 +297,402 @@ def get_homeroom_class_students_endpoint(
         # Get students in the homeroom class
         students = teacher_service.get_homeroom_class_students(db, teacher_id, class_id)
         return students
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
+        )
+
+# New grade management endpoints for teachers
+
+@router.get("/{teacher_id}/teaching-subjects", response_model=List[Dict[str, Any]])
+def get_teacher_teaching_subjects(
+    teacher_id: int,
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all subjects taught by the teacher in different classes
+    """
+    # Authenticate user
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    
+    token = authorization.split(" ")[1]
+    
+    try:
+        # Get current user from token
+        email = auth_service.get_current_user_email(token)
+        current_user = user_service.get_user_by_email(db, email)
+        
+        # Check if user has permission (admin or the teacher themselves)
+        if (current_user.role != UserRole.ADMIN and 
+            (current_user.role != UserRole.TEACHER or current_user.UserID != teacher_id)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this resource"
+            )
+        
+        # Get subjects taught by the teacher grouped by class
+        subjects = teacher_service.get_teacher_teaching_subjects(db, teacher_id)
+        return subjects
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
+        )
+
+@router.get("/{teacher_id}/class-subjects/{class_subject_id}/students", response_model=List[Dict[str, Any]])
+def get_students_in_class_subject(
+    teacher_id: int,
+    class_subject_id: int,
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all students in a class for a subject taught by the teacher
+    """
+    # Authenticate user
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    
+    token = authorization.split(" ")[1]
+    
+    try:
+        # Get current user from token
+        email = auth_service.get_current_user_email(token)
+        current_user = user_service.get_user_by_email(db, email)
+        
+        # Check if user has permission (admin or the teacher themselves)
+        if (current_user.role != UserRole.ADMIN and 
+            (current_user.role != UserRole.TEACHER or current_user.UserID != teacher_id)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this resource"
+            )
+        
+        # Check if the teacher teaches this class-subject
+        if not teacher_service.check_teacher_class_subject(db, teacher_id, class_subject_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Teacher does not teach this class-subject"
+            )
+        
+        # Get all students in the class for this subject
+        students = teacher_service.get_students_in_class_subject(db, class_subject_id)
+        return students
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
+        )
+
+@router.get("/{teacher_id}/students/{student_id}/grades", response_model=List[GradeResponse])
+def get_student_grades_for_teacher(
+    teacher_id: int,
+    student_id: int,
+    class_subject_id: Optional[int] = Query(None),
+    semester: Optional[str] = Query(None),
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Get grades for a student in classes/subjects taught by the teacher
+    """
+    # Authenticate user
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    
+    token = authorization.split(" ")[1]
+    
+    try:
+        # Get current user from token
+        email = auth_service.get_current_user_email(token)
+        current_user = user_service.get_user_by_email(db, email)
+        
+        # Check if user has permission (admin or the teacher themselves)
+        if (current_user.role != UserRole.ADMIN and 
+            (current_user.role != UserRole.TEACHER or current_user.UserID != teacher_id)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this resource"
+            )
+        
+        # If class_subject_id provided, check if teacher teaches this class-subject
+        if class_subject_id and not teacher_service.check_teacher_class_subject(db, teacher_id, class_subject_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Teacher does not teach this class-subject"
+            )
+        
+        # Get student grades for subjects taught by the teacher
+        grades = teacher_service.get_student_grades_for_teacher(db, teacher_id, student_id, class_subject_id, semester)
+        return grades
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
+        )
+
+@router.post("/{teacher_id}/grades/components", response_model=GradeComponentResponse)
+def create_grade_component(
+    teacher_id: int,
+    component_data: GradeComponentCreate,
+    grade_id: int = Query(..., description="ID of the grade to add component to"),
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Add a new grade component for a student
+    """
+    # Authenticate user
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    
+    token = authorization.split(" ")[1]
+    
+    try:
+        # Get current user from token
+        email = auth_service.get_current_user_email(token)
+        current_user = user_service.get_user_by_email(db, email)
+        
+        # Check if user has permission (admin or the teacher themselves)
+        if (current_user.role != UserRole.ADMIN and 
+            (current_user.role != UserRole.TEACHER or current_user.UserID != teacher_id)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this resource"
+            )
+        
+        # Check if the teacher can modify this grade (teaches this class-subject)
+        if not teacher_service.check_teacher_can_modify_grade(db, teacher_id, grade_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Teacher is not authorized to modify this grade"
+            )
+        
+        # Add the grade component
+        component = grade_service.add_component_to_grade(db, grade_id, component_data)
+        if not component:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Grade not found"
+            )
+        
+        # Recalculate final grade after adding component
+        teacher_service.recalculate_final_grade(db, grade_id)
+        
+        return component
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
+        )
+
+@router.put("/{teacher_id}/grades/components/{component_id}", response_model=GradeComponentResponse)
+def update_grade_component(
+    teacher_id: int,
+    component_id: int,
+    component_update: GradeComponentUpdate,
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Update a grade component (e.g., change score)
+    """
+    # Authenticate user
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    
+    token = authorization.split(" ")[1]
+    
+    try:
+        # Get current user from token
+        email = auth_service.get_current_user_email(token)
+        current_user = user_service.get_user_by_email(db, email)
+        
+        # Check if user has permission (admin or the teacher themselves)
+        if (current_user.role != UserRole.ADMIN and 
+            (current_user.role != UserRole.TEACHER or current_user.UserID != teacher_id)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this resource"
+            )
+        
+        # Check if the teacher can modify this component (teaches this class-subject)
+        if not teacher_service.check_teacher_can_modify_component(db, teacher_id, component_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Teacher is not authorized to modify this grade component"
+            )
+        
+        # Update the grade component
+        component = grade_service.update_grade_component_details(db, component_id, component_update)
+        if not component:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Grade component not found"
+            )
+        
+        # Get the grade ID from the component to recalculate final grade
+        grade_id = component.GradeID
+        teacher_service.recalculate_final_grade(db, grade_id)
+        
+        return component
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
+        )
+
+@router.delete("/{teacher_id}/grades/components/{component_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_grade_component(
+    teacher_id: int,
+    component_id: int,
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a grade component
+    """
+    # Authenticate user
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    
+    token = authorization.split(" ")[1]
+    
+    try:
+        # Get current user from token
+        email = auth_service.get_current_user_email(token)
+        current_user = user_service.get_user_by_email(db, email)
+        
+        # Check if user has permission (admin or the teacher themselves)
+        if (current_user.role != UserRole.ADMIN and 
+            (current_user.role != UserRole.TEACHER or current_user.UserID != teacher_id)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this resource"
+            )
+        
+        # Check if the teacher can modify this component (teaches this class-subject)
+        component = db.query(GradeComponent).filter(GradeComponent.ComponentID == component_id).first()
+        if not component:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Grade component not found"
+            )
+        
+        grade_id = component.GradeID
+        
+        if not teacher_service.check_teacher_can_modify_component(db, teacher_id, component_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Teacher is not authorized to modify this grade component"
+            )
+        
+        # Delete the grade component
+        success = grade_service.delete_grade_component_by_id(db, component_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Grade component not found"
+            )
+        
+        # Recalculate final grade after deleting component
+        teacher_service.recalculate_final_grade(db, grade_id)
+        
+        return None
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}"
+        )
+
+@router.post("/{teacher_id}/initialize-grade-components", status_code=status.HTTP_201_CREATED)
+def initialize_grade_components(
+    teacher_id: int,
+    grade_id: int = Query(..., description="ID of the grade to add components to"),
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Initialize standard grade components for Vietnamese high school:
+    - 3 components with weight 1
+    - 2 components with weight 2
+    - 1 component with weight 3
+    """
+    # Authenticate user
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    
+    token = authorization.split(" ")[1]
+    
+    try:
+        # Get current user from token
+        email = auth_service.get_current_user_email(token)
+        current_user = user_service.get_user_by_email(db, email)
+        
+        # Check if user has permission (admin or the teacher themselves)
+        if (current_user.role != UserRole.ADMIN and 
+            (current_user.role != UserRole.TEACHER or current_user.UserID != teacher_id)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this resource"
+            )
+        
+        # Check if the teacher can modify this grade (teaches this class-subject)
+        if not teacher_service.check_teacher_can_modify_grade(db, teacher_id, grade_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Teacher is not authorized to modify this grade"
+            )
+        
+        # Initialize standard components
+        components = teacher_service.initialize_standard_grade_components(db, grade_id)
+        
+        return {"message": "Grade components initialized successfully", "count": len(components)}
         
     except HTTPException:
         raise

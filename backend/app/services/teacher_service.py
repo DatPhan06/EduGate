@@ -1,13 +1,16 @@
 from sqlalchemy.orm import Session, aliased
-from sqlalchemy import select, and_, join
+from sqlalchemy import select, and_, join, func
 from ..models.teacher import Teacher
 from ..models.user import User
 from ..models.class_subject import ClassSubject
 from ..models.class_ import Class
 from ..models.subject import Subject
+from ..models.student import Student
+from ..models.grade import Grade
+from ..models.grade_component import GradeComponent
 from ..schemas.teacher_schema import TeacherRead, TeacherUpdate
 from ..schemas.student_schema import StudentRead
-from ..models.student import Student
+from ..schemas.grade_schema import GradeComponentCreate
 from fastapi import HTTPException, status
 from typing import List, Optional, Dict, Any
 
@@ -254,4 +257,260 @@ def get_homeroom_class_students(db: Session, teacher_id: int, class_id: int) -> 
             "classGrade": row.classGrade
         })
     
-    return students 
+    return students
+
+def get_teacher_teaching_subjects(db: Session, teacher_id: int) -> List[Dict[str, Any]]:
+    """
+    Get all subjects taught by the teacher grouped by class
+    """
+    # Get all class-subjects taught by the teacher
+    results = db.query(
+        ClassSubject.ClassSubjectID,
+        ClassSubject.ClassID,
+        ClassSubject.SubjectID,
+        Class.ClassName,
+        Class.GradeLevel,
+        Subject.SubjectName
+    ).join(
+        Class, ClassSubject.ClassID == Class.ClassID
+    ).join(
+        Subject, ClassSubject.SubjectID == Subject.SubjectID
+    ).filter(
+        ClassSubject.TeacherID == teacher_id
+    ).all()
+    
+    # Group by class
+    class_subjects = {}
+    for row in results:
+        class_id = row.ClassID
+        if class_id not in class_subjects:
+            class_subjects[class_id] = {
+                "class_id": class_id,
+                "class_name": row.ClassName,
+                "grade_level": row.GradeLevel,
+                "subjects": []
+            }
+        
+        class_subjects[class_id]["subjects"].append({
+            "class_subject_id": row.ClassSubjectID,
+            "subject_id": row.SubjectID,
+            "subject_name": row.SubjectName
+        })
+    
+    return list(class_subjects.values())
+
+def check_teacher_class_subject(db: Session, teacher_id: int, class_subject_id: int) -> bool:
+    """
+    Check if a teacher teaches a specific class-subject
+    """
+    return db.query(ClassSubject).filter(
+        ClassSubject.ClassSubjectID == class_subject_id,
+        ClassSubject.TeacherID == teacher_id
+    ).first() is not None
+
+def get_students_in_class_subject(db: Session, class_subject_id: int) -> List[Dict[str, Any]]:
+    """
+    Get all students in a class for a specific subject
+    """
+    # First get the class ID for this class-subject
+    class_subject = db.query(ClassSubject).filter(
+        ClassSubject.ClassSubjectID == class_subject_id
+    ).first()
+    
+    if not class_subject:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Class-subject not found"
+        )
+    
+    # Get students in this class
+    StudentUser = aliased(User, name="student_user_alias")
+    
+    query = db.query(
+        StudentUser.UserID.label("id"),
+        StudentUser.UserID.label("studentId"),
+        StudentUser.FirstName.label("student_first_name"),
+        StudentUser.LastName.label("student_last_name"),
+        StudentUser.Email.label("Email"),
+        StudentUser.PhoneNumber.label("PhoneNumber"),
+        StudentUser.DOB.label("DOB"),
+        StudentUser.Gender.label("Gender"),
+        Student.EnrollmentDate.label("EnrollmentDate"),
+        Student.ClassID.label("classId"),
+        Class.ClassName.label("className"),
+        Class.GradeLevel.label("classGrade")
+    ).select_from(Student)\
+    .join(StudentUser, Student.StudentID == StudentUser.UserID)\
+    .join(Class, Student.ClassID == Class.ClassID)\
+    .filter(Student.ClassID == class_subject.ClassID)\
+    .order_by(StudentUser.LastName, StudentUser.FirstName)
+    
+    results = query.all()
+    
+    students = []
+    for row in results:
+        student_name = f"{row.student_first_name or ''} {row.student_last_name or ''}".strip()
+        students.append({
+            "id": row.id,
+            "studentId": row.studentId,
+            "name": student_name if student_name else "N/A",
+            "email": row.Email,
+            "phoneNumber": row.PhoneNumber,
+            "dob": row.DOB,
+            "gender": row.Gender,
+            "enrollmentDate": row.EnrollmentDate,
+            "classId": row.classId,
+            "className": row.className,
+            "classGrade": row.classGrade
+        })
+    
+    return students
+
+def get_student_grades_for_teacher(
+    db: Session, 
+    teacher_id: int, 
+    student_id: int, 
+    class_subject_id: Optional[int] = None,
+    semester: Optional[str] = None
+) -> List[Grade]:
+    """
+    Get grades for a student in classes/subjects taught by the teacher
+    """
+    # Get class-subjects taught by this teacher
+    if class_subject_id:
+        # If specific class-subject provided, check if teacher teaches it
+        if not check_teacher_class_subject(db, teacher_id, class_subject_id):
+            return []
+        class_subjects = [class_subject_id]
+    else:
+        # Otherwise get all class-subjects taught by this teacher
+        class_subjects = db.query(ClassSubject.ClassSubjectID).filter(
+            ClassSubject.TeacherID == teacher_id
+        ).all()
+        class_subjects = [cs[0] for cs in class_subjects]
+    
+    # Get grades for this student in the class-subjects taught by this teacher
+    query = db.query(Grade).filter(
+        Grade.StudentID == student_id,
+        Grade.ClassSubjectID.in_(class_subjects)
+    )
+    
+    if semester:
+        query = query.filter(Grade.Semester == semester)
+    
+    return query.all()
+
+def check_teacher_can_modify_grade(db: Session, teacher_id: int, grade_id: int) -> bool:
+    """
+    Check if a teacher can modify a specific grade (teaches the class-subject)
+    """
+    # Get the grade to find the class-subject ID
+    grade = db.query(Grade).filter(Grade.GradeID == grade_id).first()
+    if not grade:
+        return False
+    
+    # Check if the teacher teaches this class-subject
+    return check_teacher_class_subject(db, teacher_id, grade.ClassSubjectID)
+
+def check_teacher_can_modify_component(db: Session, teacher_id: int, component_id: int) -> bool:
+    """
+    Check if a teacher can modify a specific grade component
+    """
+    # Get the component to find the grade ID
+    component = db.query(GradeComponent).filter(GradeComponent.ComponentID == component_id).first()
+    if not component:
+        return False
+    
+    # Check if the teacher can modify the parent grade
+    return check_teacher_can_modify_grade(db, teacher_id, component.GradeID)
+
+def recalculate_final_grade(db: Session, grade_id: int) -> bool:
+    """
+    Recalculate the final grade based on weighted components
+    """
+    # Get all components for this grade
+    components = db.query(GradeComponent).filter(GradeComponent.GradeID == grade_id).all()
+    
+    if not components:
+        return False
+    
+    # Calculate weighted average
+    total_weight = sum(component.Weight for component in components)
+    weighted_sum = sum(component.Score * component.Weight for component in components)
+    
+    final_score = weighted_sum / total_weight if total_weight > 0 else None
+    
+    # Update the grade's final score
+    grade = db.query(Grade).filter(Grade.GradeID == grade_id).first()
+    if not grade:
+        return False
+    
+    grade.FinalScore = final_score
+    db.commit()
+    return True
+
+def initialize_standard_grade_components(db: Session, grade_id: int) -> List[GradeComponent]:
+    """
+    Initialize the standard grade components for Vietnamese high school:
+    - 3 components with weight 1
+    - 2 components with weight 2
+    - 1 component with weight 3
+    """
+    # Check if grade exists
+    grade = db.query(Grade).filter(Grade.GradeID == grade_id).first()
+    if not grade:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Grade not found"
+        )
+    
+    # Check if components already exist
+    existing_components = db.query(GradeComponent).filter(GradeComponent.GradeID == grade_id).all()
+    if existing_components:
+        # Remove existing components first
+        for component in existing_components:
+            db.delete(component)
+        db.commit()
+    
+    # Create the standard components
+    components = []
+    
+    # 3 components with weight 1
+    for i in range(1, 4):
+        component = GradeComponent(
+            ComponentName=f"Điểm hệ số 1 #{i}",
+            GradeID=grade_id,
+            Weight=1,
+            Score=None
+        )
+        db.add(component)
+        components.append(component)
+    
+    # 2 components with weight 2
+    for i in range(1, 3):
+        component = GradeComponent(
+            ComponentName=f"Điểm hệ số 2 #{i}",
+            GradeID=grade_id,
+            Weight=2,
+            Score=None
+        )
+        db.add(component)
+        components.append(component)
+    
+    # 1 component with weight 3
+    component = GradeComponent(
+        ComponentName="Điểm hệ số 3",
+        GradeID=grade_id,
+        Weight=3,
+        Score=None
+    )
+    db.add(component)
+    components.append(component)
+    
+    db.commit()
+    
+    # Refresh all components to get their IDs
+    for component in components:
+        db.refresh(component)
+    
+    return components 
