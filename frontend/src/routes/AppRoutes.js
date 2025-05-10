@@ -27,6 +27,7 @@ import TimetableManagementPage from '../pages/Admin/TimetableManagementPage';
 import GradeManagementPage from '../pages/Admin/GradeManagementPage';
 import TimetableViewComponent from '../components/Timetable/TimetableViewComponent';
 
+
 // Teacher Pages
 import HomeroomClassPage from '../pages/Teacher/HomeroomClassPage';
 import HomeroomStudentsPage from '../pages/Teacher/HomeroomStudentsPage';
@@ -87,7 +88,12 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
                 <Route path="petitions" element={
-                    <ProtectedRoute roles={[ 'teacher', 'parent', 'student']}>
+                    <ProtectedRoute roles={['parent']}>
+                        <Petitions />
+                    </ProtectedRoute>
+                } />
+                <Route path="petitions-management" element={
+                    <ProtectedRoute roles={[ 'admin']}>
                         <Petitions />
                     </ProtectedRoute>
                 } />

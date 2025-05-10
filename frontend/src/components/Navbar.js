@@ -265,6 +265,18 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['admin', 'principal', 'bgh', 'teacher'],
         },
         {
+            text: 'Đơn thỉnh cầu',
+            icon: <AssignmentIcon />,
+            path: '/petitions',
+            roles: ['parent'],
+        },
+        {
+            text: 'Quản lý đơn thỉnh cầu',
+            icon: <AssignmentIcon />,
+            path: '/petitions-management',
+            roles: ['admin'],
+        },
+        {
             text: 'Giám sát (BGH)',
             icon: <PrincipalIcon />,
             path: '/principal-dashboard',

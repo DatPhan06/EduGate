@@ -149,7 +149,7 @@ async def get_petitions_by_parent(
                 Status=p.Status,
                 SubmittedAt=p.SubmittedAt,
                 AdminID=p.AdminID,
-                Notes=p.Notes,
+                Response=p.Response,
                 parent=User.from_orm(p.parent.user)
             ) for p in petitions if p.parent and p.parent.user
         ]
@@ -234,7 +234,7 @@ async def get_petitions(
                 Status=p.Status,
                 SubmittedAt=p.SubmittedAt,
                 AdminID=p.AdminID,
-                Notes=p.Notes,
+                Response=p.Response,
                 parent=User.from_orm(p.parent.user)
             ) for p in petitions if p.parent and p.parent.user
         ]
@@ -282,7 +282,7 @@ async def get_petition(
         PetitionResponse: Detailed information of the petition
     """
     try:
-        petition = petition_service.PetitionService.get_petition_by_id(db, petition_id)  # Sửa thành petition_service
+        petition = petition_service.PetitionService.get_petition_by_id(db, petition_id)
         if not petition:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Petition not found")
 
@@ -305,7 +305,7 @@ async def get_petition(
             Status=petition.Status,
             SubmittedAt=petition.SubmittedAt,
             AdminID=petition.AdminID,
-            Notes=petition.Notes,
+            Response=petition.Response,
             parent=User.from_orm(petition.parent.user)
         )
 
@@ -350,7 +350,7 @@ async def create_petition(
             Status=db_petition.Status,
             SubmittedAt=db_petition.SubmittedAt,
             AdminID=db_petition.AdminID,
-            Notes=db_petition.Notes,
+            Response=db_petition.Response,
             parent=current_user
         )
         
@@ -373,7 +373,7 @@ async def update_petition_status(
 
     Args:
         petition_id: ID of the petition to update
-        update: Petition update data (status and optional notes)
+        update: Petition update data (status and optional response)
         db: Database session
         current_user: Currently authenticated user
 
@@ -416,7 +416,7 @@ async def update_petition_status(
             Status=petition.Status,
             SubmittedAt=petition.SubmittedAt,
             AdminID=petition.AdminID,
-            Notes=petition.Notes,
+            Response=petition.Response,
             parent=User.from_orm(petition.parent.user)
         )
 

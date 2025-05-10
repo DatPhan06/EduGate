@@ -51,9 +51,9 @@ const AdminPetitionsView = ({ userId }) => {
   const [openStatusDialog, setOpenStatusDialog] = useState(false);
   const [selectedPetitionId, setSelectedPetitionId] = useState(null);
   const [newStatus, setNewStatus] = useState("");
-  const [notes, setNotes] = useState("");
-  const [statusUpdateError, setStatusUpdateError] = useState(null); // Lỗi riêng cho dialog cập nhật
-  const [filters, setFilters] = useState({ Status: "", startDate: "", endDate: "" });
+  const [response, setResponse] = useState("");
+  const [statusUpdateError, setStatusUpdateError] = useState(null);
+  const [filters, setFilters] = useState({ Status: "" });
   const [statistics, setStatistics] = useState({ PENDING: 0, APPROVED: 0, REJECTED: 0 });
 
   // --- Helper Functions ---
@@ -90,8 +90,6 @@ const AdminPetitionsView = ({ userId }) => {
       const response = await petitionService.getAllPetitions(
         {
           status: filters.Status || undefined, // Gửi undefined nếu rỗng
-          startDate: filters.startDate || undefined,
-          endDate: filters.endDate || undefined,
         },
         page,
         size
@@ -111,18 +109,13 @@ const AdminPetitionsView = ({ userId }) => {
 
   const fetchStatistics = async () => {
     setLoadingStats(true);
-    // Không reset lỗi chung ở đây vì có thể lỗi fetch petitions vẫn còn
     try {
-      console.log("Admin fetching statistics with filters:", filters);
-      const stats = await petitionService.getPetitionStatistics({
-        startDate: filters.startDate || undefined,
-        endDate: filters.endDate || undefined,
-      });
+      console.log("Admin fetching statistics");
+      const stats = await petitionService.getPetitionStatistics();
       console.log("Statistics response:", stats);
       setStatistics(stats);
     } catch (error) {
       console.error("Error fetching statistics:", error);
-      // Có thể hiển thị lỗi riêng cho stats nếu cần, hoặc gộp chung vào error
       setError((prevError) => prevError || "Không thể tải thống kê đơn.");
     } finally {
       setLoadingStats(false);
@@ -141,17 +134,7 @@ const AdminPetitionsView = ({ userId }) => {
   };
 
   const handleFilterChange = (newFilters) => {
-    // Validate date range
-    if (
-      newFilters.startDate &&
-      newFilters.endDate &&
-      new Date(newFilters.startDate) > new Date(newFilters.endDate)
-    ) {
-      setError("Ngày bắt đầu không thể lớn hơn ngày kết thúc. Bộ lọc chưa được áp dụng.");
-      // Không cập nhật state filters nếu ngày không hợp lệ
-      return;
-    }
-    setError(null); // Clear date validation error if dates are valid or one is missing
+    setError(null); // Clear any previous error messages
     console.log("Admin updating filters:", newFilters);
     setFilters(newFilters);
     setPage(1); // Reset về trang 1 khi thay đổi bộ lọc
@@ -159,7 +142,7 @@ const AdminPetitionsView = ({ userId }) => {
 
   const handleResetFilters = () => {
     setError(null); // Clear any previous error messages
-    handleFilterChange({ Status: "", startDate: "", endDate: "" });
+    handleFilterChange({ Status: "" });
   };
 
    const fetchPetitionDetails = async (petitionId) => {
@@ -184,7 +167,7 @@ const AdminPetitionsView = ({ userId }) => {
   const handleOpenStatusDialog = (petitionId) => {
     setSelectedPetitionId(petitionId);
     setNewStatus(""); // Reset form
-    setNotes("");
+    setResponse("");
     setStatusUpdateError(null); // Reset lỗi dialog cũ
     setOpenStatusDialog(true);
   };
@@ -193,7 +176,7 @@ const AdminPetitionsView = ({ userId }) => {
     setOpenStatusDialog(false);
     setSelectedPetitionId(null);
     setNewStatus("");
-    setNotes("");
+    setResponse("");
     setStatusUpdateError(null);
   };
 
@@ -207,7 +190,7 @@ const AdminPetitionsView = ({ userId }) => {
     try {
        const updateData = {
             Status: newStatus,
-            Notes: notes || null, // Gửi null nếu notes rỗng
+            Response: response || null, // Gửi null nếu response rỗng
             AdminID: userId, // Sử dụng userId (của admin) từ props
         };
       console.log("Admin updating petition:", { petitionId: selectedPetitionId, updateData });
@@ -284,12 +267,20 @@ const AdminPetitionsView = ({ userId }) => {
         <Grid container spacing={2} alignItems="center">
          <Grid item sx={{ width: '150px' }}>
             <FormControl fullWidth size="small">
-              <InputLabel>Trạng thái</InputLabel>
+              <InputLabel shrink>Trạng thái</InputLabel>
               <Select
                 value={filters.Status}
                 label="Trạng thái"
                 onChange={(e) => handleFilterChange({ ...filters, Status: e.target.value })}
                 disabled={isLoading}
+                displayEmpty
+                renderValue={(selected) => {
+                  if (!selected) return "Tất cả";
+                  if (selected === "PENDING") return "Đang chờ";
+                  if (selected === "APPROVED") return "Đã duyệt";
+                  if (selected === "REJECTED") return "Từ chối";
+                  return selected;
+                }}
               >
                 <MenuItem value="">Tất cả</MenuItem>
                 <MenuItem value="PENDING">Đang chờ</MenuItem>
@@ -298,33 +289,6 @@ const AdminPetitionsView = ({ userId }) => {
               </Select>
             </FormControl>
           </Grid>
-          {/* <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Từ ngày"
-              type="date"
-              value={filters.startDate}
-              onChange={(e) => handleFilterChange({ ...filters, startDate: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-               disabled={isLoading}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              fullWidth
-               size="small"
-              label="Đến ngày"
-              type="date"
-              value={filters.endDate}
-              onChange={(e) => handleFilterChange({ ...filters, endDate: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-               disabled={isLoading}
-               inputProps={{
-                   min: filters.startDate || undefined // Đảm bảo ngày kết thúc không trước ngày bắt đầu
-                 }}
-            />
-          </Grid> */}
           {/* <Grid item xs={12} sm={6} md={3}>
             <Button
               variant="outlined"
@@ -469,12 +433,12 @@ const AdminPetitionsView = ({ userId }) => {
           </FormControl>
           <TextField
             margin="dense"
-            label="Ghi chú (tùy chọn)"
+            label="Phản hồi (tùy chọn)"
             fullWidth
             multiline
             rows={4}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={response}
+            onChange={(e) => setResponse(e.target.value)}
             sx={{ mt: 2 }}
           />
         </DialogContent>
@@ -491,7 +455,7 @@ const AdminPetitionsView = ({ userId }) => {
         </DialogActions>
       </Dialog>
 
-       {/* Dialog Chi tiết đơn (Giống Parent) */}
+       {/* Dialog Chi tiết đơn */}
       <Dialog open={openDetailsDialog} onClose={handleDetailsDialogClose} maxWidth="md" fullWidth>
           <DialogTitle>Chi tiết đơn thỉnh cầu #{selectedPetition?.PetitionID}</DialogTitle>
           <DialogContent>
@@ -506,7 +470,7 @@ const AdminPetitionsView = ({ userId }) => {
                  <TextField label="Trạng thái" value={selectedPetition.Status || "N/A"} fullWidth InputProps={{ readOnly: true }} variant="outlined"/>
                  <TextField label="Ngày tạo" value={formatDate(selectedPetition.SubmittedAt) || "N/A"} fullWidth InputProps={{ readOnly: true }} variant="outlined"/>
                  <TextField label="Thời gian tạo" value={formatTime(selectedPetition.SubmittedAt) || "N/A"} fullWidth InputProps={{ readOnly: true }} variant="outlined"/>
-                 <TextField label="Ghi chú (Admin)" value={selectedPetition.Notes || "Không có ghi chú"} fullWidth multiline rows={2} InputProps={{ readOnly: true }} variant="outlined"/>
+                 <TextField label="Phản hồi (Admin)" value={selectedPetition.Response || "Chưa có phản hồi"} fullWidth multiline rows={2} InputProps={{ readOnly: true }} variant="outlined"/>
                  {/* Thêm thông tin người xử lý nếu có */}
                  {selectedPetition.admin && (
                     <TextField label="Người xử lý (Admin)" value={`${selectedPetition.admin.FirstName} ${selectedPetition.admin.LastName} (${selectedPetition.admin.Email})` || "N/A"} fullWidth InputProps={{ readOnly: true }} variant="outlined"/>
