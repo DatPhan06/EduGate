@@ -439,9 +439,21 @@ def recalculate_final_grade(db: Session, grade_id: int) -> bool:
     if not components:
         return False
     
-    # Calculate weighted average
-    total_weight = sum(component.Weight for component in components)
-    weighted_sum = sum(component.Score * component.Weight for component in components)
+    # Get components with scores (ignore None values)
+    valid_components = [c for c in components if c.Score is not None]
+    
+    if not valid_components:
+        # No valid scores yet, set final score to None
+        grade = db.query(Grade).filter(Grade.GradeID == grade_id).first()
+        if not grade:
+            return False
+        grade.FinalScore = None
+        db.commit()
+        return True
+    
+    # Calculate weighted average only for components that have scores
+    total_weight = sum(component.Weight for component in valid_components)
+    weighted_sum = sum(component.Score * component.Weight for component in valid_components)
     
     final_score = weighted_sum / total_weight if total_weight > 0 else None
     

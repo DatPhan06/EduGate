@@ -188,7 +188,9 @@ def update_grade_component_details(db: Session, component_id: int, component_upd
         db_component.ComponentName = component_update_data.ComponentName
     if component_update_data.Weight is not None:
         db_component.Weight = component_update_data.Weight
-    if component_update_data.Score is not None:
+    
+    # Handle Score specifically to allow setting it to None/null
+    if 'Score' in component_update_data.__dict__:
         db_component.Score = component_update_data.Score
     
     try:

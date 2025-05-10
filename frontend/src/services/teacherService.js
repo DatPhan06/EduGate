@@ -93,6 +93,38 @@ const updateGradeComponent = async (componentId, data) => {
   }
 };
 
+// Update an entire grade record
+const updateGrade = async (gradeId, data) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await api.put(`/grades/${gradeId}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating grade:', error);
+    throw error;
+  }
+};
+
+// Delete an entire grade record
+const deleteGrade = async (gradeId) => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await api.delete(`/grades/${gradeId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting grade:', error);
+    throw error;
+  }
+};
+
 // Get subjects taught by teacher
 const getTeacherSubjects = async (teacherId) => {
   try {
@@ -260,6 +292,8 @@ export {
   getStudentGrades,
   getGradeComponents,
   updateGradeComponent,
+  updateGrade,
+  deleteGrade,
   getTeacherSubjects,
   getStudentsInClassSubject,
   getStudentGradesForTeacher,

@@ -14,7 +14,9 @@ import {
   Close as CloseOutlinedIcon,
   Add as AddIcon,
   Refresh as RefreshIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  MoreVert as MoreVertIcon,
+  RemoveCircleOutline as RemoveCircleOutlineIcon
 } from '@mui/icons-material';
 import { 
   getStudentGrades,
@@ -22,7 +24,10 @@ import {
   updateTeacherGradeComponent,
   createGradeComponent,
   deleteGradeComponent,
-  initializeGradeComponents
+  initializeGradeComponents,
+  updateGrade,
+  deleteGrade,
+  updateGradeComponent
 } from '../../services/teacherService';
 import { useSnackbar } from 'notistack';
 
@@ -38,6 +43,9 @@ const SubjectStudentGradesPage = () => {
   const [editValue, setEditValue] = useState(null);
   const { enqueueSnackbar } = useSnackbar();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [editingGrade, setEditingGrade] = useState(null);
   const [newComponent, setNewComponent] = useState({
     ComponentName: '',
     Weight: 1,
@@ -70,11 +78,21 @@ const SubjectStudentGradesPage = () => {
           // Fetch grade components separately
           const components = await getGradeComponents(grade.GradeID);
           
+          // Sort components: first by weight (descending), then by name
+          const sortedComponents = components.sort((a, b) => {
+            // First sort by Weight (highest first)
+            if (b.Weight !== a.Weight) {
+              return b.Weight - a.Weight;
+            }
+            // Then sort by ComponentName
+            return a.ComponentName.localeCompare(b.ComponentName);
+          });
+          
           // Update the grade with components
           setGrades(prevGrades => 
             prevGrades.map(g => 
               g.GradeID === grade.GradeID 
-                ? { ...g, grade_components: components } 
+                ? { ...g, grade_components: sortedComponents } 
                 : g
             )
           );
@@ -119,17 +137,49 @@ const SubjectStudentGradesPage = () => {
     });
   };
   
-  // Function to refresh components
+  // Function to refresh components while maintaining component order
   const refreshGradeComponents = async () => {
     if (currentGradeId) {
       try {
+        // First, remember the current components and their order
+        let currentComponents = [];
+        if (grades.length > 0) {
+          const currentGrade = grades.find(g => g.GradeID === currentGradeId);
+          if (currentGrade && currentGrade.grade_components) {
+            currentComponents = [...currentGrade.grade_components];
+          }
+        }
+
+        // Get updated components
         const components = await getGradeComponents(currentGradeId);
         
-        // Update the grade with components
+        // If we had existing components, maintain their order
+        let orderedComponents = components;
+        if (currentComponents.length > 0) {
+          // Create an ordered list by matching IDs
+          orderedComponents = components.sort((a, b) => {
+            // First sort by Weight (highest first)
+            if (b.Weight !== a.Weight) {
+              return b.Weight - a.Weight;
+            }
+            // Then sort by ComponentName
+            return a.ComponentName.localeCompare(b.ComponentName);
+          });
+        }
+        
+        // Also fetch the updated grade to get the latest FinalScore
+        const gradesData = await getStudentGrades(studentId, activeSemester);
+        const updatedGrade = gradesData.find(g => g.GradeID === currentGradeId);
+        
+        // Update the grade with components and updated FinalScore
         setGrades(prevGrades => 
           prevGrades.map(g => 
             g.GradeID === currentGradeId 
-              ? { ...g, grade_components: components } 
+              ? { 
+                  ...g, 
+                  grade_components: orderedComponents,
+                  FinalScore: updatedGrade ? updatedGrade.FinalScore : g.FinalScore
+                } 
               : g
           )
         );
@@ -155,7 +205,7 @@ const SubjectStudentGradesPage = () => {
       // Create the component
       await createGradeComponent(teacherId, currentGradeId, newComponent);
       
-      // Refresh the components
+      // Refresh the components with consistent ordering
       await refreshGradeComponents();
       
       enqueueSnackbar('Thêm thành phần điểm thành công!', { variant: 'success' });
@@ -176,7 +226,7 @@ const SubjectStudentGradesPage = () => {
       // Initialize standard components
       await initializeGradeComponents(teacherId, currentGradeId);
       
-      // Refresh the components
+      // Refresh the components with consistent ordering
       await refreshGradeComponents();
       
       enqueueSnackbar('Khởi tạo cấu trúc điểm thành công!', { variant: 'success' });
@@ -186,18 +236,39 @@ const SubjectStudentGradesPage = () => {
     }
   };
   
+  // Keep original handleDeleteComponent for actual deletion when needed
   const handleDeleteComponent = async (componentId) => {
     try {
       // Delete the component
       await deleteGradeComponent(teacherId, componentId);
       
-      // Refresh the components
+      // Refresh the components with consistent ordering
       await refreshGradeComponents();
       
       enqueueSnackbar('Xóa thành phần điểm thành công!', { variant: 'success' });
     } catch (error) {
       console.error('Error deleting grade component:', error);
       enqueueSnackbar('Không thể xóa thành phần điểm. Vui lòng thử lại.', { variant: 'error' });
+    }
+  };
+
+  // Function to clear a component's score (set to null)
+  const handleClearComponentScore = async (componentId) => {
+    try {
+      // Explicitly set Score to null in the update data
+      const updateData = { Score: null };
+      console.log("Clearing score for component:", componentId, "with data:", updateData);
+      
+      // Update the component with null score
+      await updateGradeComponent(componentId, updateData);
+      
+      // Refresh the components with consistent ordering
+      await refreshGradeComponents();
+      
+      enqueueSnackbar('Đã xóa điểm thành công!', { variant: 'success' });
+    } catch (error) {
+      console.error('Error clearing component score:', error);
+      enqueueSnackbar('Không thể xóa điểm. Vui lòng thử lại.', { variant: 'error' });
     }
   };
   
@@ -223,7 +294,7 @@ const SubjectStudentGradesPage = () => {
       // Update the component
       await updateTeacherGradeComponent(teacherId, componentId, { Score: editValue });
       
-      // Refresh the components
+      // Refresh the components while maintaining order and getting updated average
       await refreshGradeComponents();
       
       setEditingKey('');
@@ -257,6 +328,80 @@ const SubjectStudentGradesPage = () => {
   
   const handleComponentScoreChange = (e) => {
     setNewComponent({...newComponent, Score: e.target.value ? parseFloat(e.target.value) : null});
+  };
+  
+  // Function to open the edit grade dialog
+  const handleEditGrade = (grade) => {
+    setEditingGrade({
+      GradeID: grade.GradeID,
+      FinalScore: grade.FinalScore,
+      Semester: grade.Semester
+    });
+    setGradeDialogOpen(true);
+  };
+
+  // Function to close the edit grade dialog
+  const handleCloseGradeDialog = () => {
+    setGradeDialogOpen(false);
+    setEditingGrade(null);
+  };
+
+  // Function to update the grade
+  const handleUpdateGrade = async () => {
+    try {
+      if (editingGrade.FinalScore !== null && (editingGrade.FinalScore < 0 || editingGrade.FinalScore > 10)) {
+        enqueueSnackbar('Điểm phải từ 0 đến 10', { variant: 'error' });
+        return;
+      }
+
+      // Update the grade
+      await updateGrade(editingGrade.GradeID, {
+        FinalScore: editingGrade.FinalScore,
+        Semester: editingGrade.Semester
+      });
+
+      // Refresh the grades
+      const data = await getStudentGrades(studentId, activeSemester);
+      const filteredGrades = data.filter(grade => grade.ClassSubjectID == classSubjectId);
+      setGrades(filteredGrades);
+
+      enqueueSnackbar('Cập nhật điểm thành công!', { variant: 'success' });
+      handleCloseGradeDialog();
+    } catch (error) {
+      console.error('Error updating grade:', error);
+      enqueueSnackbar('Không thể cập nhật điểm. Vui lòng thử lại.', { variant: 'error' });
+    }
+  };
+
+  // Function to open the confirm delete dialog
+  const handleConfirmDelete = (grade) => {
+    setEditingGrade(grade);
+    setConfirmDeleteOpen(true);
+  };
+
+  // Function to close the confirm delete dialog
+  const handleCloseConfirmDelete = () => {
+    setConfirmDeleteOpen(false);
+    setEditingGrade(null);
+  };
+
+  // Function to delete the grade
+  const handleDeleteGrade = async () => {
+    try {
+      // Delete the grade
+      await deleteGrade(editingGrade.GradeID);
+
+      // Refresh the grades
+      const data = await getStudentGrades(studentId, activeSemester);
+      const filteredGrades = data.filter(grade => grade.ClassSubjectID == classSubjectId);
+      setGrades(filteredGrades);
+
+      enqueueSnackbar('Xóa điểm thành công!', { variant: 'success' });
+      handleCloseConfirmDelete();
+    } catch (error) {
+      console.error('Error deleting grade:', error);
+      enqueueSnackbar('Không thể xóa điểm. Vui lòng thử lại.', { variant: 'error' });
+    }
   };
   
   if (loading) {
@@ -358,8 +503,8 @@ const SubjectStudentGradesPage = () => {
               <Typography variant="h6">
                 {grade.class_subject?.subject?.SubjectName || 'Môn học'}
               </Typography>
-              <Box>
-                <Typography>
+              <Box display="flex" alignItems="center">
+                <Typography style={{ marginRight: '16px' }}>
                   <strong>Điểm trung bình: </strong>
                   <Typography 
                     component="span" 
@@ -370,6 +515,22 @@ const SubjectStudentGradesPage = () => {
                       : 'Chưa có'}
                   </Typography>
                 </Typography>
+                <Tooltip title="Chỉnh sửa điểm trung bình">
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleEditGrade(grade)}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Xóa bản ghi điểm">
+                  <IconButton
+                    color="error"
+                    onClick={() => handleConfirmDelete(grade)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
               </Box>
             </Box>
             
@@ -463,13 +624,17 @@ const SubjectStudentGradesPage = () => {
                             >
                               Sửa
                             </Button>
-                            <IconButton 
-                              color="error" 
-                              onClick={() => handleDeleteComponent(component.ComponentID)}
-                              disabled={editingKey !== ''}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
+                            {component.Score !== null && (
+                              <Tooltip title="Xóa điểm">
+                                <IconButton 
+                                  color="error" 
+                                  onClick={() => handleClearComponentScore(component.ComponentID)}
+                                  disabled={editingKey !== ''}
+                                >
+                                  <RemoveCircleOutlineIcon />
+                                </IconButton>
+                              </Tooltip>
+                            )}
                           </Box>
                         )}
                       </TableCell>
@@ -535,6 +700,56 @@ const SubjectStudentGradesPage = () => {
           </Button>
           <Button onClick={handleCreateComponent} color="primary" variant="contained">
             Thêm
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Edit Grade Dialog */}
+      <Dialog open={gradeDialogOpen} onClose={handleCloseGradeDialog}>
+        <DialogTitle>Chỉnh sửa điểm trung bình</DialogTitle>
+        <DialogContent>
+          <Box pt={1}>
+            <TextField
+              label="Điểm trung bình"
+              type="number"
+              value={editingGrade?.FinalScore !== null ? editingGrade?.FinalScore : ''}
+              onChange={(e) => setEditingGrade({
+                ...editingGrade,
+                FinalScore: e.target.value ? parseFloat(e.target.value) : null
+              })}
+              fullWidth
+              margin="normal"
+              InputProps={{
+                inputProps: { min: 0, max: 10, step: 0.1 }
+              }}
+              helperText="Điểm từ 0 đến 10"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseGradeDialog} color="inherit">
+            Hủy
+          </Button>
+          <Button onClick={handleUpdateGrade} color="primary" variant="contained">
+            Lưu
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirm Delete Dialog */}
+      <Dialog open={confirmDeleteOpen} onClose={handleCloseConfirmDelete}>
+        <DialogTitle>Xác nhận xóa</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Bạn có chắc chắn muốn xóa bản ghi điểm này? Hành động này không thể hoàn tác.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseConfirmDelete} color="inherit">
+            Hủy
+          </Button>
+          <Button onClick={handleDeleteGrade} color="error" variant="contained">
+            Xóa
           </Button>
         </DialogActions>
       </Dialog>
