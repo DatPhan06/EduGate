@@ -27,6 +27,7 @@ import RewardPunishmentForm from '../../components/RewardPunishment/RewardPunish
 import RewardPunishmentList from '../../components/RewardPunishment/RewardPunishmentList';
 import authService from '../../services/authService';
 import rewardPunishmentService from '../../services/rewardPunishmentService';
+import { Link } from 'react-router-dom';
 
 // Styled TabPanel component
 function TabPanel(props) {
@@ -148,7 +149,7 @@ const RewardsDisciplinePage = () => {
     setRefreshList(prev => !prev);
   };
 
-  const canManageRewards = userRole === 'admin'; // Or include 'teacher' if they can create
+  const canManageRewards = userRole === 'admin'; // Chỉ admin có thể quản lý trực tiếp
 
   if (!currentUser) {
     return (
@@ -369,7 +370,13 @@ const RewardsDisciplinePage = () => {
           <Paper sx={{ p: 3, borderRadius: 0, bgcolor: '#fafafa', border: '1px solid #e0e0e0' }}>
             <Typography sx={{ display: 'flex', alignItems: 'center' }}>
               <ErrorIcon sx={{ mr: 1, color: 'text.secondary' }} />
-              Bạn không có quyền truy cập mục này.
+              {userRole === 'teacher' ? (
+                <>
+                  Giáo viên vui lòng sử dụng trang <Link to="/teacher/rewards-discipline" style={{ color: 'blue', textDecoration: 'underline', marginLeft: '4px', marginRight: '4px' }}>Quản lý khen thưởng/kỷ luật</Link> dành riêng cho giáo viên.
+                </>
+              ) : (
+                'Bạn không có quyền truy cập mục này.'
+              )}
             </Typography>
           </Paper>
         )}

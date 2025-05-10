@@ -39,6 +39,7 @@ import TeachingSubjectsPage from '../pages/Teacher/TeachingSubjectsPage';
 import ClassSubjectStudentsPage from '../pages/Teacher/ClassSubjectStudentsPage';
 import SubjectStudentGradesPage from '../pages/Teacher/SubjectStudentGradesPage';
 import HomeroomClassGradesPage from '../pages/Teacher/HomeroomClassGradesPage';
+import TeacherRewardsDisciplinePage from '../pages/Teacher/TeacherRewardsDisciplinePage';
 
 // Student Pages
 import StudentGradesViewPage from '../pages/Student/StudentGradesViewPage';
@@ -104,7 +105,7 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
                 <Route path="rewards-discipline" element={
-                    <ProtectedRoute roles={[ 'admin', 'teacher', 'parent', 'student']}>
+                    <ProtectedRoute roles={['admin', 'parent', 'student']}>
                         <RewardsDisciplinePage />
                     </ProtectedRoute>
                 } />
@@ -175,6 +176,16 @@ const AppRoutes = () => {
                     element={
                         <ProtectedRoute roles={['teacher']}>
                             <SubjectStudentGradesPage />
+                        </ProtectedRoute>
+                    }
+                />
+                
+                {/* Teacher Rewards and Discipline Management */}
+                <Route
+                    path="teacher/rewards-discipline"
+                    element={
+                        <ProtectedRoute roles={['teacher']}>
+                            <TeacherRewardsDisciplinePage />
                         </ProtectedRoute>
                     }
                 />

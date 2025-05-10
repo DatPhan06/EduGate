@@ -41,10 +41,8 @@ import {
     Assessment as ReportsIcon,
     SupervisorAccount as PrincipalIcon,
     ClassOutlined as ClassIcon,
-    Announcement as AnnouncementIcon,
     Grading as GradingIcon,
     MenuBook as MenuBookIcon,
-
 } from '@mui/icons-material';
 
 /**
@@ -237,28 +235,22 @@ const Navbar = ({ onLayoutChange }) => {
             roles: ['teacher'],
         },
         {
+            text: 'Quản lý khen thưởng/kỷ luật',
+            icon: <EmojiEventsIcon />,
+            path: '/teacher/rewards-discipline',
+            roles: ['teacher'],
+        },
+        {
             text: 'Lịch & Sự kiện',
             icon: <EventIcon />,
             path: '/event-schedule',
             roles: ['teacher', 'parent', 'student'],
         },
         {
-            text: 'Thông báo lớp',
-            icon: <AnnouncementIcon />,
-            path: '/teacher/class-events',
-            roles: ['teacher'],
-        },
-        {
-            text: 'Thông báo lớp',
-            icon: <AnnouncementIcon />,
-            path: '/student/class-events',
-            roles: ['student'],
-        },
-        {
             text: 'Khen thưởng/Kỷ luật',
             icon: <EmojiEventsIcon />,
             path: '/rewards-discipline',
-            roles: ['admin', 'teacher', 'parent', 'student'],
+            roles: ['parent', 'student'],
         },
         {
             text: 'Sổ liên lạc',
@@ -266,35 +258,18 @@ const Navbar = ({ onLayoutChange }) => {
             path: '/daily-log',
             roles: ['teacher', 'parent', 'student'],
         },
-        {
-            text: 'Kết quả học tập',
-            icon: <SchoolIcon />,
-            path: '/academic-results',
-            roles: ['teacher', 'parent', 'student'],
-        },
+
         {
             text: 'Xem điểm số',
             icon: <GradingIcon />,
             path: '/student/grades',
-            roles: ['student'],
+            roles: ['student', 'parent'],
         },
         {
             text: 'Báo cáo & Thống kê',
             icon: <ReportsIcon />,
             path: '/reports-statistics',
             roles: ['admin', 'principal', 'bgh', 'teacher'],
-        },
-        {
-            text: 'Đơn thỉnh cầu',
-            icon: <AssignmentIcon />,
-            path: '/petitions',
-            roles: ['parent'],
-        },
-        {
-            text: 'Quản lý đơn thỉnh cầu',
-            icon: <AssignmentIcon />,
-            path: '/petitions-management',
-            roles: ['admin'],
         },
         {
             text: 'Giám sát (BGH)',
