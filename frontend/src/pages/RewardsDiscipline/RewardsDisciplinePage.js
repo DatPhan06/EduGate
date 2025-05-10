@@ -11,7 +11,12 @@ import {
   CardContent, 
   Divider,
   AppBar,
-  CircularProgress
+  CircularProgress,
+  Chip,
+  Avatar,
+  Badge,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import { 
   EmojiEvents as RewardIcon, 
@@ -21,7 +26,9 @@ import {
   List as ListIcon,
   School as SchoolIcon,
   Info as InfoIcon,
-  Error as ErrorIcon
+  Error as ErrorIcon,
+  Timeline as TimelineIcon,
+  Person as PersonIcon
 } from '@mui/icons-material';
 import RewardPunishmentForm from '../../components/RewardPunishment/RewardPunishmentForm';
 import RewardPunishmentList from '../../components/RewardPunishment/RewardPunishmentList';
@@ -50,6 +57,8 @@ function TabPanel(props) {
 }
 
 const RewardsDisciplinePage = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [studentIdForView, setStudentIdForView] = useState(null);
@@ -59,6 +68,13 @@ const RewardsDisciplinePage = () => {
     rewards: 0,
     punishments: 0,
     total: 0
+  });
+  const [studentStats, setStudentStats] = useState({
+    rewards: 0,
+    punishments: 0,
+    total: 0,
+    recentRewards: [],
+    recentPunishments: []
   });
   const [loading, setLoading] = useState(false);
 
@@ -136,6 +152,81 @@ const RewardsDisciplinePage = () => {
     
     fetchDashboardStats();
   }, [userRole, refreshList]); // Also refresh when new rewards are created
+
+  // Fetch student stats - specifically for student view
+  useEffect(() => {
+    const fetchStudentStats = async () => {
+      if ((userRole === 'student' || userRole === 'parent') && studentIdForView) {
+        setLoading(true);
+        try {
+          // Get student's rewards/punishments
+          const response = await rewardPunishmentService.getStudentRewardPunishments(studentIdForView);
+          const studentRecords = response.data || [];
+          
+          // Process unwrapped data if needed
+          let processedRecords = [];
+          if (studentRecords.length > 0 && studentRecords[0].reward_punishment) {
+            processedRecords = studentRecords.map(item => ({
+              ...item,
+              ...item.reward_punishment
+            }));
+          } else {
+            processedRecords = studentRecords;
+          }
+          
+          // Calculate stats
+          let rewardsCount = 0;
+          let punishmentsCount = 0;
+          let recentRewards = [];
+          let recentPunishments = [];
+          
+          // Sort by date (newest first)
+          processedRecords.sort((a, b) => {
+            const dateA = new Date(a.Date || a.date);
+            const dateB = new Date(b.Date || b.date);
+            return dateB - dateA;
+          });
+          
+          processedRecords.forEach(record => {
+            const recordType = (record.Type || record.type || '').toLowerCase();
+            if (recordType === 'reward') {
+              rewardsCount++;
+              if (recentRewards.length < 3) {
+                recentRewards.push(record);
+              }
+            } else if (recordType === 'punishment') {
+              punishmentsCount++;
+              if (recentPunishments.length < 3) {
+                recentPunishments.push(record);
+              }
+            }
+          });
+          
+          setStudentStats({
+            rewards: rewardsCount,
+            punishments: punishmentsCount,
+            total: processedRecords.length,
+            recentRewards,
+            recentPunishments
+          });
+          
+        } catch (error) {
+          console.error("Error fetching student stats:", error);
+          setStudentStats({
+            rewards: 0,
+            punishments: 0,
+            total: 0,
+            recentRewards: [],
+            recentPunishments: []
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    fetchStudentStats();
+  }, [userRole, studentIdForView, refreshList]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -239,6 +330,274 @@ const RewardsDisciplinePage = () => {
     </Grid>
   );
 
+  // Student dashboard stats and timeline
+  const renderStudentDashboard = () => (
+    <>
+      {/* Stats cards */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={6} sm={4}>
+          <Card sx={{
+            boxShadow: '0 4px 12px rgba(0,200,83,0.2)',
+            height: '100%',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #e8fdf5 100%)',
+            border: '1px solid #e0f2dc',
+            borderRadius: 2
+          }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Khen thưởng
+                  </Typography>
+                  <Typography variant="h3" component="div" color="success.main" fontWeight="bold">
+                    {loading ? (
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                        <CircularProgress size={24} color="success" sx={{ mr: 1 }} />
+                      </Box>
+                    ) : studentStats.rewards}
+                  </Typography>
+                </Box>
+                <Avatar sx={{ bgcolor: 'success.light', width: 56, height: 56 }}>
+                  <RewardIcon sx={{ color: 'white', fontSize: 32 }} />
+                </Avatar>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={4}>
+          <Card sx={{
+            boxShadow: '0 4px 12px rgba(211,47,47,0.2)',
+            height: '100%',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #fdf1f1 100%)',
+            border: '1px solid #f2dcdc',
+            borderRadius: 2
+          }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Kỷ luật
+                  </Typography>
+                  <Typography variant="h3" component="div" color="error.main" fontWeight="bold">
+                    {loading ? (
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                        <CircularProgress size={24} color="error" sx={{ mr: 1 }} />
+                      </Box>
+                    ) : studentStats.punishments}
+                  </Typography>
+                </Box>
+                <Avatar sx={{ bgcolor: 'error.light', width: 56, height: 56 }}>
+                  <PunishmentIcon sx={{ color: 'white', fontSize: 32 }} />
+                </Avatar>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <Card sx={{
+            boxShadow: '0 4px 12px rgba(25,118,210,0.2)',
+            height: '100%',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #f0f4fd 100%)',
+            border: '1px solid #dde4f2',
+            borderRadius: 2
+          }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Tổng số
+                  </Typography>
+                  <Typography variant="h3" component="div" color="primary.main" fontWeight="bold">
+                    {loading ? (
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                        <CircularProgress size={24} color="primary" sx={{ mr: 1 }} />
+                      </Box>
+                    ) : studentStats.total}
+                  </Typography>
+                </Box>
+                <Avatar sx={{ bgcolor: 'primary.light', width: 56, height: 56 }}>
+                  <TimelineIcon sx={{ color: 'white', fontSize: 32 }} />
+                </Avatar>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Học sinh info card */}
+      <Card sx={{ 
+        mb: 4, 
+        background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+        borderRadius: 2,
+        overflow: 'hidden',
+        boxShadow: '0 4px 20px rgba(3,169,244,0.15)'
+      }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: 'center', 
+          p: 3 
+        }}>
+          <Avatar 
+            sx={{ 
+              width: 100, 
+              height: 100, 
+              bgcolor: 'primary.main',
+              mb: isMobile ? 2 : 0,
+              mr: isMobile ? 0 : 3,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }}
+          >
+            <PersonIcon sx={{ fontSize: 60 }} />
+          </Avatar>
+          <Box>
+            <Typography variant="h5" fontWeight="bold" gutterBottom>
+              {currentUser.FirstName} {currentUser.LastName}
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary">
+              Học sinh ID: {studentIdForView}
+            </Typography>
+            <Box sx={{ display: 'flex', mt: 1, flexWrap: 'wrap', gap: 1 }}>
+              <Chip
+                icon={<RewardIcon />}
+                label={`${studentStats.rewards} khen thưởng`}
+                color="success"
+                variant="outlined"
+                size="small"
+              />
+              <Chip
+                icon={<PunishmentIcon />}
+                label={`${studentStats.punishments} kỷ luật`}
+                color="error"
+                variant="outlined"
+                size="small"
+              />
+            </Box>
+          </Box>
+        </Box>
+      </Card>
+      
+      {/* Recent rewards/punishments */}
+      <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+        Gần đây
+      </Typography>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ boxShadow: '0 2px 10px rgba(0,0,0,0.08)', borderRadius: 2 }}>
+            <CardContent>
+              <Typography variant="subtitle1" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                <RewardIcon sx={{ mr: 1, color: 'success.main' }} />
+                Khen thưởng gần đây
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              
+              {studentStats.recentRewards.length > 0 ? (
+                studentStats.recentRewards.map((reward, index) => (
+                  <Box 
+                    key={reward.RecordID || index} 
+                    sx={{ 
+                      p: 1.5, 
+                      mb: 1, 
+                      borderLeft: '4px solid',
+                      borderColor: 'success.main',
+                      bgcolor: 'success.lightest',
+                      borderRadius: 1,
+                      '&:last-child': { mb: 0 }
+                    }}
+                  >
+                    <Typography variant="subtitle2">
+                      {reward.Title || reward.title || 'Khen thưởng'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      {reward.Description || reward.description || 'Không có mô tả'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                      {new Date(reward.Date || reward.date).toLocaleDateString('vi-VN')}
+                    </Typography>
+                  </Box>
+                ))
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                  Không có khen thưởng nào gần đây
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ boxShadow: '0 2px 10px rgba(0,0,0,0.08)', borderRadius: 2 }}>
+            <CardContent>
+              <Typography variant="subtitle1" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                <PunishmentIcon sx={{ mr: 1, color: 'error.main' }} />
+                Kỷ luật gần đây
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              
+              {studentStats.recentPunishments.length > 0 ? (
+                studentStats.recentPunishments.map((punishment, index) => (
+                  <Box 
+                    key={punishment.RecordID || index} 
+                    sx={{ 
+                      p: 1.5, 
+                      mb: 1, 
+                      borderLeft: '4px solid',
+                      borderColor: 'error.main',
+                      bgcolor: 'error.lightest',
+                      borderRadius: 1,
+                      '&:last-child': { mb: 0 }
+                    }}
+                  >
+                    <Typography variant="subtitle2">
+                      {punishment.Title || punishment.title || 'Kỷ luật'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      {punishment.Description || punishment.description || 'Không có mô tả'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                      {new Date(punishment.Date || punishment.date).toLocaleDateString('vi-VN')}
+                    </Typography>
+                  </Box>
+                ))
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                  Không có kỷ luật nào gần đây
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Full list */}
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          p: 3, 
+          borderRadius: 2,
+          border: '1px solid #e0e0e0',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.05)'
+        }}
+      >
+        <Typography variant="h6" gutterBottom sx={{ 
+          display: 'flex', 
+          alignItems: 'center',
+          mb: 3
+        }}>
+          <ListIcon sx={{ mr: 1, color: 'primary.main' }} />
+          Danh sách đầy đủ
+        </Typography>
+        <Divider sx={{ mb: 3 }} />
+        <Box sx={{ overflowX: 'auto', width: '100%' }}>
+          <RewardPunishmentList 
+            targetType="student" 
+            studentIdForView={studentIdForView}
+            refreshTrigger={refreshList}
+          />
+        </Box>
+      </Paper>
+    </>
+  );
+
   return (
     <Container maxWidth="xl" sx={{ width: '100%', px: { xs: 2, sm: 4 } }}>
       <Box sx={{ mb: 4 }}>
@@ -334,31 +693,11 @@ const RewardsDisciplinePage = () => {
         )}
         
         {(userRole === 'student' || userRole === 'parent') && studentIdForView && (
-          <Paper sx={{ 
-            width: '100%', 
-            p: 3, 
-            borderRadius: 0,
-            boxShadow: '0 1px 3px 0 rgba(0,0,0,0.1)'
-          }}>
-            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
-              <ListIcon sx={{ mr: 1, color: 'text.secondary' }} />
-              <Typography variant="h5">
-                Danh sách khen thưởng/kỷ luật
-              </Typography>
-            </Box>
-            <Divider sx={{ mb: 3 }} />
-            <Box sx={{ overflowX: 'auto', width: '100%' }}>
-              <RewardPunishmentList 
-                targetType="student" 
-                studentIdForView={studentIdForView}
-                refreshTrigger={refreshList}
-              />
-            </Box>
-          </Paper>
+          renderStudentDashboard()
         )}
         
         {(userRole === 'student' || userRole === 'parent') && !studentIdForView && (
-          <Paper sx={{ p: 3, borderRadius: 0, bgcolor: '#fafafa', border: '1px solid #e0e0e0' }}>
+          <Paper sx={{ p: 3, borderRadius: 2, bgcolor: '#fafafa', border: '1px solid #e0e0e0', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
             <Typography color="error" sx={{ display: 'flex', alignItems: 'center' }}>
               <ErrorIcon sx={{ mr: 1 }} />
               Không tìm thấy thông tin học sinh liên kết để hiển thị khen thưởng/kỷ luật.
@@ -367,7 +706,7 @@ const RewardsDisciplinePage = () => {
         )}
         
         {!canManageRewards && userRole !== 'student' && userRole !== 'parent' && (
-          <Paper sx={{ p: 3, borderRadius: 0, bgcolor: '#fafafa', border: '1px solid #e0e0e0' }}>
+          <Paper sx={{ p: 3, borderRadius: 2, bgcolor: '#fafafa', border: '1px solid #e0e0e0', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
             <Typography sx={{ display: 'flex', alignItems: 'center' }}>
               <ErrorIcon sx={{ mr: 1, color: 'text.secondary' }} />
               {userRole === 'teacher' ? (
