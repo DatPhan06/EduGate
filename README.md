@@ -20,30 +20,14 @@ EduGate là hệ thống quản lý thông tin giáo dục hiện đại, kết 
 
 ## ✨ Tính năng chính | Key Features
 
-### 🔐 Quản lý người dùng & Phân quyền | User Management & Access Control
-- Hệ thống xác thực bảo mật với JWT
-- Phân quyền chi tiết cho ban giám hiệu, giáo viên, nhân viên, phụ huynh và học sinh
-- Quản lý thông tin cá nhân và đổi mật khẩu an toàn
+- Quản lý người dùng và quyền hạn tương ứng
+- Gửi nhận tin nhắn giữa nhà trường (nhiều đối tượng khác nhau) với Phụ huynh, Học sinh
+- Thông báo lịch sự kiện (học, thi, TKB, dã ngoại…)/khen thưởng/kỷ luật…
+- Nhận đơn từ/kiến nghị từ phụ huynh
+- Thống kê thành tích/khen thưởng/kỷ luật
+- Cập nhật điểm, báo cáo kết quả học tập của học sinh
 
-### 📚 Quản lý học tập | Academic Management
-- **Quản lý điểm số:** Nhập điểm, tính toán trung bình, xếp loại tự động
-- **Báo cáo học tập:** Thống kê theo môn, học kỳ, năm học với biểu đồ trực quan
-- **Theo dõi tiến độ:** Đánh giá phát triển năng lực học sinh qua thời gian
 
-### 📝 Quản lý lớp học & Môn học | Class & Subject Management
-- Phân công giáo viên chủ nhiệm và giáo viên bộ môn
-- Quản lý thời khóa biểu, lịch thi và các hoạt động giáo dục
-- Thống kê sĩ số, thành tích lớp học
-
-### 💬 Hệ thống liên lạc | Communication System
-- **Tin nhắn trực tiếp:** Giao tiếp giữa giáo viên, phụ huynh và học sinh
-- **Thông báo nhà trường:** Chia sẻ thông tin sự kiện, lịch học, thi cử
-- **Quản lý đơn từ:** Xin nghỉ phép, chuyển lớp, phản hồi ý kiến
-
-### 📊 Thống kê & Báo cáo | Statistics & Reports
-- Tổng hợp kết quả học tập theo lớp, khối, toàn trường
-- Đánh giá rèn luyện, khen thưởng, kỷ luật
-- Xuất báo cáo PDF, Excel cho phụ huynh và nhà quản lý
 
 ## 👥 Tính năng theo vai trò | Role-based Features
 
