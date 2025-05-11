@@ -188,12 +188,18 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
   
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if ((!newMessage.trim() && selectedFiles.length === 0) || !conversationId || !currentUser) return;
+    
+    // Ensure we have either valid content or files before attempting to send
+    const messageContent = newMessage.trim();
+    const hasContent = messageContent.length > 0;
+    const hasFiles = selectedFiles.length > 0;
+    
+    if ((!hasContent && !hasFiles) || !conversationId || !currentUser) return;
     
     try {
       setSending(true);
       // Gửi tin nhắn với files
-      const sentMessage = await messageService.sendMessage(conversationId, newMessage.trim(), selectedFiles);
+      const sentMessage = await messageService.sendMessage(conversationId, messageContent, selectedFiles);
       console.log("Sent message response:", sentMessage);
       
       // Add the sent message to the local state (handle different API response formats)
@@ -205,7 +211,7 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
         // If the API returns a success message, create a temporary message object
         else {
           const tempMessage = {
-            Content: newMessage.trim(),
+            Content: messageContent,
             MessageID: Date.now(), // Temporary ID
             UserID: currentUser.UserID,
             SentAt: new Date().toISOString(),
@@ -232,7 +238,7 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
       
       // Notify parent component
       if (onMessageSent) {
-        onMessageSent(conversationId, sentMessage || { Content: newMessage.trim() });
+        onMessageSent(conversationId, sentMessage || { Content: messageContent });
       }
     } catch (err) {
       console.error('Error sending message:', err);
@@ -641,7 +647,7 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
             variant="contained"
             color="primary"
             type="submit"
-            disabled={(newMessage.trim() === '' && selectedFiles.length === 0) || sending}
+            disabled={!newMessage.trim() && selectedFiles.length === 0 || sending}
             sx={{ minWidth: isMobile ? 40 : 'auto', ml: 1 }}
           >
             {isMobile ? <SendIcon /> : 'Send'}

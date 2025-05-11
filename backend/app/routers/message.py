@@ -82,6 +82,7 @@ def update_conversation(
 @router.post("/conversations/{conversation_id}/messages", response_model=schemas.MessageRead, status_code=status.HTTP_201_CREATED)
 async def send_message_to_conversation(
     conversation_id: int,
+    message: Optional[schemas.MessageCreate] = None,
     Content: Optional[str] = Form(None),
     files: List[UploadFile] = File([]),
     current_user: models.User = Depends(get_current_active_user),
@@ -91,16 +92,35 @@ async def send_message_to_conversation(
     Send a message to a specific conversation.
     Supports text content and/or file attachments.
     Ensures the current user is a participant.
+    
+    Can accept either:
+    - JSON payload with Content field
+    - Form data with Content field and files
     """
+    # Handle both JSON and form data requests
+    content_value = None
+    if message and message.Content:
+        # JSON request
+        content_value = message.Content
+    elif Content is not None:
+        # Form data request
+        content_value = Content
+    
     # Kiểm tra xem có ít nhất một trong 2 loại nội dung: text hoặc file
-    if Content is None and len(files) == 0:
+    has_valid_content = content_value is not None and content_value.strip() != ""
+    has_files = len(files) > 0
+    
+    if not has_valid_content and not has_files:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Message must contain either text content or file attachments."
         )
     
+    # Nếu content chỉ có khoảng trắng, set về None để không lưu
+    cleaned_content = content_value.strip() if has_valid_content else None
+    
     # Tạo message_data từ Content (nếu có)
-    message_data = schemas.MessageCreate(Content=Content)
+    message_data = schemas.MessageCreate(Content=cleaned_content)
     
     # Gọi service để tạo tin nhắn với files
     return await services.message_service.create_message_with_files(

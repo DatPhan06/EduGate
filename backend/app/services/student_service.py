@@ -263,28 +263,51 @@ def _update_student_class_conversations(db: Session, student_user_id: int, class
             # Thêm học sinh vào student convo
             if student_convo:
                 message_service.add_participants_to_conversation(db, student_convo.ConversationID, [student_user_id])
+                print(f"Added student {student_user_id} to student conversation '{student_convo_name}'")
             else:
                 print(f"Warning: Student conversation '{student_convo_name}' not found.")
             
             # Thêm phụ huynh vào parent convo
             if parent_convo and parent_ids:
                 message_service.add_participants_to_conversation(db, parent_convo.ConversationID, parent_ids)
+                print(f"Added parents {parent_ids} of student {student_user_id} to parent conversation '{parent_convo_name}'")
             elif not parent_convo:
-                 print(f"Warning: Parent conversation '{parent_convo_name}' not found.")
+                print(f"Warning: Parent conversation '{parent_convo_name}' not found.")
+            elif not parent_ids:
+                print(f"Note: No parents found for student {student_user_id} to add to parent conversation.")
 
         elif action == 'remove':
             # Xóa học sinh khỏi student convo
             if student_convo:
                 message_service.remove_participants_from_conversation(db, student_convo.ConversationID, [student_user_id])
+                print(f"Removed student {student_user_id} from student conversation '{student_convo_name}'")
             else:
                 print(f"Warning: Student conversation '{student_convo_name}' not found.")
 
             # Xóa phụ huynh khỏi parent convo
             if parent_convo and parent_ids:
-                # TODO: Cân nhắc logic phức tạp hơn nếu phụ huynh có nhiều con trong lớp
-                message_service.remove_participants_from_conversation(db, parent_convo.ConversationID, parent_ids)
+                # Check if the parents have other children in the same class before removing
+                for parent_id in parent_ids:
+                    # Get all children of this parent
+                    parent_students = db.query(ParentStudent).filter(ParentStudent.ParentID == parent_id).all()
+                    other_children_in_class = False
+                    
+                    # Check if any other children are in the same class
+                    for ps in parent_students:
+                        if ps.StudentID != student_user_id:  # Skip the current student
+                            other_student = db.query(Student).filter(Student.StudentID == ps.StudentID).first()
+                            if other_student and other_student.ClassID == class_id:
+                                other_children_in_class = True
+                                break
+                    
+                    # Only remove parent if they have no other children in the class
+                    if not other_children_in_class:
+                        message_service.remove_participants_from_conversation(db, parent_convo.ConversationID, [parent_id])
+                        print(f"Removed parent {parent_id} from parent conversation '{parent_convo_name}'")
+                    else:
+                        print(f"Kept parent {parent_id} in parent conversation '{parent_convo_name}' as they have other children in the class")
             elif not parent_convo:
-                 print(f"Warning: Parent conversation '{parent_convo_name}' not found.")
+                print(f"Warning: Parent conversation '{parent_convo_name}' not found.")
     except Exception as e:
         # Log lỗi nhưng không raise để không ảnh hưởng đến tiến trình chính (create/update student)
         print(f"ERROR updating conversations for student {student_user_id}, class {class_id}, action {action}: {e}")

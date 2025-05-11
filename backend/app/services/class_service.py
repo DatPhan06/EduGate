@@ -102,17 +102,7 @@ def create_class(db: Session, class_data: ClassCreate) -> ClassRead:
             teacher_id = db_class.HomeroomTeacherID
             class_name = db_class.ClassName
             
-            # Create conversation for Teachers
-            try:
-                teacher_convo_name = f"Giáo viên Lớp {class_name}"
-                teacher_convo_data = ConversationCreate(Name=teacher_convo_name, participant_ids=[teacher_id])
-                message_service.create_conversation(db=db, conversation_data=teacher_convo_data, current_user_id=teacher_id)
-                print(f"Created teacher conversation for class {db_class.ClassID}")
-            except Exception as e:
-                # Log error but don't rollback class creation
-                print(f"ERROR creating teacher conversation for class {db_class.ClassID}: {e}")
-                # logger.error(f"Error creating teacher conversation for class {db_class.ClassID}: {e}")
-            
+
             # Create conversation for Students
             try:
                 student_convo_name = f"Học sinh Lớp {class_name}"
@@ -123,6 +113,17 @@ def create_class(db: Session, class_data: ClassCreate) -> ClassRead:
                 # Log error for student conversation creation
                 print(f"ERROR creating student conversation for class {db_class.ClassID}: {e}")
                 # logger.error(f"Error creating student conversation for class {db_class.ClassID}: {e}")
+                
+            # Create conversation for Parents
+            try:
+                parent_convo_name = f"Phụ huynh Lớp {class_name}"
+                parent_convo_data = ConversationCreate(Name=parent_convo_name, participant_ids=[teacher_id])
+                message_service.create_conversation(db=db, conversation_data=parent_convo_data, current_user_id=teacher_id)
+                print(f"Created parent conversation for class {db_class.ClassID}")
+            except Exception as e:
+                # Log error for parent conversation creation
+                print(f"ERROR creating parent conversation for class {db_class.ClassID}: {e}")
+                # logger.error(f"Error creating parent conversation for class {db_class.ClassID}: {e}")
         # -------------------------------------
 
         # Return the created ClassRead object (may need to fetch complete info)
