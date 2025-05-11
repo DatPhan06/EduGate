@@ -9,8 +9,9 @@ import {
   Avatar, 
   Divider,
   IconButton,
-  useTheme, // Import useTheme
-  useMediaQuery // Import useMediaQuery
+  useTheme,
+  useMediaQuery,
+  Alert
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import messageService from '../../services/messageService';
@@ -18,9 +19,9 @@ import moment from 'moment';
 
 const POLLING_INTERVAL = 5000; // Poll every 5 seconds
 
-const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceivedByPolling }) => {
-  const theme = useTheme(); // Add this
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Add this
+const ChatView = ({ conversationId, currentUser, onMessageSent }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -30,10 +31,17 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const messagesEndRef = useRef(null);
+  const [lastMessageId, setLastMessageId] = useState(null);
 
   // Update messagesRef whenever messages state changes
   useEffect(() => {
     messagesRef.current = messages;
+    
+    // Update lastMessageId when messages change
+    if (messages.length > 0) {
+      const newLastMessageId = messages[messages.length - 1].MessageID;
+      setLastMessageId(newLastMessageId);
+    }
   }, [messages]);
   
   // Fetch conversation when conversationId changes
@@ -44,9 +52,23 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
       try {
         setLoading(true);
         setError('');
-        const data = await messageService.getConversationById(conversationId);
-        setConversation(data);
-        setMessages(data.messages || []);
+        
+        // Get conversation details using the conversation ID
+        const data = await messageService.getConversation(conversationId);
+        console.log("Fetched conversation data:", data);
+        
+        if (data) {
+          setConversation(data);
+          // Make sure we handle both arrays or undefined for messages
+          if (Array.isArray(data.messages)) {
+            setMessages(data.messages);
+          } else {
+            console.warn("No messages array in API response");
+            setMessages([]);
+          }
+        } else {
+          setError('Failed to load conversation data.');
+        }
       } catch (err) {
         console.error(`Error fetching conversation ${conversationId}:`, err);
         setError('Failed to load conversation. Please try again.');
@@ -56,26 +78,33 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
     };
     
     fetchConversation();
-    // Cleanup function for when conversationId changes or component unmounts
-    return () => {
-      // Optional: any cleanup specific to conversation change before new one loads
-    };
   }, [conversationId]); // Only re-fetch when conversationId changes
 
   // Polling for new messages
   useEffect(() => {
-    if (!conversationId) {
-      return; // No conversation selected, so no polling
+    if (!conversationId || loading) {
+      return; // No conversation selected or still loading, so no polling
     }
 
     const fetchLatestMessages = async () => {
       try {
-        const data = await messageService.getConversationById(conversationId);
-        // Update conversation details and messages
-        setConversation(data); 
-        setMessages(data.messages || []);
+        // Get latest conversation data
+        const data = await messageService.getConversation(conversationId);
+        
+        if (data && Array.isArray(data.messages)) {
+          // Check if there are new messages by comparing with lastMessageId
+          if (data.messages.length > 0) {
+            const newestMessageId = data.messages[data.messages.length - 1].MessageID;
+            
+            if (lastMessageId === null || newestMessageId > lastMessageId) {
+              console.log("New messages detected:", data.messages);
+              // Update conversation and messages
+              setConversation(data);
+              setMessages(data.messages);
+            }
+          }
+        }
       } catch (err) {
-        // Log polling errors to the console, avoid disrupting UI with major error.
         console.warn(`Failed to poll for new messages in conversation ${conversationId}:`, err);
       }
     };
@@ -86,7 +115,7 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
     return () => {
       clearInterval(intervalId);
     };
-  }, [conversationId]); // Re-run if conversationId changes
+  }, [conversationId, loading, lastMessageId]); // Re-run if conversationId or lastMessageId changes
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -94,51 +123,6 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
-  
-  // useEffect for polling new messages
-  useEffect(() => {
-    // Only start polling if there's a conversationId and initial loading is complete
-    if (!conversationId || loading) {
-      return; // Exit if no conversation ID or if currently loading initial data
-    }
-
-    const pollMessages = async () => {
-      try {
-        const data = await messageService.getConversationById(conversationId); // Ensure messageService is accessible
-        if (data && data.messages) {
-          // Use functional update to access the latest `messages` state
-          setMessages(currentMessages => {
-            const newFetchedMessages = data.messages;
-
-            // Check if messages have actually changed to avoid unnecessary re-renders
-            // This assumes messages have a unique 'MessageID' and are sorted.
-            // Adjust if your message object structure is different.
-            const lastCurrentMessage = currentMessages[currentMessages.length - 1];
-            const lastNewFetchedMessage = newFetchedMessages[newFetchedMessages.length - 1];
-
-            if (currentMessages.length !== newFetchedMessages.length ||
-                (lastCurrentMessage && lastNewFetchedMessage && lastCurrentMessage.MessageID !== lastNewFetchedMessage.MessageID) ||
-                (currentMessages.length === 0 && newFetchedMessages.length > 0) || // From no messages to some
-                (!lastCurrentMessage && lastNewFetchedMessage) // Also from no messages to some
-               ) {
-              return newFetchedMessages; // Update state with new messages
-            }
-            return currentMessages; // No change, return current state
-          });
-        }
-      } catch (err) {
-        console.error(`Error polling for messages in conversation ${conversationId}:`, err);
-        // Avoid setting a general error that might overwrite a more specific one (e.g., send error)
-      }
-    };
-
-    const intervalId = setInterval(pollMessages, 5000); // Poll every 5 seconds
-
-    // Cleanup function: clear interval when component unmounts or dependencies change
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [conversationId, loading, messageService]); // Dependencies for re-running the effect
 
   const handleMessageChange = (e) => {
     setNewMessage(e.target.value);
@@ -151,14 +135,37 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
     try {
       setSending(true);
       const sentMessage = await messageService.sendMessage(conversationId, newMessage.trim());
+      console.log("Sent message response:", sentMessage);
       
-      // Add the sent message to the local state
-      setMessages(prev => [...prev, sentMessage]);
+      // Add the sent message to the local state (handle different API response formats)
+      if (sentMessage) {
+        // If the API returns the complete message object
+        if (sentMessage.MessageID) {
+          setMessages(prev => [...prev, sentMessage]);
+        } 
+        // If the API returns a success message, create a temporary message object
+        else {
+          const tempMessage = {
+            Content: newMessage.trim(),
+            MessageID: Date.now(), // Temporary ID
+            UserID: currentUser.UserID,
+            SentAt: new Date().toISOString(),
+            user: {
+              UserID: currentUser.UserID,
+              FirstName: currentUser.FirstName || '',
+              LastName: currentUser.LastName || '',
+              Email: currentUser.Email || ''
+            }
+          };
+          setMessages(prev => [...prev, tempMessage]);
+        }
+      }
+      
       setNewMessage(''); // Clear input
       
       // Notify parent component
       if (onMessageSent) {
-        onMessageSent(conversationId, sentMessage);
+        onMessageSent(conversationId, sentMessage || { Content: newMessage.trim() });
       }
     } catch (err) {
       console.error('Error sending message:', err);
@@ -188,8 +195,17 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
   
   // Group messages by date
   const groupMessagesByDate = () => {
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return [];
+    }
+    
     const groups = {};
     messages.forEach(message => {
+      if (!message.SentAt) {
+        console.warn("Message missing SentAt timestamp:", message);
+        return;
+      }
+      
       const dateKey = moment(message.SentAt).startOf('day').format('YYYY-MM-DD');
       if (!groups[dateKey]) {
         groups[dateKey] = [];
@@ -205,10 +221,20 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
   
   // Get participant name and details
   const getParticipantName = (userId) => {
-    if (!conversation || !conversation.participants) return '';
+    if (!conversation || !conversation.participants) return 'Unknown User';
     
     const participant = conversation.participants.find(p => p.UserID === userId);
     return participant ? `${participant.FirstName} ${participant.LastName}` : 'Unknown User';
+  };
+
+  // Get participant avatar (first letter of first and last name)
+  const getParticipantAvatar = (userId) => {
+    if (!conversation || !conversation.participants) return '';
+    
+    const participant = conversation.participants.find(p => p.UserID === userId);
+    if (!participant) return '?';
+    
+    return `${participant.FirstName ? participant.FirstName.charAt(0) : ''}${participant.LastName ? participant.LastName.charAt(0) : ''}`;
   };
   
   if (loading) {
@@ -241,6 +267,8 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
     );
   }
 
+  // Make sure messages is always an array
+  const safeMessages = Array.isArray(messages) ? messages : [];
   const messageGroups = groupMessagesByDate();
   
   return (
@@ -248,180 +276,170 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onMessageReceive
       display: 'flex', 
       flexDirection: 'column', 
       height: '100%',
-      width: '100%'
+      overflow: 'hidden'
     }}>
-      {/* Conversation Header */}
-      <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
-        <Typography variant="h6" component="div">
-          {conversation.Name || getParticipantName(
-            conversation.participants.find(p => p.UserID !== currentUser.UserID)?.UserID
-          )}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {conversation.participants.length} participants
-        </Typography>
-      </Box>
-      
-      {/* Messages Area */}
+      {/* Messages container */}
       <Box sx={{ 
         flexGrow: 1, 
         overflowY: 'auto', 
-        overflowX: 'hidden', // Add this to prevent horizontal scrollbar here
-        p: isMobile ? 0.5 : 1, // Overall padding for the messages area
+        p: 2,
         display: 'flex',
-        flexDirection: 'column',
-        bgcolor: theme.palette.grey[50],
-        width: '100%'
+        flexDirection: 'column'
       }}>
-        {messages.length === 0 ? (
+        {messageGroups.length === 0 ? (
           <Box sx={{ 
             display: 'flex', 
-            flexDirection: 'column', 
+            justifyContent: 'center', 
             alignItems: 'center', 
-            justifyContent: 'center',
             height: '100%' 
           }}>
             <Typography variant="body1" color="text.secondary">
-              No messages yet. Send one to start the conversation!
+              No messages yet. Start a conversation!
             </Typography>
           </Box>
         ) : (
           messageGroups.map((group, groupIndex) => (
-            <Box key={`group-${groupIndex}`} sx={{ mb: 3, width: '100%' }}>
-              {/* Date Divider */}
+            <Box key={groupIndex} sx={{ mb: 3 }}>
               <Box sx={{ 
                 display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                my: 2 
+                justifyContent: 'center', 
+                mb: 2 
               }}>
-                <Divider sx={{ flexGrow: 1 }} />
                 <Typography 
                   variant="caption" 
-                  sx={{ px: 2, color: 'text.secondary' }}
+                  sx={{ 
+                    bgcolor: 'background.paper', 
+                    px: 2, 
+                    py: 0.5, 
+                    borderRadius: 10,
+                    boxShadow: 1
+                  }}
                 >
                   {formatMessageDate(group.date)}
                 </Typography>
-                <Divider sx={{ flexGrow: 1 }} />
               </Box>
               
-              {/* Messages */}
-              {group.messages.map((message, index) => {
+              {group.messages.map((message, messageIndex) => {
                 const isCurrentUser = message.UserID === currentUser.UserID;
+                const showAvatar = messageIndex === 0 || 
+                                  group.messages[messageIndex - 1].UserID !== message.UserID;
+                const senderName = getParticipantName(message.UserID);
                 
                 return (
                   <Box 
-                    key={message.MessageID} 
+                    key={message.MessageID || messageIndex} 
                     sx={{ 
                       display: 'flex',
                       flexDirection: isCurrentUser ? 'row-reverse' : 'row',
                       mb: 1.5,
-                      alignItems: 'flex-end',
-                      width: '100%',
-                      px: { xs: 1, sm: 2 }, // Padding for each message row
+                      alignItems: 'flex-end'
                     }}
                   >
-                    {/* Avatar */}
                     {!isCurrentUser && (
-                      <Avatar 
-                        sx={{ width: 32, height: 32, mr: 1, flexShrink: 0 }}
-                        alt={getParticipantName(message.UserID)}
-                      >
-                        {getParticipantName(message.UserID)[0]}
-                      </Avatar>
+                      <Box sx={{ mr: 1, visibility: showAvatar ? 'visible' : 'hidden' }}>
+                        <Avatar sx={{ width: 36, height: 36, bgcolor: isCurrentUser ? 'primary.main' : 'secondary.main' }}>
+                          {getParticipantAvatar(message.UserID)}
+                        </Avatar>
+                      </Box>
                     )}
                     
-                    {/* Message Bubble */}
-                    <Paper
-                      elevation={1}
-                      sx={{
-                        p: 1.5,
-                        maxWidth: isMobile ? '80%' : '75%', // Bubble max width
-                        minWidth: '80px', // Ensure very short messages still have some width
-                        width: 'auto',
-                        borderRadius: 2,
-                        bgcolor: isCurrentUser ? 'primary.light' : 'background.paper',
-                        color: isCurrentUser ? 'common.white' : 'text.primary',
-                        borderTopLeftRadius: !isCurrentUser ? 0 : 2,
-                        borderTopRightRadius: isCurrentUser ? 0 : 2,
-                        boxShadow: theme.shadows[1],
-                        wordBreak: 'break-word'
-                      }}
-                    >
-                      {!isCurrentUser && (
-                        <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
-                          {getParticipantName(message.UserID)}
+                    <Box sx={{ maxWidth: '70%' }}>
+                      {showAvatar && !isCurrentUser && (
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            ml: 1,
+                            mb: 0.5, 
+                            display: 'block', 
+                            color: 'text.secondary',
+                            fontWeight: 'medium'
+                          }}
+                        >
+                          {senderName}
                         </Typography>
                       )}
-                      <Typography variant="body1">{message.Content}</Typography>
-                      <Typography 
-                        variant="caption" 
+                      
+                      <Paper 
+                        elevation={0}
                         sx={{ 
-                          display: 'block', 
-                          textAlign: isCurrentUser ? 'right' : 'left',
-                          color: isCurrentUser ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary',
-                          mt: 0.5
+                          p: 1.5,
+                          borderRadius: 2,
+                          bgcolor: isCurrentUser ? 'primary.light' : 'grey.100',
+                          color: isCurrentUser ? 'primary.contrastText' : 'text.primary',
+                          ml: isCurrentUser ? 0 : 1,
+                          mr: isCurrentUser ? 1 : 0,
+                          position: 'relative'
                         }}
                       >
-                        {formatMessageTime(message.SentAt)}
-                      </Typography>
-                    </Paper>
+                        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {message.Content}
+                        </Typography>
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            display: 'block',
+                            textAlign: 'right',
+                            mt: 0.5,
+                            color: isCurrentUser ? 'rgba(255,255,255,0.7)' : 'text.secondary',
+                            fontSize: '0.7rem'
+                          }}
+                        >
+                          {formatMessageTime(message.SentAt)}
+                        </Typography>
+                      </Paper>
+                    </Box>
                     
-                    {/* Spacer for sender's messages instead of avatar */}
-                    {isCurrentUser && <Box sx={{ width: 32, ml: 1, flexShrink: 0 }} />}
+                    {isCurrentUser && (
+                      <Box sx={{ ml: 1, visibility: showAvatar ? 'visible' : 'hidden' }}>
+                        <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}>
+                          {getParticipantAvatar(message.UserID)}
+                        </Avatar>
+                      </Box>
+                    )}
                   </Box>
                 );
               })}
             </Box>
           ))
         )}
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} /> {/* Empty div for scrolling to bottom */}
       </Box>
       
-      {/* Message Input */}
+      {/* Message input */}
       <Box 
-        component="form"
+        component="form" 
         onSubmit={handleSendMessage}
         sx={{ 
-          p: isMobile ? 1 : 2, 
-          borderTop: '1px solid rgba(0, 0, 0, 0.12)',
-          display: 'flex',
-          alignItems: 'center',
-          backgroundColor: theme.palette.background.paper,
-          position: 'sticky',
-          bottom: 0,
-          width: '100%',
+          p: 2, 
+          bgcolor: 'background.paper',
+          borderTop: `1px solid ${theme.palette.divider}`
         }}
       >
-        <Box sx={{ // Wrapper for input field and button to allow padding
-          display: 'flex', 
-          width: '100%', 
-          alignItems: 'center',
-          px: { xs: 0, sm: 1 } // Horizontal padding for the input area
+        <Box sx={{ 
+          display: 'flex',
+          alignItems: 'center'
         }}>
           <TextField
             fullWidth
             variant="outlined"
-            placeholder="Type a message"
+            placeholder="Type a message..."
             value={newMessage}
             onChange={handleMessageChange}
-            disabled={sending}
+            multiline
+            maxRows={3}
             size="small"
+            disabled={sending}
             sx={{ mr: 1 }}
-            autoComplete="off"
           />
-          <IconButton 
-            color="primary" 
+          <Button
+            variant="contained"
+            color="primary"
             type="submit"
             disabled={!newMessage.trim() || sending}
-            sx={{ 
-              ml: 1,
-              width: 45,
-              height: 45
-            }}
+            sx={{ minWidth: isMobile ? 40 : 'auto', ml: 1 }}
           >
-            {sending ? <CircularProgress size={24} /> : <SendIcon />}
-          </IconButton>
+            {isMobile ? <SendIcon /> : 'Send'}
+          </Button>
         </Box>
       </Box>
     </Box>
