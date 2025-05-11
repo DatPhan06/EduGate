@@ -88,6 +88,7 @@ const ClassManagementPage = () => {
     const [classSearchTerm, setClassSearchTerm] = useState('');
     const [studentSearchTerm, setStudentSearchTerm] = useState('');
     const [classIdFilterForStudents, setClassIdFilterForStudents] = useState('');
+    const [gradeLevelFilter, setGradeLevelFilter] = useState('');
 
     const showErrorSnackbar = (message) => {
         setSnackbar({ open: true, message, severity: 'error' });
@@ -141,21 +142,26 @@ const ClassManagementPage = () => {
             const params = { 
                 search: studentSearchTerm, 
                 class_id_filter: classIdFilterForStudents ? Number(classIdFilterForStudents) : null,
+                classGrade: gradeLevelFilter || null,
                 limit: 100, 
                 skip: 0 
             };
             const data = await getStudents(params);
-            // Data from API is already shaped by StudentRead schema
-            // Frontend used s.studentId for display (like HS001), now API s.studentId is UserID
-            // The StudentRead schema has `id` (UserID) and `studentId` (also UserID)
-            setStudents(data.map(s => ({...s}))); 
+            
+            // Apply additional client-side filtering if server doesn't filter correctly
+            let filteredData = data;
+            if (gradeLevelFilter) {
+                filteredData = data.filter(student => student.classGrade === gradeLevelFilter);
+            }
+            
+            setStudents(filteredData.map(s => ({...s}))); 
         } catch (error) {
             showErrorSnackbar('Lỗi tải danh sách học sinh!');
             setStudents([]); // Clear students on error
         } finally {
             setLoadingStudents(false);
         }
-    }, [studentSearchTerm, classIdFilterForStudents]);
+    }, [studentSearchTerm, classIdFilterForStudents, gradeLevelFilter]);
 
     useEffect(() => {
         fetchTeachers();
@@ -473,6 +479,21 @@ const ClassManagementPage = () => {
                                     ))}
                                 </Select>
                             </FormControl>
+                            <FormControl sx={{ width: '150px' }} size="small">
+                                <InputLabel>Lọc theo khối</InputLabel>
+                                <Select
+                                    value={gradeLevelFilter}
+                                    label="Lọc theo khối"
+                                    onChange={(e) => setGradeLevelFilter(e.target.value)}
+                                >
+                                    <MenuItem value="">Tất cả khối</MenuItem>
+                                    {Array.from(new Set(classes.map(c => c.grade))).sort().map((grade) => (
+                                        <MenuItem key={grade} value={grade}>
+                                            Khối {grade}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
                         </Box>
                         <Button 
                             variant="contained" 
@@ -484,11 +505,28 @@ const ClassManagementPage = () => {
                     </Box>
 
                     {classIdFilterForStudents && classes.find(c => c.id === Number(classIdFilterForStudents)) && (
-                        <Box sx={{ mb: 2 }}>
+                        <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
                             <Chip 
                                 label={`Đang lọc học sinh theo lớp: ${classes.find(c => c.id === Number(classIdFilterForStudents))?.name || ''}`} 
                                 onDelete={() => setClassIdFilterForStudents('')}
                                 color="primary"
+                            />
+                            {gradeLevelFilter && (
+                                <Chip 
+                                    label={`Đang lọc theo khối: ${gradeLevelFilter}`} 
+                                    onDelete={() => setGradeLevelFilter('')}
+                                    color="secondary"
+                                />
+                            )}
+                        </Box>
+                    )}
+                    
+                    {!classIdFilterForStudents && gradeLevelFilter && (
+                        <Box sx={{ mb: 2 }}>
+                            <Chip 
+                                label={`Đang lọc học sinh theo khối: ${gradeLevelFilter}`} 
+                                onDelete={() => setGradeLevelFilter('')}
+                                color="secondary"
                             />
                         </Box>
                     )}
@@ -500,6 +538,7 @@ const ClassManagementPage = () => {
                                     <TableCell>ID (UserID)</TableCell>
                                     <TableCell>Họ và tên</TableCell>
                                     <TableCell>Lớp</TableCell>
+                                    <TableCell>Khối</TableCell>
                                     <TableCell>Email</TableCell>
                                     <TableCell>SĐT</TableCell>
                                     <TableCell>Thao tác</TableCell>
@@ -507,13 +546,14 @@ const ClassManagementPage = () => {
                             </TableHead>
                             <TableBody>
                                 {loadingStudents ? (
-                                    <TableRow><TableCell colSpan={6} align="center">Đang tải...</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={7} align="center">Đang tải...</TableCell></TableRow>
                                 ) : students.length > 0 ? (
                                     students.map((student) => (
                                         <TableRow key={student.id}>
                                             <TableCell>{student.id}</TableCell>
                                             <TableCell>{student.name}</TableCell>
                                             <TableCell>{student.className}</TableCell>
+                                            <TableCell>{student.classGrade}</TableCell>
                                             <TableCell>{student.Email}</TableCell>
                                             <TableCell>{student.PhoneNumber}</TableCell>
                                             <TableCell>

@@ -64,7 +64,7 @@ def _format_student_read(row) -> StudentRead:
         # Bỏ parentName=parent_name
     )
 
-def get_students(db: Session, skip: int = 0, limit: int = 100, search: Optional[str] = None, class_id_filter: Optional[int] = None) -> List[StudentRead]:
+def get_students(db: Session, skip: int = 0, limit: int = 100, search: Optional[str] = None, class_id_filter: Optional[int] = None, grade_level_filter: Optional[str] = None) -> List[StudentRead]:
     StudentUser = aliased(User, name="student_user_alias")
     
     # Bỏ join với Parent và ParentStudent ở đây
@@ -99,6 +99,9 @@ def get_students(db: Session, skip: int = 0, limit: int = 100, search: Optional[
 
     if class_id_filter is not None:
         query = query.filter(Student.ClassID == class_id_filter)
+        
+    if grade_level_filter is not None:
+        query = query.filter(Class.GradeLevel == grade_level_filter)
 
     if search:
         search_term = f"%{search.lower()}%"
