@@ -1,17 +1,20 @@
-FROM python:3.10-slim
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim
 
-# Thiết lập thư mục làm việc
+# Set the working directory
 WORKDIR /app
 
-# Cài đặt các phụ thuộc
+# Copy the requirements file
 COPY requirements.txt .
+
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Sao chép mã nguồn vào container
+# Copy the rest of the application code
 COPY . .
 
-# Define environment variable
-ENV NAME QAirline
+# Make port 8000 available to the world outside this container
+EXPOSE 8000
 
-# Chạy ứng dụng với uvicorn và tùy chọn reload
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Run the Uvicorn server when the container launches
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
