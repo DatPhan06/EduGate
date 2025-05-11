@@ -101,7 +101,7 @@ const TimetableManagementPage = () => {
         SubjectID: '',
         TeacherID: '',
         Semester: 'HK1',
-        AcademicYear: academicYears[0]
+        AcademicYear: academicYears[3]
     });
     
     // Notification state
@@ -486,7 +486,7 @@ const TimetableManagementPage = () => {
                                                             ClassID: '',
                                                             SubjectID: '',
                                                             Semester: 'HK1',
-                                                            AcademicYear: academicYears[0]
+                                                            AcademicYear: academicYears[3]
                                                         });
                                                         setOpenClassSubjectDialog(true);
                                                     }}
@@ -773,7 +773,7 @@ const TimetableManagementPage = () => {
                                     ClassID: '',
                                     SubjectID: '',
                                     Semester: 'HK1',
-                                    AcademicYear: academicYears[0]
+                                    AcademicYear: academicYears[3]
                                 });
                                 setOpenClassSubjectDialog(true);
                             }}
@@ -1156,7 +1156,7 @@ const TimetableManagementPage = () => {
                                     SubjectID: '',
                                     TeacherID: '',
                                     Semester: 'HK1',
-                                    AcademicYear: academicYears[0]
+                                    AcademicYear: academicYears[3]
                                 });
                                 setOpenScheduleDialog(true);
                             }}

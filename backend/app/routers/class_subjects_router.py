@@ -223,6 +223,54 @@ def initialize_grades_for_class_subject(
             detail=str(e)
         )
 
+@router.post("/initialize-grades-test", status_code=status.HTTP_201_CREATED)
+def initialize_grades_for_multiple_class_subjects(
+    class_subject_ids: List[int],
+    db: Session = Depends(get_db)
+):
+    """
+    Initialize grade records for all students in multiple classes for both semesters.
+    Also creates standard grade components for each grade.
+    """
+    
+    try:
+        total_grades_created = 0
+        total_components_created = 0
+        
+        for class_subject_id in class_subject_ids:
+            # Initialize grades for first semester
+            created_grades_sem1 = grade_service.initialize_grades_for_class_subject(
+                db, 
+                class_subject_id, 
+                "Học kỳ 1"
+            )
+            
+            # Initialize grades for second semester
+            created_grades_sem2 = grade_service.initialize_grades_for_class_subject(
+                db, 
+                class_subject_id, 
+                "Học kỳ 2"
+            )
+            
+            # Initialize standard components for all created grades
+            all_grade_ids = [grade.GradeID for grade in created_grades_sem1 + created_grades_sem2]
+            component_result = grade_service.initialize_standard_components_for_grades(db, all_grade_ids)
+            
+            total_grades_created += len(created_grades_sem1) + len(created_grades_sem2)
+            total_components_created += component_result["components_created"]
+        
+        return {
+            "message": "Grade structures initialized successfully",
+            "grades_created": total_grades_created,
+            "components_created": total_components_created
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
 @router.get("/{class_subject_id}/subject", status_code=status.HTTP_200_OK)
 def get_subject_from_class_subject(
     class_subject_id: int,

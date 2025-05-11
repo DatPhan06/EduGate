@@ -157,6 +157,7 @@ const HomeroomClassGradesPage = () => {
   };
   
   const handleAcademicYearChange = (event) => {
+    console.log('Academic year changed to:', event.target.value);
     setActiveAcademicYear(event.target.value);
   };
   
@@ -283,6 +284,7 @@ const HomeroomClassGradesPage = () => {
               <MenuItem value="2022-2023">2022-2023</MenuItem>
               <MenuItem value="2023-2024">2023-2024</MenuItem>
               <MenuItem value="2024-2025">2024-2025</MenuItem>
+              <MenuItem value="2025-2026">2025-2026</MenuItem>
             </Select>
           </FormControl>
           <Button 

@@ -30,7 +30,7 @@ const StudentGradesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeSemester, setActiveSemester] = useState('HK1');
-  const [activeAcademicYear, setActiveAcademicYear] = useState('2023-2024');
+  const [activeAcademicYear, setActiveAcademicYear] = useState('2025-2026');
   const [editingKey, setEditingKey] = useState('');
   const [editValue, setEditValue] = useState(null);
   const { enqueueSnackbar } = useSnackbar();
@@ -452,6 +452,7 @@ const StudentGradesPage = () => {
               <MenuItem value="2022-2023">2022-2023</MenuItem>
               <MenuItem value="2023-2024">2023-2024</MenuItem>
               <MenuItem value="2024-2025">2024-2025</MenuItem>
+              <MenuItem value="2025-2026">2025-2026</MenuItem>
             </Select>
           </FormControl>
           <Button 

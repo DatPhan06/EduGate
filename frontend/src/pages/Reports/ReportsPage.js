@@ -596,18 +596,7 @@ const ReportsPage = () => {
     );
   };
 
-  // Check if user has admin access
-  const isAdmin = currentUser && ['admin', 'principal'].includes(currentUser.role);
 
-  if (!isAdmin) {
-    return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Alert severity="warning">
-          Bạn không có quyền truy cập vào trang thống kê này. Chỉ quản trị viên mới có thể xem trang này.
-        </Alert>
-      </Container>
-    );
-  }
 
   return (
     <Container maxWidth="lg">

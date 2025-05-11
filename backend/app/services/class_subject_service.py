@@ -67,19 +67,25 @@ def create_class_subject(db: Session, class_subject: ClassSubjectCreate):
         db.commit()
         db.refresh(db_class_subject)
         
-        # Nếu có giáo viên được phân công, tự động tạo dữ liệu điểm
-        if db_class_subject.TeacherID is not None:
-            # Khởi tạo bản ghi điểm cho tất cả học sinh trong lớp
-            created_grades = grade_service.initialize_grades_for_class_subject(
-                db, 
-                db_class_subject.ClassSubjectID,
-                db_class_subject.Semester
-            )
-            
-            # Nếu có bản ghi điểm được tạo, khởi tạo cấu trúc điểm thành phần
-            if created_grades:
-                grade_ids = [grade.GradeID for grade in created_grades]
-                grade_service.initialize_standard_components_for_grades(db, grade_ids)
+        # Always initialize grades for all students in the class, for both semesters
+        # Initialize for first semester
+        first_semester_grades = grade_service.initialize_grades_for_class_subject(
+            db, 
+            db_class_subject.ClassSubjectID,
+            "Học kỳ 1"
+        )
+        
+        # Initialize for second semester
+        second_semester_grades = grade_service.initialize_grades_for_class_subject(
+            db, 
+            db_class_subject.ClassSubjectID,
+            "Học kỳ 2"
+        )
+        
+        # Initialize standard grade components for all created grades
+        all_grade_ids = [grade.GradeID for grade in first_semester_grades + second_semester_grades]
+        if all_grade_ids:
+            grade_service.initialize_standard_components_for_grades(db, all_grade_ids)
         
         return db_class_subject
     except IntegrityError as e:
@@ -95,10 +101,9 @@ def update_class_subject(db: Session, class_subject_id: int, class_subject: Clas
     if not db_class_subject:
         return None
     
-    # Kiểm tra nếu giáo viên được phân công mới cho lớp học
+    # Remember old values for later
     old_teacher_id = db_class_subject.TeacherID
-    new_teacher_id = class_subject.TeacherID
-    teacher_assigned = new_teacher_id is not None and old_teacher_id != new_teacher_id
+    old_semester = db_class_subject.Semester
     
     # Update fields
     if class_subject.TeacherID is not None:
@@ -112,19 +117,25 @@ def update_class_subject(db: Session, class_subject_id: int, class_subject: Clas
         db.commit()
         db.refresh(db_class_subject)
         
-        # Nếu giáo viên mới được phân công, tự động tạo dữ liệu điểm
-        if teacher_assigned:
-            # Khởi tạo bản ghi điểm cho tất cả học sinh trong lớp
-            created_grades = grade_service.initialize_grades_for_class_subject(
+        # Check if anything changed that would warrant creating grade structures
+        if old_teacher_id != db_class_subject.TeacherID or old_semester != db_class_subject.Semester:
+            # Make sure grade structures exist for both semesters regardless of teacher change
+            first_semester_grades = grade_service.initialize_grades_for_class_subject(
                 db, 
                 db_class_subject.ClassSubjectID,
-                db_class_subject.Semester
+                "Học kỳ 1"
             )
             
-            # Nếu có bản ghi điểm được tạo, khởi tạo cấu trúc điểm thành phần
-            if created_grades:
-                grade_ids = [grade.GradeID for grade in created_grades]
-                grade_service.initialize_standard_components_for_grades(db, grade_ids)
+            second_semester_grades = grade_service.initialize_grades_for_class_subject(
+                db, 
+                db_class_subject.ClassSubjectID,
+                "Học kỳ 2"
+            )
+            
+            # Initialize standard grade components for all created grades
+            all_grade_ids = [grade.GradeID for grade in first_semester_grades + second_semester_grades]
+            if all_grade_ids:
+                grade_service.initialize_standard_components_for_grades(db, all_grade_ids)
         
         return db_class_subject
     except IntegrityError as e:
