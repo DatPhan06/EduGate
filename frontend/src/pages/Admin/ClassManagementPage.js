@@ -26,7 +26,9 @@ import {
     MenuItem,
     Chip,
     Alert,
-    Snackbar
+    Snackbar,
+    Checkbox,
+    CircularProgress
 } from '@mui/material';
 import { 
     Add as AddIcon, 
@@ -38,7 +40,8 @@ import {
 import {
     getClasses, createClass, updateClass, deleteClass,
     getStudents, createStudent, updateStudent, deleteStudent,
-    getTeachers
+    getTeachers,
+    assignMultipleStudentsToClass
 } from '../../services/classManagementService';
 
 const ClassManagementPage = () => {
@@ -56,6 +59,9 @@ const ClassManagementPage = () => {
     const [openClassDialog, setOpenClassDialog] = useState(false);
     const [openStudentDialog, setOpenStudentDialog] = useState(false);
     const [dialogMode, setDialogMode] = useState('add');
+    const [openAddMultipleStudentsDialog, setOpenAddMultipleStudentsDialog] = useState(false);
+    const [studentsForBulkAdd, setStudentsForBulkAdd] = useState([]);
+    const [selectedStudentsForBulkAdd, setSelectedStudentsForBulkAdd] = useState(new Set());
     
     // Form states
     const [currentClass, setCurrentClass] = useState({ 
@@ -88,6 +94,11 @@ const ClassManagementPage = () => {
     const [classSearchTerm, setClassSearchTerm] = useState('');
     const [studentSearchTerm, setStudentSearchTerm] = useState('');
     const [classIdFilterForStudents, setClassIdFilterForStudents] = useState('');
+    const [gradeLevelFilter, setGradeLevelFilter] = useState('');
+
+    // State for Add Multiple Students Dialog
+    const [loadingBulkAddStudents, setLoadingBulkAddStudents] = useState(false);
+    const [bulkAddSearchTerm, setBulkAddSearchTerm] = useState('');
 
     const showErrorSnackbar = (message) => {
         setSnackbar({ open: true, message, severity: 'error' });
@@ -141,21 +152,52 @@ const ClassManagementPage = () => {
             const params = { 
                 search: studentSearchTerm, 
                 class_id_filter: classIdFilterForStudents ? Number(classIdFilterForStudents) : null,
+                classGrade: gradeLevelFilter || null,
                 limit: 100, 
                 skip: 0 
             };
             const data = await getStudents(params);
-            // Data from API is already shaped by StudentRead schema
-            // Frontend used s.studentId for display (like HS001), now API s.studentId is UserID
-            // The StudentRead schema has `id` (UserID) and `studentId` (also UserID)
-            setStudents(data.map(s => ({...s}))); 
+            
+            // Apply additional client-side filtering if server doesn't filter correctly
+            let filteredData = data;
+            if (gradeLevelFilter) {
+                filteredData = data.filter(student => student.classGrade === gradeLevelFilter);
+            }
+            
+            setStudents(filteredData.map(s => ({...s}))); 
         } catch (error) {
             showErrorSnackbar('Lỗi tải danh sách học sinh!');
             setStudents([]); // Clear students on error
         } finally {
             setLoadingStudents(false);
         }
-    }, [studentSearchTerm, classIdFilterForStudents]);
+    }, [studentSearchTerm, classIdFilterForStudents, gradeLevelFilter]);
+
+    const fetchStudentsForBulkAdd = useCallback(async () => {
+        if (!classIdFilterForStudents) return; // Should not happen if button is correctly disabled
+        setLoadingBulkAddStudents(true);
+        try {
+            // Fetch all students, then filter client-side
+            const allStudentsData = await getStudents({ limit: 1000 }); // Adjust limit as needed
+
+            const studentsInCurrentClassSet = new Set(students.filter(s => s.classId === Number(classIdFilterForStudents)).map(s => s.id));
+            
+            const availableStudents = allStudentsData
+                .filter(s => s.id && !studentsInCurrentClassSet.has(s.id)) // Ensure they have an id and are not in current class
+                .map(s => ({ // Map to a consistent structure if needed, or use as is
+                    id: s.id, 
+                    name: s.name || `${s.FirstName || ''} ${s.LastName || ''}`.trim(),
+                    email: s.Email
+                }));
+
+            setStudentsForBulkAdd(availableStudents);
+        } catch (error) {
+            showErrorSnackbar('Lỗi tải danh sách học sinh để thêm vào lớp!');
+            setStudentsForBulkAdd([]);
+        } finally {
+            setLoadingBulkAddStudents(false);
+        }
+    }, [classIdFilterForStudents, students]);
 
     useEffect(() => {
         fetchTeachers();
@@ -346,6 +388,63 @@ const ClassManagementPage = () => {
         setSnackbar({ ...snackbar, open: false });
     };
 
+    const handleOpenAddMultipleStudentsDialog = () => {
+        if (!classIdFilterForStudents) {
+            showErrorSnackbar("Vui lòng chọn một lớp để thêm học sinh.");
+            return;
+        }
+        fetchStudentsForBulkAdd();
+        setSelectedStudentsForBulkAdd(new Set()); // Reset selection
+        setBulkAddSearchTerm(''); // Reset search
+        setOpenAddMultipleStudentsDialog(true);
+    };
+
+    const handleCloseAddMultipleStudentsDialog = () => {
+        setOpenAddMultipleStudentsDialog(false);
+        setStudentsForBulkAdd([]); // Clear the list
+    };
+
+    const handleToggleStudentForBulkAdd = (studentId) => {
+        setSelectedStudentsForBulkAdd(prevSelected => {
+            const newSelected = new Set(prevSelected);
+            if (newSelected.has(studentId)) {
+                newSelected.delete(studentId);
+            } else {
+                newSelected.add(studentId);
+            }
+            return newSelected;
+        });
+    };
+    
+    const handleBulkAddStudentsToClass = async () => {
+        if (selectedStudentsForBulkAdd.size === 0) {
+            showErrorSnackbar("Vui lòng chọn ít nhất một học sinh để thêm.");
+            return;
+        }
+        if (!classIdFilterForStudents) {
+            showErrorSnackbar("Lỗi: Không có lớp nào được chọn.");
+            return;
+        }
+
+        try {
+            const studentIdsArray = Array.from(selectedStudentsForBulkAdd);
+            const result = await assignMultipleStudentsToClass(Number(classIdFilterForStudents), studentIdsArray);
+            
+            if (result.errors && result.errors.length > 0) {
+                showErrorSnackbar(`Thêm nhiều học sinh thất bại hoặc thành công một phần. Lỗi: ${result.errors.map(e => e.error).join(', ')}`);
+            } else {
+                showSuccessSnackbar(result.message || 'Thêm học sinh vào lớp thành công!');
+            }
+            
+            fetchStudents(); // Refresh student list for the current class view
+            fetchClasses(); // Refresh class list (for sĩ số)
+            handleCloseAddMultipleStudentsDialog();
+        } catch (error) {
+            const errorMsg = error.response?.data?.detail || 'Lỗi khi thêm nhiều học sinh vào lớp!';
+            showErrorSnackbar(errorMsg);
+        }
+    };
+
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 3 }}>
@@ -473,22 +572,64 @@ const ClassManagementPage = () => {
                                     ))}
                                 </Select>
                             </FormControl>
+                            <FormControl sx={{ width: '150px' }} size="small">
+                                <InputLabel>Lọc theo khối</InputLabel>
+                                <Select
+                                    value={gradeLevelFilter}
+                                    label="Lọc theo khối"
+                                    onChange={(e) => setGradeLevelFilter(e.target.value)}
+                                >
+                                    <MenuItem value="">Tất cả khối</MenuItem>
+                                    {Array.from(new Set(classes.map(c => c.grade))).sort().map((grade) => (
+                                        <MenuItem key={grade} value={grade}>
+                                            Khối {grade}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
                         </Box>
-                        <Button 
-                            variant="contained" 
-                            startIcon={<AddIcon />}
-                            onClick={() => handleOpenStudentDialog('add')}
-                        >
-                            Thêm Học sinh
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 1}}>
+                            <Button 
+                                variant="contained" 
+                                startIcon={<AddIcon />}
+                                onClick={() => handleOpenStudentDialog('add')}
+                            >
+                                Thêm Học sinh
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                startIcon={<PersonAddIcon />}
+                                onClick={handleOpenAddMultipleStudentsDialog}
+                                disabled={!classIdFilterForStudents}
+                            >
+                                Thêm nhiều Học sinh vào lớp
+                            </Button>
+                        </Box>
                     </Box>
 
                     {classIdFilterForStudents && classes.find(c => c.id === Number(classIdFilterForStudents)) && (
-                        <Box sx={{ mb: 2 }}>
+                        <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
                             <Chip 
                                 label={`Đang lọc học sinh theo lớp: ${classes.find(c => c.id === Number(classIdFilterForStudents))?.name || ''}`} 
                                 onDelete={() => setClassIdFilterForStudents('')}
                                 color="primary"
+                            />
+                            {gradeLevelFilter && (
+                                <Chip 
+                                    label={`Đang lọc theo khối: ${gradeLevelFilter}`} 
+                                    onDelete={() => setGradeLevelFilter('')}
+                                    color="secondary"
+                                />
+                            )}
+                        </Box>
+                    )}
+                    
+                    {!classIdFilterForStudents && gradeLevelFilter && (
+                        <Box sx={{ mb: 2 }}>
+                            <Chip 
+                                label={`Đang lọc học sinh theo khối: ${gradeLevelFilter}`} 
+                                onDelete={() => setGradeLevelFilter('')}
+                                color="secondary"
                             />
                         </Box>
                     )}
@@ -500,6 +641,7 @@ const ClassManagementPage = () => {
                                     <TableCell>ID (UserID)</TableCell>
                                     <TableCell>Họ và tên</TableCell>
                                     <TableCell>Lớp</TableCell>
+                                    <TableCell>Khối</TableCell>
                                     <TableCell>Email</TableCell>
                                     <TableCell>SĐT</TableCell>
                                     <TableCell>Thao tác</TableCell>
@@ -507,13 +649,14 @@ const ClassManagementPage = () => {
                             </TableHead>
                             <TableBody>
                                 {loadingStudents ? (
-                                    <TableRow><TableCell colSpan={6} align="center">Đang tải...</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={7} align="center">Đang tải...</TableCell></TableRow>
                                 ) : students.length > 0 ? (
                                     students.map((student) => (
                                         <TableRow key={student.id}>
                                             <TableCell>{student.id}</TableCell>
                                             <TableCell>{student.name}</TableCell>
                                             <TableCell>{student.className}</TableCell>
+                                            <TableCell>{student.classGrade}</TableCell>
                                             <TableCell>{student.Email}</TableCell>
                                             <TableCell>{student.PhoneNumber}</TableCell>
                                             <TableCell>
@@ -690,6 +833,80 @@ const ClassManagementPage = () => {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+
+            {/* Add Multiple Students Dialog */}
+            <Dialog open={openAddMultipleStudentsDialog} onClose={handleCloseAddMultipleStudentsDialog} maxWidth="md" fullWidth>
+                <DialogTitle>Thêm nhiều Học sinh vào lớp: {classes.find(c => c.id === Number(classIdFilterForStudents))?.name || ''}</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        fullWidth
+                        label="Tìm kiếm học sinh (Tên, Email)"
+                        variant="outlined"
+                        size="small"
+                        value={bulkAddSearchTerm}
+                        onChange={(e) => setBulkAddSearchTerm(e.target.value)}
+                        sx={{ mb: 2, mt: 1 }}
+                    />
+                    {loadingBulkAddStudents ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}><CircularProgress /></Box>
+                    ) : studentsForBulkAdd.length === 0 ? (
+                        <Typography sx={{ textAlign: 'center', my: 3 }}>Không có học sinh nào phù hợp hoặc tất cả đã ở trong lớp này.</Typography>
+                    ) : (
+                        <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+                            <Table stickyHeader>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell padding="checkbox">
+                                            {/* Optional: Select/Deselect All Checkbox */}
+                                        </TableCell>
+                                        <TableCell>ID</TableCell>
+                                        <TableCell>Họ và Tên</TableCell>
+                                        <TableCell>Email</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {studentsForBulkAdd
+                                        .filter(student => 
+                                            student.name.toLowerCase().includes(bulkAddSearchTerm.toLowerCase()) ||
+                                            (student.email && student.email.toLowerCase().includes(bulkAddSearchTerm.toLowerCase()))
+                                        )
+                                        .map((student) => (
+                                        <TableRow 
+                                            key={student.id} 
+                                            hover 
+                                            onClick={() => handleToggleStudentForBulkAdd(student.id)}
+                                            role="checkbox"
+                                            aria-checked={selectedStudentsForBulkAdd.has(student.id)}
+                                            selected={selectedStudentsForBulkAdd.has(student.id)}
+                                        >
+                                            <TableCell padding="checkbox">
+                                                <Checkbox
+                                                    color="primary"
+                                                    checked={selectedStudentsForBulkAdd.has(student.id)}
+                                                />
+                                            </TableCell>
+                                            <TableCell>{student.id}</TableCell>
+                                            <TableCell>{student.name}</TableCell>
+                                            <TableCell>{student.email || 'N/A'}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseAddMultipleStudentsDialog}>Hủy</Button>
+                    <Button 
+                        onClick={handleBulkAddStudentsToClass} 
+                        variant="contained" 
+                        color="primary"
+                        disabled={selectedStudentsForBulkAdd.size === 0 || loadingBulkAddStudents}
+                    >
+                        Thêm {selectedStudentsForBulkAdd.size > 0 ? `(${selectedStudentsForBulkAdd.size})` : ''} Học sinh vào lớp
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

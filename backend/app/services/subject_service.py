@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from fastapi import HTTPException, status
 from typing import List, Optional
 from ..models.subject import Subject
@@ -13,9 +14,9 @@ def get_subjects(db: Session, skip: int = 0, limit: int = 1000):
 def get_subject_by_id(db: Session, subject_id: int):
     return db.query(Subject).filter(Subject.SubjectID == subject_id).first()
 
-# Get subject by name
+# Get subject by name (case-insensitive)
 def get_subject_by_name(db: Session, subject_name: str):
-    return db.query(Subject).filter(Subject.SubjectName == subject_name).first()
+    return db.query(Subject).filter(func.lower(Subject.SubjectName) == func.lower(subject_name)).first()
 
 # Create new subject
 def create_subject(db: Session, subject: SubjectCreate):
@@ -38,11 +39,12 @@ def create_subject(db: Session, subject: SubjectCreate):
         db.commit()
         db.refresh(db_subject)
         return db_subject
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
+        print(f"Original IntegrityError: {e.orig}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not create subject due to database constraints"
+            detail="Could not create subject due to database constraints. Check server logs for more details."
         )
 
 # Update existing subject

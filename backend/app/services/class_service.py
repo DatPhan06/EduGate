@@ -81,15 +81,14 @@ def create_class(db: Session, class_data: ClassCreate) -> ClassRead:
                 detail=f"Homeroom Teacher with ID {class_data.HomeroomTeacherID} not found."
             )
     
-    # Tạo đối tượng Class từ dữ liệu
+    # Create the Class object without specifying ClassID to let the database auto-generate it
     db_class = Class(
         ClassName=class_data.ClassName,
         GradeLevel=class_data.GradeLevel,
         AcademicYear=class_data.AcademicYear,
         HomeroomTeacherID=class_data.HomeroomTeacherID,
-        # Note: teacherName và totalStudents thường là computed/derived fields,
-        # không nên lưu trực tiếp vào DB trừ khi có lý do đặc biệt.
-        # Chúng sẽ được tính toán khi đọc dữ liệu.
+        # teacherName and totalStudents are computed fields,
+        # they shouldn't be stored directly in the DB
     )
     
     db.add(db_class)
@@ -98,46 +97,47 @@ def create_class(db: Session, class_data: ClassCreate) -> ClassRead:
         db.commit()
         db.refresh(db_class)
         
-        # --- Tự động tạo Conversations --- 
+        # --- Automatically create Conversations --- 
         if db_class.HomeroomTeacherID:
             teacher_id = db_class.HomeroomTeacherID
             class_name = db_class.ClassName
             
-            # Tạo conversation cho Phụ huynh
-            try:
-                parent_convo_name = f"Phụ huynh Lớp {class_name}"
-                parent_convo_data = ConversationCreate(Name=parent_convo_name, participant_ids=[teacher_id])
-                message_service.create_conversation(db=db, conversation_data=parent_convo_data, current_user_id=teacher_id)
-                # print(f"Created parent conversation for class {db_class.ClassID}") # Optional log
-            except Exception as e:
-                # Log lỗi tạo conversation phụ huynh, nhưng không rollback việc tạo lớp
-                print(f"ERROR creating parent conversation for class {db_class.ClassID}: {e}")
-                # logger.error(f"Error creating parent conversation for class {db_class.ClassID}: {e}")
-            
-            # Tạo conversation cho Học sinh
+
+            # Create conversation for Students
             try:
                 student_convo_name = f"Học sinh Lớp {class_name}"
                 student_convo_data = ConversationCreate(Name=student_convo_name, participant_ids=[teacher_id])
                 message_service.create_conversation(db=db, conversation_data=student_convo_data, current_user_id=teacher_id)
-                # print(f"Created student conversation for class {db_class.ClassID}") # Optional log
+                print(f"Created student conversation for class {db_class.ClassID}")
             except Exception as e:
-                # Log lỗi tạo conversation học sinh
+                # Log error for student conversation creation
                 print(f"ERROR creating student conversation for class {db_class.ClassID}: {e}")
                 # logger.error(f"Error creating student conversation for class {db_class.ClassID}: {e}")
+                
+            # Create conversation for Parents
+            try:
+                parent_convo_name = f"Phụ huynh Lớp {class_name}"
+                parent_convo_data = ConversationCreate(Name=parent_convo_name, participant_ids=[teacher_id])
+                message_service.create_conversation(db=db, conversation_data=parent_convo_data, current_user_id=teacher_id)
+                print(f"Created parent conversation for class {db_class.ClassID}")
+            except Exception as e:
+                # Log error for parent conversation creation
+                print(f"ERROR creating parent conversation for class {db_class.ClassID}: {e}")
+                # logger.error(f"Error creating parent conversation for class {db_class.ClassID}: {e}")
         # -------------------------------------
 
-        # Trả về đối tượng ClassRead (có thể cần lấy lại thông tin đầy đủ)
+        # Return the created ClassRead object (may need to fetch complete info)
         created_class_read = get_class(db=db, class_id=db_class.ClassID)
         if not created_class_read:
-             # Fallback nếu get_class_by_id thất bại (ít khả năng)
+             # Fallback if get_class_by_id fails (unlikely)
              return ClassRead.model_validate(db_class) 
         return created_class_read
         
     except Exception as e:
         db.rollback()
-        # Log lỗi cụ thể hơn nếu cần
+        # Log more specific error if needed
         print(f"ERROR creating class: {e}") 
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not create class")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not create class: {str(e)}")
 
 def update_class(db: Session, class_id: int, class_in: ClassUpdate) -> Optional[Class]:
     db_class = db.query(Class).filter(Class.ClassID == class_id).first()

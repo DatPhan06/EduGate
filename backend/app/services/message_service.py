@@ -2,10 +2,13 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, or_, func
 from typing import List, Optional
 import datetime
+import os
+import shutil
+import aiofiles
+from fastapi import UploadFile, HTTPException, status
 
 from .. import models, schemas
-from ..models import User, Conversation, Message, Participation
-from fastapi import HTTPException, status
+from ..models import User, Conversation, Message, Participation, MessageFile as MessageFileModel
 
 def get_user_conversations(db: Session, user_id: int) -> List[schemas.ConversationPreview]:
     """
@@ -359,3 +362,145 @@ def delete_conversation_admin(db: Session, conversation_id: int) -> bool:
         print(f"Error deleting conversation {conversation_id}: {e}") # Log error
         # Consider raising a specific HTTPException for deletion failure
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not delete conversation: {e}")
+
+def update_conversation(db: Session, conversation_id: int, conversation_data: schemas.ConversationBase, user_id: int) -> Optional[schemas.ConversationRead]:
+    """
+    Updates a conversation's details (currently just the name).
+    Ensures the requesting user is a participant in the conversation.
+    
+    Args:
+        db: Database session
+        conversation_id: ID of the conversation to update
+        conversation_data: Data to update (currently only Name)
+        user_id: ID of the user making the update
+        
+    Returns:
+        Updated conversation or None if conversation not found or user not authorized
+    """
+    # Check if user is part of the conversation
+    participation = db.query(models.Participation).filter(
+        models.Participation.ConversationID == conversation_id,
+        models.Participation.UserID == user_id
+    ).first()
+
+    if not participation:
+        return None  # User not part of conversation
+
+    # Get the conversation
+    conversation = db.query(models.Conversation).filter(
+        models.Conversation.ConversationID == conversation_id
+    ).first()
+
+    if not conversation:
+        return None  # Conversation not found
+
+    # Update conversation name
+    conversation.Name = conversation_data.Name
+    
+    db.commit()
+    db.refresh(conversation)
+    
+    # Return full conversation details with participants and messages
+    return get_conversation(db, conversation_id, user_id)
+
+async def create_message_with_files(db: Session, conversation_id: int, message_data: schemas.MessageCreate, user_id: int, files: List[UploadFile]) -> schemas.MessageRead:
+    """
+    Creates a new message with file attachments in a given conversation.
+    """
+    # Kiểm tra quyền tham gia hội thoại
+    participation = db.query(models.Participation).filter(
+        models.Participation.ConversationID == conversation_id,
+        models.Participation.UserID == user_id
+    ).first()
+
+    if not participation:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not part of this conversation.")
+
+    conversation = db.query(models.Conversation).filter(models.Conversation.ConversationID == conversation_id).first()
+    if not conversation:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.")
+
+    # Tạo tin nhắn
+    db_message = models.Message(
+        ConversationID=conversation_id,
+        UserID=user_id,
+        Content=message_data.Content,
+        SentAt=datetime.datetime.utcnow()
+    )
+    db.add(db_message)
+    db.flush()  # Lấy MessageID
+    
+    # Lưu các file đính kèm (nếu có)
+    if files:
+        for file in files:
+            # Tạo bản ghi file trong DB
+            db_file = MessageFileModel(
+                FileName=file.filename,
+                FileSize=0,  # Sẽ cập nhật sau khi lưu file
+                ContentType=file.content_type,
+                MessageID=db_message.MessageID,
+                SubmittedAt=datetime.datetime.utcnow()
+            )
+            db.add(db_file)
+            db.flush()  # Lấy FileID
+            
+            # Tạo thư mục để lưu file
+            upload_dir = "uploads"
+            message_dir = os.path.join(upload_dir, "messages")
+            file_dir = os.path.join(message_dir, str(db_file.FileID))
+            
+            # Đảm bảo thư mục tồn tại
+            if not os.path.exists(upload_dir):
+                os.makedirs(upload_dir, exist_ok=True)
+            if not os.path.exists(message_dir):
+                os.makedirs(message_dir, exist_ok=True)
+            if not os.path.exists(file_dir):
+                os.makedirs(file_dir, exist_ok=True)
+            
+            # Lưu file vào đĩa
+            file_path = os.path.join(file_dir, file.filename)
+            
+            # Lưu file bất đồng bộ
+            contents = await file.read()
+            async with aiofiles.open(file_path, 'wb') as f:
+                await f.write(contents)
+            
+            # Cập nhật kích thước file
+            db_file.FileSize = os.path.getsize(file_path)
+    
+    db.commit()
+    db.refresh(db_message)
+    
+    # Load user và files đính kèm
+    db_message = db.query(models.Message).options(
+        joinedload(models.Message.user),
+        joinedload(models.Message.message_files)
+    ).filter(models.Message.MessageID == db_message.MessageID).one()
+
+    return db_message
+
+async def get_message_file(db: Session, file_id: int, user_id: int) -> Optional[MessageFileModel]:
+    """
+    Lấy thông tin file đính kèm và kiểm tra quyền truy cập.
+    Trả về đối tượng MessageFile nếu người dùng có quyền truy cập.
+    """
+    # Lấy thông tin file
+    file = db.query(MessageFileModel).filter(MessageFileModel.FileID == file_id).first()
+    if not file:
+        return None
+    
+    # Kiểm tra xem người dùng có quyền truy cập tin nhắn chứa file này không
+    message = db.query(models.Message).filter(models.Message.MessageID == file.MessageID).first()
+    if not message:
+        return None
+    
+    # Kiểm tra xem người dùng có tham gia vào cuộc trò chuyện chứa tin nhắn này không
+    is_participant = db.query(models.Participation).filter(
+        models.Participation.ConversationID == message.ConversationID,
+        models.Participation.UserID == user_id
+    ).first()
+    
+    if not is_participant:
+        return None
+    
+    return file
