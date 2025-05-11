@@ -312,6 +312,24 @@ const Navbar = ({ onLayoutChange }) => {
             path: '/principal-dashboard',
             roles: ['principal', 'bgh'],
         },
+        {
+            text: 'Sự kiện Lớp học',
+            icon: <EventIcon />,
+            path: '/class-events/my-class',
+            roles: ['admin', 'parent'],
+        },
+        {
+            text: 'Sự kiện Lớp',
+            icon: <EventIcon />,
+            path: '/teacher/class-events',
+            roles: ['teacher'],
+        },
+        {
+            text: 'Sự kiện Lớp',
+            icon: <EventIcon />,
+            path: '/student/class-events',
+            roles: ['student'],
+        },
     ];
 
     const userRole = currentUser?.role;
