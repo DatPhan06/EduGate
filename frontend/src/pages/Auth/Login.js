@@ -80,11 +80,7 @@ const Login = () => {
                         >
                             Đăng nhập
                         </Button>
-                        <Box sx={{ textAlign: 'center' }}>
-                            <Link component={RouterLink} to="/register" variant="body2">
-                                Chưa có tài khoản? Đăng ký ngay
-                            </Link>
-                        </Box>
+                        
                     </Box>
                 </Paper>
             </Box>

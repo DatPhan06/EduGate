@@ -56,83 +56,121 @@ function TabPanel(props) {
   );
 }
 
-// Mock data for demonstration
-// In a real application, this would come from API calls
-const generateMockData = () => {
-  // Mock student statistics by grade
-  const studentsByGrade = [
-    { name: 'Lớp 1', value: 120 },
-    { name: 'Lớp 2', value: 115 },
-    { name: 'Lớp 3', value: 125 },
-    { name: 'Lớp 4', value: 118 },
-    { name: 'Lớp 5', value: 122 },
-    { name: 'Lớp 6', value: 130 },
-    { name: 'Lớp 7', value: 128 },
-    { name: 'Lớp 8', value: 135 },
-    { name: 'Lớp 9', value: 132 },
-    { name: 'Lớp 10', value: 145 },
-    { name: 'Lớp 11', value: 140 },
-    { name: 'Lớp 12', value: 138 },
-  ];
+// Helper function to generate random numbers
+const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const getRandomFloat = (min, max, decimals) => parseFloat((Math.random() * (max - min) + min).toFixed(decimals));
 
-  // Mock attendance data by month
-  const attendanceData = [
-    { month: 'Tháng 1', rate: 97.5 },
-    { month: 'Tháng 2', rate: 96.8 },
-    { month: 'Tháng 3', rate: 98.2 },
-    { month: 'Tháng 4', rate: 97.9 },
-    { month: 'Tháng 5', rate: 98.5 },
-    { month: 'Tháng 6', rate: 99.1 },
-    { month: 'Tháng 7', rate: 99.3 },
-    { month: 'Tháng 8', rate: 98.7 },
-    { month: 'Tháng 9', rate: 97.8 },
-    { month: 'Tháng 10', rate: 98.4 },
-    { month: 'Tháng 11', rate: 98.9 },
-    { month: 'Tháng 12', rate: 98.2 },
-  ];
+const generateRealisticMockData = (currentYear) => {
+  const academicYear = `${currentYear}-${currentYear + 1}`;
+  const prevAcademicYear = `${currentYear - 1}-${currentYear}`;
 
-  // Mock academic performance data
-  const academicPerformance = [
-    { name: 'Xuất sắc', value: 78 },
-    { name: 'Giỏi', value: 220 },
-    { name: 'Khá', value: 384 },
-    { name: 'Trung bình', value: 248 },
-    { name: 'Yếu', value: 70 },
-  ];
+  // --- Total Stats ---
+  // Based on SQL, smaller numbers seem more appropriate than the original 1600 students.
+  // Let's assume a small to medium-sized high school.
+  const totalStudents = getRandomInt(300, 600); // e.g., ~100-200 per grade for 3 grades
+  const totalTeachers = getRandomInt(25, 50);
+  const totalClasses = getRandomInt(12, 20); // e.g., 4-6 classes per grade level
 
-  // Mock rewards and discipline data by month
-  const rewardsData = [
-    { month: 'Tháng 1', rewards: 24, disciplines: 5 },
-    { month: 'Tháng 2', rewards: 18, disciplines: 7 },
-    { month: 'Tháng 3', rewards: 32, disciplines: 3 },
-    { month: 'Tháng 4', rewards: 22, disciplines: 6 },
-    { month: 'Tháng 5', rewards: 28, disciplines: 4 },
-    { month: 'Tháng 6', rewards: 35, disciplines: 2 },
-    { month: 'Tháng 7', rewards: 15, disciplines: 3 },
-    { month: 'Tháng 8', rewards: 10, disciplines: 1 },
-    { month: 'Tháng 9', rewards: 27, disciplines: 8 },
-    { month: 'Tháng 10', rewards: 31, disciplines: 5 },
-    { month: 'Tháng 11', rewards: 29, disciplines: 4 },
-    { month: 'Tháng 12', rewards: 36, disciplines: 6 },
-  ];
+  // --- Students By Grade ---
+  // Assuming a typical 3-grade high school (10, 11, 12)
+  const gradeLevels = ['Khối 10', 'Khối 11', 'Khối 12'];
+  const studentsByGrade = gradeLevels.map(grade => ({
+    name: grade,
+    value: Math.floor(totalStudents / gradeLevels.length) + getRandomInt(-20, 20), // distribute students, with some variance
+  }));
+  // Adjust total students to match sum from byGrade for consistency
+  const actualTotalStudents = studentsByGrade.reduce((sum, g) => sum + g.value, 0);
 
-  // Mock recent academic events
-  const recentEvents = [
-    { id: 1, title: 'Kỳ thi giữa HK1', date: '2023-10-15', type: 'exam' },
-    { id: 2, title: 'Hội nghị phụ huynh', date: '2023-10-20', type: 'meeting' },
-    { id: 3, title: 'Kỳ thi cuối HK1', date: '2023-12-15', type: 'exam' },
-    { id: 4, title: 'Hội khỏe Phù Đổng', date: '2023-11-10', type: 'sport' },
-    { id: 5, title: 'Lễ khai giảng', date: '2023-09-05', type: 'ceremony' }
-  ];
 
-  // Mock top performing classes
-  const topClasses = [
-    { id: 1, name: '12A1', averageGrade: 8.9, attendanceRate: 99.2 },
-    { id: 2, name: '11A2', averageGrade: 8.7, attendanceRate: 98.5 },
-    { id: 3, name: '10A3', averageGrade: 8.6, attendanceRate: 98.9 },
-    { id: 4, name: '9A1', averageGrade: 8.8, attendanceRate: 99.0 },
-    { id: 5, name: '8A2', averageGrade: 8.5, attendanceRate: 98.1 }
-  ];
+  // --- Attendance Data (for current academic year, monthly) ---
+  const months = ['Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5'];
+  const attendanceData = months.map(month => ({
+    month: month,
+    rate: getRandomFloat(92.0, 99.5, 1), // Attendance rate %
+  }));
+
+  // --- Academic Performance (distribution for the whole school) ---
+  const performanceCategories = ['Xuất sắc', 'Giỏi', 'Khá', 'Trung bình', 'Yếu'];
+  let remainingStudentsForPerformance = actualTotalStudents;
+  const academicPerformance = performanceCategories.map((category, index) => {
+    let count;
+    if (index === performanceCategories.length - 1) {
+      count = remainingStudentsForPerformance;
+    } else {
+      let maxForCategory;
+      switch(category) {
+        case 'Xuất sắc': maxForCategory = Math.floor(actualTotalStudents * 0.15); break; // Max 15%
+        case 'Giỏi': maxForCategory = Math.floor(actualTotalStudents * 0.35); break;     // Max 35%
+        case 'Khá': maxForCategory = Math.floor(actualTotalStudents * 0.40); break;      // Max 40%
+        case 'Trung bình': maxForCategory = Math.floor(actualTotalStudents * 0.20); break; // Max 20%
+        default: maxForCategory = Math.floor(actualTotalStudents * 0.10);
+      }
+      count = getRandomInt(Math.floor(actualTotalStudents * 0.05), maxForCategory);
+      if (count > remainingStudentsForPerformance) count = remainingStudentsForPerformance;
+    }
+    remainingStudentsForPerformance -= count;
+    if (remainingStudentsForPerformance < 0) remainingStudentsForPerformance = 0;
+    return { name: category, value: count < 0 ? 0 : count };
+  });
+   // Ensure sum matches totalStudents
+  const performanceSum = academicPerformance.reduce((sum, p) => sum + p.value, 0);
+  if (performanceSum !== actualTotalStudents && academicPerformance.length > 0) {
+    const diff = actualTotalStudents - performanceSum;
+    academicPerformance[academicPerformance.length -1].value += diff; // Add/remove diff from last category
+     if(academicPerformance[academicPerformance.length -1].value < 0) academicPerformance[academicPerformance.length -1].value = 0;
+  }
+
+
+  // --- Rewards and Discipline Data (monthly for current academic year) ---
+  const rewardsData = months.map(month => ({
+    month: month,
+    rewards: getRandomInt(5, 30),
+    disciplines: getRandomInt(0, 10),
+  }));
+
+  // --- Recent Academic Events ---
+  // Based on 'events' table: Title, Type, EventDate
+  const eventTypes = ['exam', 'meeting', 'sport', 'ceremony', 'activity', 'school_holiday', 'teacher_training'];
+  const eventTitles = {
+    exam: ['Kiểm tra giữa kỳ', 'Thi học kỳ I', 'Thi học kỳ II', 'Thi thử THPT Quốc Gia'],
+    meeting: ['Họp phụ huynh đầu năm', 'Họp phụ huynh cuối kỳ', 'Họp chuyên môn tổ', 'Họp hội đồng sư phạm'],
+    sport: ['Hội khỏe Phù Đổng cấp trường', 'Giải bóng đá học sinh', 'Giải cờ vua'],
+    ceremony: ['Lễ khai giảng', 'Lễ tổng kết năm học', 'Lễ kỷ niệm ngày nhà giáo'],
+    activity: ['Hoạt động ngoại khóa STEM', 'Tham quan dã ngoại', 'Chương trình văn nghệ'],
+    school_holiday: ['Nghỉ Lễ Quốc Khánh', 'Nghỉ Tết Âm Lịch', 'Nghỉ Giỗ Tổ Hùng Vương'],
+    teacher_training: ['Tập huấn chuyên môn hè', 'Workshop ứng dụng CNTT', 'Bồi dưỡng nghiệp vụ'],
+  };
+  const recentEvents = Array.from({ length: getRandomInt(5, 10) }).map((_, i) => {
+    const type = eventTypes[getRandomInt(0, eventTypes.length - 1)];
+    const titleArray = eventTitles[type] || ['Sự kiện chung'];
+    const title = titleArray[getRandomInt(0, titleArray.length - 1)];
+    const eventMonth = getRandomInt(1, 12);
+    const eventDay = getRandomInt(1, 28);
+    // Generate dates within the current academic year, or slightly before/after
+    const yearForEvent = (eventMonth >=8 && eventMonth <=12) ? currentYear : currentYear + 1;
+    return {
+      id: i + 1,
+      title: `${title} - ${academicYear}`,
+      date: new Date(yearForEvent, eventMonth - 1, eventDay).toISOString().split('T')[0],
+      type: type,
+    };
+  }).sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date descending
+
+  // --- Top Performing Classes ---
+  // Based on 'classes' table: ClassName, GradeLevel
+  // We'll make up some class names
+  const classNamesExamples = ['A1', 'A2', 'A3', 'B1', 'B2', 'C1'];
+  const topClasses = Array.from({ length: 5 }).map((_, i) => {
+    const gradeLevel = gradeLevels[getRandomInt(0, gradeLevels.length -1)].replace('Khối ', ''); // "10", "11", "12"
+    const classSuffix = classNamesExamples[getRandomInt(0, classNamesExamples.length - 1)];
+    return {
+      id: i + 1,
+      name: `${gradeLevel}${classSuffix}`, // e.g., 10A1, 11B2
+      averageGrade: getRandomFloat(7.5, 9.5, 1),
+      attendanceRate: getRandomFloat(95.0, 99.8, 1),
+    };
+  }).sort((a,b) => b.averageGrade - a.averageGrade);
+
 
   return {
     studentsByGrade,
@@ -142,12 +180,14 @@ const generateMockData = () => {
     recentEvents,
     topClasses,
     totalStats: {
-      students: 1600,
-      teachers: 85,
-      classes: 48,
-      events: 32,
-      messages: 2150,
-    }
+      students: actualTotalStudents,
+      teachers: totalTeachers,
+      classes: totalClasses,
+      events: recentEvents.length, // Count generated events
+      messages: getRandomInt(500, 3000), // Still a placeholder
+    },
+    currentAcademicYear: academicYear,
+    previousAcademicYear: prevAcademicYear
   };
 };
 
@@ -185,8 +225,9 @@ const ReportsPage = () => {
         // In a real application, you would fetch data from your API
         // For now, we'll use mock data with a delay to simulate API call
         setTimeout(() => {
-          const mockData = generateMockData();
-          setData(mockData);
+          const currentYearForData = parseInt(filterYear); // Use the selected filter year
+          const realisticMockData = generateRealisticMockData(currentYearForData);
+          setData(realisticMockData);
           setLoading(false);
         }, 1000);
 
@@ -212,8 +253,9 @@ const ReportsPage = () => {
     setLoading(true);
     // Simulate API call
     setTimeout(() => {
-      const mockData = generateMockData();
-      setData(mockData);
+      const currentYearForData = parseInt(filterYear); // Use the selected filter year
+      const realisticMockData = generateRealisticMockData(currentYearForData);
+      setData(realisticMockData);
       setLoading(false);
     }, 1000);
   };
@@ -507,6 +549,34 @@ const ReportsPage = () => {
 
   // Render filter section
   const renderFilters = () => {
+    const currentYr = new Date().getFullYear();
+    const academicYears = Array.from({length: 5}, (_, i) => {
+      const year = currentYr - i;
+      return { value: year.toString(), label: `${year}-${year+1}` };
+    });
+    // Add future years if needed, e.g., for planning
+    // To make it align with current selection options, ensure the current year is in the middle of a few past/future if possible
+    const yearsForFilter = [];
+    for (let i = 2; i > 0; i--) { // 2 past years
+        const year = currentYr - i;
+        yearsForFilter.push({ value: year.toString(), label: `${year}-${year+1}` });
+    }
+    yearsForFilter.push({ value: currentYr.toString(), label: `${currentYr}-${currentYr+1}` }); // current year
+    for (let i = 1; i <= 2; i++) { // 2 future years
+        const year = currentYr + i;
+        yearsForFilter.push({ value: year.toString(), label: `${year}-${year+1}` });
+    }
+
+    // Ensure the initially selected filterYear is present, or add it.
+    // The current `filterYear` is a string like "2023", the value in `yearsForFilter` is also a string.
+    if (!yearsForFilter.find(y => y.value === filterYear)) {
+        const selectedYearInt = parseInt(filterYear);
+        yearsForFilter.push({ value: filterYear, label: `${selectedYearInt}-${selectedYearInt+1}`});
+        // Sort again if a new year was pushed
+        yearsForFilter.sort((a,b) => parseInt(a.value) - parseInt(b.value));
+    }
+
+
     return (
       <Paper 
         elevation={3} 
@@ -527,11 +597,14 @@ const ReportsPage = () => {
               <Select
                 value={filterYear}
                 label="Năm học"
-                onChange={(e) => setFilterYear(e.target.value)}
+                onChange={(e) => {
+                  setFilterYear(e.target.value);
+                  // Data will be refreshed by Apply or Refresh button
+                }}
               >
-                <MenuItem value="2023">2023-2024</MenuItem>
-                <MenuItem value="2022">2022-2023</MenuItem>
-                <MenuItem value="2021">2021-2022</MenuItem>
+                {yearsForFilter.map(ay => (
+                  <MenuItem key={ay.value} value={ay.value}>{ay.label}</MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Grid>
@@ -587,7 +660,7 @@ const ReportsPage = () => {
           <Button 
             variant="contained" 
             color="primary"
-            onClick={() => alert('Áp dụng bộ lọc (tính năng đang phát triển)')}
+            onClick={handleRefreshData}
           >
             Áp dụng
           </Button>
@@ -595,8 +668,6 @@ const ReportsPage = () => {
       </Paper>
     );
   };
-
-
 
   return (
     <Container maxWidth="lg">
@@ -681,7 +752,7 @@ const ReportsPage = () => {
               {/* Academic performance */}
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
-                  <Paper elevation={3} sx={{ p: 2, borderRadius: 2 }}>
+                  <Paper elevation={3} sx={{ p: 2, borderRadius: 2, height: '100%' }}>
                     <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
                       <GradeIcon sx={{ mr: 1 }} /> Phân bố học lực
                     </Typography>

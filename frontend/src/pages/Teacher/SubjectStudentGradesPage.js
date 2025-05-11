@@ -83,21 +83,36 @@ const SubjectStudentGradesPage = () => {
     const fetchStudentGrades = async () => {
       try {
         setLoading(true);
+        console.log(`Fetching student grades for studentId: ${studentId}, semester: ${activeSemester}`);
         const data = await getStudentGrades(
           studentId,
           activeSemester
         );
+        console.log('Raw data from getStudentGrades:', data);
         
         // Filter grades to only show for the current class subject
         const filteredGrades = data.filter(grade => grade.ClassSubjectID == classSubjectId);
+        console.log(`Filtered grades for classSubjectId ${classSubjectId}:`, filteredGrades);
         
         if (filteredGrades && filteredGrades.length > 0) {
           const grade = filteredGrades[0]; // Get the first grade record
-          setCurrentGradeId(grade.GradeID);
-          setGrades(filteredGrades);
+          console.log('Selected grade for component fetching:', grade);
+
+          if (!grade || typeof grade.GradeID === 'undefined') {
+            console.error('Critical: GradeID is missing or undefined for the selected grade record.', grade);
+            setError('Lỗi dữ liệu: Không tìm thấy GradeID hợp lệ để tải thành phần điểm.');
+            setGrades(filteredGrades); // Set grades even if components can't be fetched for this grade
+            setLoading(false);
+            return;
+          }
           
+          setCurrentGradeId(grade.GradeID);
+          setGrades(filteredGrades); // Set initial grades state
+          
+          console.log(`Fetching grade components for GradeID: ${grade.GradeID}`);
           // Fetch grade components separately
           const components = await getGradeComponents(grade.GradeID);
+          console.log(`Components received from getGradeComponents for GradeID ${grade.GradeID}:`, components);
           
           // Sort components: first by weight (descending), then by name
           const sortedComponents = components.sort((a, b) => {
@@ -117,17 +132,21 @@ const SubjectStudentGradesPage = () => {
                 : g
             )
           );
+          console.log('Updated grades state with components:', grades);
+
         } else {
+          console.log('No matching grade record found for this subject and semester. Setting grades to empty array.');
           // No grades yet, will need to create them
           setGrades([]);
         }
         
         setError(null);
       } catch (error) {
-        console.error('Error fetching student grades:', error);
+        console.error('Error in fetchStudentGrades:', error);
         setError('Không thể tải dữ liệu điểm số. Vui lòng thử lại sau.');
       } finally {
         setLoading(false);
+        console.log('fetchStudentGrades finished loading.');
       }
     };
     

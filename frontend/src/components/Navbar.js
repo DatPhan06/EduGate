@@ -262,7 +262,7 @@ const Navbar = ({ onLayoutChange }) => {
             text: 'Khen thưởng/Kỷ luật',
             icon: <EmojiEventsIcon />,
             path: '/rewards-discipline',
-            roles: ['parent', 'student'],
+            roles: ['admin', 'parent', 'student'],
         },
         {
             text: 'Sổ liên lạc',
@@ -285,7 +285,7 @@ const Navbar = ({ onLayoutChange }) => {
             text: 'Báo cáo & Thống kê',
             icon: <ReportsIcon />,
             path: '/reports-statistics',
-            roles: ['admin', 'principal', 'bgh', 'teacher'],
+            roles: ['admin'],
         },
         {
             text: 'Đơn thỉnh cầu',

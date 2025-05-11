@@ -137,13 +137,13 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 } />
 
-                {isBGHTeacher && (
+                
                     <Route path="reports-statistics" element={
-                        <ProtectedRoute roles={['admin', 'teacher']}>
+                        <ProtectedRoute roles={['admin']}>
                             <ReportsPage />
                         </ProtectedRoute>
                     } />
-                )}
+                
                 {/* Teacher Homeroom Routes */}
                 <Route
                     path="teacher/homeroom"
