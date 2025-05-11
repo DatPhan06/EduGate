@@ -1,4 +1,3 @@
-\
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -50,6 +49,33 @@ def get_single_conversation(
     if not conversation:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found or access denied.")
     return conversation
+
+@router.put("/conversations/{conversation_id}", response_model=schemas.ConversationRead)
+def update_conversation(
+    conversation_id: int,
+    conversation_data: schemas.ConversationBase,
+    current_user: models.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update a conversation's details.
+    Currently only supports changing the conversation name.
+    Ensures the current user is a participant.
+    """
+    updated_conversation = services.message_service.update_conversation(
+        db, 
+        conversation_id=conversation_id, 
+        conversation_data=conversation_data, 
+        user_id=current_user.UserID
+    )
+    
+    if not updated_conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Conversation not found or access denied."
+        )
+    
+    return updated_conversation
 
 @router.post("/conversations/{conversation_id}/messages", response_model=schemas.MessageRead, status_code=status.HTTP_201_CREATED)
 def send_message_to_conversation(

@@ -359,3 +359,43 @@ def delete_conversation_admin(db: Session, conversation_id: int) -> bool:
         print(f"Error deleting conversation {conversation_id}: {e}") # Log error
         # Consider raising a specific HTTPException for deletion failure
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not delete conversation: {e}")
+
+def update_conversation(db: Session, conversation_id: int, conversation_data: schemas.ConversationBase, user_id: int) -> Optional[schemas.ConversationRead]:
+    """
+    Updates a conversation's details (currently just the name).
+    Ensures the requesting user is a participant in the conversation.
+    
+    Args:
+        db: Database session
+        conversation_id: ID of the conversation to update
+        conversation_data: Data to update (currently only Name)
+        user_id: ID of the user making the update
+        
+    Returns:
+        Updated conversation or None if conversation not found or user not authorized
+    """
+    # Check if user is part of the conversation
+    participation = db.query(models.Participation).filter(
+        models.Participation.ConversationID == conversation_id,
+        models.Participation.UserID == user_id
+    ).first()
+
+    if not participation:
+        return None  # User not part of conversation
+
+    # Get the conversation
+    conversation = db.query(models.Conversation).filter(
+        models.Conversation.ConversationID == conversation_id
+    ).first()
+
+    if not conversation:
+        return None  # Conversation not found
+
+    # Update conversation name
+    conversation.Name = conversation_data.Name
+    
+    db.commit()
+    db.refresh(conversation)
+    
+    # Return full conversation details with participants and messages
+    return get_conversation(db, conversation_id, user_id)

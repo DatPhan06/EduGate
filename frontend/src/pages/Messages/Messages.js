@@ -167,22 +167,27 @@ const Messages = () => {
         try {
             const updatedConversation = await messageService.updateConversation(
                 selectedConversation.ConversationID, 
-                { name: newConversationName.trim() }
+                { Name: newConversationName.trim() }
             );
             
-            // Update local state
+            // Cập nhật tên trong danh sách đoạn chat
             setConversations(prevConvs => 
                 prevConvs.map(c => 
                     c.ConversationID === updatedConversation.ConversationID 
-                        ? { ...c, ConversationName: updatedConversation.ConversationName }
+                        ? { 
+                            ...c, 
+                            Name: updatedConversation.Name,
+                            ConversationName: updatedConversation.Name 
+                          }
                         : c
                 )
             );
             
-            // Update selected conversation
+            // Cập nhật tên đoạn chat hiện tại
             setSelectedConversation(prev => ({
                 ...prev,
-                ConversationName: updatedConversation.ConversationName
+                Name: updatedConversation.Name,
+                ConversationName: updatedConversation.Name
             }));
             
             // Close dialog
@@ -253,6 +258,7 @@ const Messages = () => {
 
     // Add handler for opening edit conversation dialog
     const handleOpenEditDialog = () => {
+        setNewConversationName(selectedConversation?.Name || selectedConversation?.ConversationName || '');
         setEditDialogOpen(true);
         handleCloseConversationMenu();
     };
@@ -482,7 +488,7 @@ const Messages = () => {
                                 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                         <Typography variant="h6">
-                                            {selectedConversation.ConversationName || 
+                                            {selectedConversation.Name || selectedConversation.ConversationName || 
                                              'Đoạn chat chưa có tên'}
                                         </Typography>
                                         <Tooltip title="Chỉnh sửa tên đoạn chat">

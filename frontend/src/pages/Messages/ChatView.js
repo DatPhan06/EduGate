@@ -19,7 +19,7 @@ import moment from 'moment';
 
 const POLLING_INTERVAL = 5000; // Poll every 5 seconds
 
-const ChatView = ({ conversationId, currentUser, onMessageSent }) => {
+const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUpdated }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -66,6 +66,11 @@ const ChatView = ({ conversationId, currentUser, onMessageSent }) => {
             console.warn("No messages array in API response");
             setMessages([]);
           }
+          
+          // Notify parent component about conversation updates
+          if (onConversationUpdated) {
+            onConversationUpdated(data);
+          }
         } else {
           setError('Failed to load conversation data.');
         }
@@ -78,7 +83,7 @@ const ChatView = ({ conversationId, currentUser, onMessageSent }) => {
     };
     
     fetchConversation();
-  }, [conversationId]); // Only re-fetch when conversationId changes
+  }, [conversationId, onConversationUpdated]); // Add onConversationUpdated to dependencies
 
   // Polling for new messages
   useEffect(() => {
@@ -91,16 +96,20 @@ const ChatView = ({ conversationId, currentUser, onMessageSent }) => {
         // Get latest conversation data
         const data = await messageService.getConversation(conversationId);
         
-        if (data && Array.isArray(data.messages)) {
-          // Check if there are new messages by comparing with lastMessageId
-          if (data.messages.length > 0) {
-            const newestMessageId = data.messages[data.messages.length - 1].MessageID;
-            
-            if (lastMessageId === null || newestMessageId > lastMessageId) {
-              console.log("New messages detected:", data.messages);
-              // Update conversation and messages
-              setConversation(data);
-              setMessages(data.messages);
+        if (data) {
+          // Always update the conversation object to get the latest name
+          setConversation(data);
+          
+          if (Array.isArray(data.messages)) {
+            // Check if there are new messages by comparing with lastMessageId
+            if (data.messages.length > 0) {
+              const newestMessageId = data.messages[data.messages.length - 1].MessageID;
+              
+              if (lastMessageId === null || newestMessageId > lastMessageId) {
+                console.log("New messages detected:", data.messages);
+                // Update messages
+                setMessages(data.messages);
+              }
             }
           }
         }
