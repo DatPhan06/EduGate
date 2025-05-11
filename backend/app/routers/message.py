@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header, File, UploadFile, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import os
 
 from .. import schemas, services, models
 from ..database import get_db
@@ -78,18 +80,73 @@ def update_conversation(
     return updated_conversation
 
 @router.post("/conversations/{conversation_id}/messages", response_model=schemas.MessageRead, status_code=status.HTTP_201_CREATED)
-def send_message_to_conversation(
+async def send_message_to_conversation(
     conversation_id: int,
-    message_data: schemas.MessageCreate,
+    Content: Optional[str] = Form(None),
+    files: List[UploadFile] = File([]),
     current_user: models.User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """
     Send a message to a specific conversation.
+    Supports text content and/or file attachments.
     Ensures the current user is a participant.
     """
-    # Service function already checks if user is participant and if conversation exists
-    return services.message_service.create_message(db, conversation_id=conversation_id, message_data=message_data, user_id=current_user.UserID)
+    # Kiểm tra xem có ít nhất một trong 2 loại nội dung: text hoặc file
+    if Content is None and len(files) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message must contain either text content or file attachments."
+        )
+    
+    # Tạo message_data từ Content (nếu có)
+    message_data = schemas.MessageCreate(Content=Content)
+    
+    # Gọi service để tạo tin nhắn với files
+    return await services.message_service.create_message_with_files(
+        db, 
+        conversation_id=conversation_id, 
+        message_data=message_data, 
+        user_id=current_user.UserID,
+        files=files
+    )
+
+# Thêm endpoint để xem file đính kèm
+@router.get("/files/{file_id}")
+async def get_message_file(
+    file_id: int,
+    current_user: models.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get a file attached to a message.
+    Ensures the current user is a participant in the conversation containing the message.
+    """
+    file_data = await services.message_service.get_message_file(
+        db, 
+        file_id=file_id, 
+        user_id=current_user.UserID
+    )
+    
+    if not file_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="File not found or access denied."
+        )
+    
+    file_path = os.path.join("uploads", "messages", str(file_id), file_data.FileName)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="File not found on server."
+        )
+    
+    return FileResponse(
+        path=file_path,
+        filename=file_data.FileName,
+        media_type=file_data.ContentType or "application/octet-stream"
+    )
 
 # Endpoint to get a list of users (simplified for messaging)
 # This might already exist in user_router, but a focused one can be useful.
@@ -105,4 +162,36 @@ def get_all_users_for_messaging(
     Excludes the current user from the list.
     """
     users = db.query(models.User).filter(models.User.UserID != current_user.UserID).offset(skip).limit(limit).all()
-    return [schemas.UserSimple.from_orm(user) for user in users]
+    return users
+
+# Thêm endpoint đơn giản để tải file trực tiếp từ thư mục uploads
+@router.get("/files/{file_id}/download", include_in_schema=True)
+async def download_message_file(file_id: int, db: Session = Depends(get_db)):
+    """
+    Tải file đính kèm của tin nhắn mà không cần xác thực.
+    Chỉ sử dụng cho mục đích demo.
+    """
+    # Lấy thông tin file từ database
+    file = db.query(models.MessageFile).filter(models.MessageFile.FileID == file_id).first()
+    if not file:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found."
+        )
+    
+    # Tạo đường dẫn đến file
+    file_path = os.path.join("uploads", "messages", str(file_id), file.FileName)
+    
+    # Kiểm tra sự tồn tại của file
+    if not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found on server."
+        )
+    
+    # Trả về file
+    return FileResponse(
+        path=file_path,
+        filename=file.FileName,
+        media_type=file.ContentType or "application/octet-stream"
+    )

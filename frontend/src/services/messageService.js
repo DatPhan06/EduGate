@@ -96,20 +96,42 @@ const messageService = {
     },
 
     // Send a new message to a conversation
-    sendMessage: async (conversationId, content, attachments = []) => {
+    sendMessage: async (conversationId, content, files = []) => {
         try {
-            const payload = { Content: content };
-            // Add attachments if API supports it
-            if (attachments && attachments.length > 0) {
-                payload.attachments = attachments;
+            // Nếu có file, sử dụng FormData để gửi dữ liệu
+            if (files && files.length > 0) {
+                const formData = new FormData();
+                formData.append('Content', content);
+                
+                // Thêm từng file vào form data
+                files.forEach((file, index) => {
+                    formData.append(`files`, file);
+                });
+                
+                // Gửi yêu cầu với FormData và header phù hợp
+                const token = authService.getToken();
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    // Không đặt Content-Type ở đây, axios sẽ tự đặt với boundary cho multipart/form-data
+                };
+                
+                const response = await axios.post(
+                    `${API_URL}/messaging/conversations/${conversationId}/messages`, 
+                    formData, 
+                    { headers }
+                );
+                return response.data;
+            } else {
+                // Trường hợp không có file, gửi JSON như bình thường
+                const payload = { Content: content };
+                const response = await axios.post(`${API_URL}/messaging/conversations/${conversationId}/messages`, payload, getAuthHeader());
+                return response.data;
             }
-            const response = await axios.post(`${API_URL}/messaging/conversations/${conversationId}/messages`, payload, getAuthHeader());
-            return response.data;
         } catch (error) {
             if (error.response?.status === 401) {
                 await authService.refreshToken();
-                const response = await axios.post(`${API_URL}/messaging/conversations/${conversationId}/messages`, payload, getAuthHeader());
-                return response.data;
+                // Gọi lại hàm sau khi refresh token
+                return messageService.sendMessage(conversationId, content, files);
             }
             throw error;
         }

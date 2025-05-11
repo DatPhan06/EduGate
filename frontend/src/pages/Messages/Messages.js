@@ -621,14 +621,7 @@ const Messages = () => {
                                 <Typography variant="h6">
                                     Thành viên ({participants.length})
                                 </Typography>
-                                <Button
-                                    variant="outlined"
-                                    size="small"
-                                    startIcon={<AddIcon />}
-                                    onClick={handleOpenUserSelectionModal}
-                                >
-                                    Thêm
-                                </Button>
+                                
                             </Box>
                             
                             {loadingParticipants ? (

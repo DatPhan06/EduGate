@@ -11,9 +11,18 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
-  Alert
+  Alert,
+  Badge,
+  Tooltip,
+  LinearProgress
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import ImageIcon from '@mui/icons-material/Image';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import DescriptionIcon from '@mui/icons-material/Description';
+import CloseIcon from '@mui/icons-material/Close';
 import messageService from '../../services/messageService';
 import moment from 'moment';
 
@@ -32,6 +41,9 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
   const [error, setError] = useState('');
   const messagesEndRef = useRef(null);
   const [lastMessageId, setLastMessageId] = useState(null);
+  const fileInputRef = useRef(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Update messagesRef whenever messages state changes
   useEffect(() => {
@@ -137,13 +149,51 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
     setNewMessage(e.target.value);
   };
   
+  const handleFileClick = () => {
+    fileInputRef.current?.click();
+  };
+  
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      // Thêm files mới vào danh sách hiện tại
+      setSelectedFiles(prev => [...prev, ...files]);
+    }
+    // Reset input để có thể chọn lại file đã chọn trước đó
+    e.target.value = "";
+  };
+  
+  const handleRemoveFile = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  const getFileIcon = (file) => {
+    const fileType = file.type;
+    if (fileType.startsWith('image/')) {
+      return <ImageIcon color="primary" />;
+    } else if (fileType === 'application/pdf') {
+      return <PictureAsPdfIcon color="error" />;
+    } else if (fileType.includes('word') || fileType.includes('document')) {
+      return <DescriptionIcon color="primary" />;
+    } else {
+      return <InsertDriveFileIcon color="action" />;
+    }
+  };
+  
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    else return (bytes / 1048576).toFixed(1) + ' MB';
+  };
+  
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !conversationId || !currentUser) return;
+    if ((!newMessage.trim() && selectedFiles.length === 0) || !conversationId || !currentUser) return;
     
     try {
       setSending(true);
-      const sentMessage = await messageService.sendMessage(conversationId, newMessage.trim());
+      // Gửi tin nhắn với files
+      const sentMessage = await messageService.sendMessage(conversationId, newMessage.trim(), selectedFiles);
       console.log("Sent message response:", sentMessage);
       
       // Add the sent message to the local state (handle different API response formats)
@@ -164,13 +214,21 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
               FirstName: currentUser.FirstName || '',
               LastName: currentUser.LastName || '',
               Email: currentUser.Email || ''
-            }
+            },
+            message_files: selectedFiles.map((file, index) => ({
+              FileID: `temp-${Date.now()}-${index}`,
+              FileName: file.name,
+              FileSize: file.size,
+              ContentType: file.type,
+              file: file, // Giữ tham chiếu đến file để hiển thị preview
+            }))
           };
           setMessages(prev => [...prev, tempMessage]);
         }
       }
       
       setNewMessage(''); // Clear input
+      setSelectedFiles([]); // Reset selected files
       
       // Notify parent component
       if (onMessageSent) {
@@ -181,6 +239,7 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
       setError('Failed to send message. Please try again.');
     } finally {
       setSending(false);
+      setUploadProgress(0);
     }
   };
   
@@ -244,6 +303,76 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
     if (!participant) return '?';
     
     return `${participant.FirstName ? participant.FirstName.charAt(0) : ''}${participant.LastName ? participant.LastName.charAt(0) : ''}`;
+  };
+  
+  // Render file attachments
+  const renderFileAttachments = (message) => {
+    if (!message.message_files || message.message_files.length === 0) return null;
+    
+    return (
+      <Box sx={{ mt: 1 }}>
+        {message.message_files.map((file, index) => {
+          // Check if file is an image
+          const isImage = file.ContentType && file.ContentType.startsWith('image/');
+          
+          return (
+            <Box 
+              key={file.FileID || index} 
+              sx={{ 
+                mb: 0.5, 
+                p: 1, 
+                border: '1px solid #e0e0e0', 
+                borderRadius: 1,
+                display: 'flex', 
+                alignItems: 'center',
+                backgroundColor: '#f5f5f5'
+              }}
+            >
+              {isImage ? (
+                <Box sx={{ maxWidth: '200px', maxHeight: '150px', overflow: 'hidden', borderRadius: 1 }}>
+                  {file.file ? (
+                    // For newly uploaded files
+                    <img 
+                      src={URL.createObjectURL(file.file)} 
+                      alt={file.FileName} 
+                      style={{ maxWidth: '100%', maxHeight: '150px', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    // For files from server
+                    <img 
+                      src={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/messaging/files/${file.FileID}/download`} 
+                      alt={file.FileName} 
+                      style={{ maxWidth: '100%', maxHeight: '150px', objectFit: 'cover' }}
+                    />
+                  )}
+                </Box>
+              ) : (
+                <>
+                  {getFileIcon(file.file || { type: file.ContentType })}
+                  <Box sx={{ ml: 1, flex: 1, overflow: 'hidden' }}>
+                    <Typography variant="body2" sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      {file.FileName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatFileSize(file.FileSize)}
+                    </Typography>
+                  </Box>
+                  <Button 
+                    size="small" 
+                    href={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/messaging/files/${file.FileID}/download`}
+                    target="_blank"
+                    download
+                    disabled={file.file} // Disable for temporary files not yet uploaded
+                  >
+                    Download
+                  </Button>
+                </>
+              )}
+            </Box>
+          );
+        })}
+      </Box>
+    );
   };
   
   if (loading) {
@@ -380,9 +509,15 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
                           position: 'relative'
                         }}
                       >
-                        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                          {message.Content}
-                        </Typography>
+                        {message.Content && (
+                          <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {message.Content}
+                          </Typography>
+                        )}
+                        
+                        {/* Render file attachments */}
+                        {renderFileAttachments(message)}
+                        
                         <Typography 
                           variant="caption" 
                           sx={{ 
@@ -414,6 +549,51 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
         <div ref={messagesEndRef} /> {/* Empty div for scrolling to bottom */}
       </Box>
       
+      {/* File upload preview */}
+      {selectedFiles.length > 0 && (
+        <Box sx={{ 
+          p: 1, 
+          bgcolor: 'background.paper',
+          borderTop: `1px solid ${theme.palette.divider}`,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 1
+        }}>
+          {selectedFiles.map((file, index) => (
+            <Box 
+              key={index} 
+              sx={{ 
+                position: 'relative',
+                border: '1px solid #e0e0e0',
+                borderRadius: 1,
+                p: 1,
+                display: 'flex',
+                alignItems: 'center',
+                maxWidth: '100%',
+                bgcolor: '#f5f5f5'
+              }}
+            >
+              {getFileIcon(file)}
+              <Box sx={{ ml: 1, maxWidth: 150, overflow: 'hidden' }}>
+                <Typography variant="caption" sx={{ display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  {file.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {formatFileSize(file.size)}
+                </Typography>
+              </Box>
+              <IconButton 
+                size="small" 
+                sx={{ ml: 1 }}
+                onClick={() => handleRemoveFile(index)}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          ))}
+        </Box>
+      )}
+      
       {/* Message input */}
       <Box 
         component="form" 
@@ -428,6 +608,23 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
           display: 'flex',
           alignItems: 'center'
         }}>
+          <IconButton 
+            color="primary" 
+            onClick={handleFileClick} 
+            disabled={sending}
+            sx={{ mr: 1 }}
+          >
+            <Badge badgeContent={selectedFiles.length} color="primary">
+              <AttachFileIcon />
+            </Badge>
+          </IconButton>
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+            multiple
+          />
           <TextField
             fullWidth
             variant="outlined"
@@ -444,12 +641,18 @@ const ChatView = ({ conversationId, currentUser, onMessageSent, onConversationUp
             variant="contained"
             color="primary"
             type="submit"
-            disabled={!newMessage.trim() || sending}
+            disabled={(newMessage.trim() === '' && selectedFiles.length === 0) || sending}
             sx={{ minWidth: isMobile ? 40 : 'auto', ml: 1 }}
           >
             {isMobile ? <SendIcon /> : 'Send'}
           </Button>
         </Box>
+        
+        {uploadProgress > 0 && uploadProgress < 100 && (
+          <Box sx={{ width: '100%', mt: 1 }}>
+            <LinearProgress variant="determinate" value={uploadProgress} />
+          </Box>
+        )}
       </Box>
     </Box>
   );
