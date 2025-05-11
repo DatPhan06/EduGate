@@ -21,6 +21,7 @@ import {
   KeyboardArrowUp as KeyboardArrowUpIcon
 } from '@mui/icons-material';
 import { getStudentGrades, getGradeComponentsByGradeId, getSubjectByClassSubjectId } from '../../services/teacherService';
+import { getParentStudents } from '../../services/parentService';
 import { useNavigate } from 'react-router-dom';
 
 // Grade categories with color mapping
@@ -96,6 +97,12 @@ const StudentGradesViewPage = () => {
   const [showDetails, setShowDetails] = useState({});
   const [gradeStats, setGradeStats] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
+  
+  // Add states for parent's children handling
+  const [isParent, setIsParent] = useState(false);
+  const [children, setChildren] = useState([]);
+  const [selectedChildId, setSelectedChildId] = useState(null);
+  const [loadingChildren, setLoadingChildren] = useState(false);
 
   // Get user data from localStorage with better parsing and error handling
   const getUserData = () => {
@@ -114,46 +121,120 @@ const StudentGradesViewPage = () => {
   
   const user = getUserData();
   
-  // Find student ID with multiple fallbacks
-  const studentId = user.id || user.UserID || user.userId || user.student_id || user.studentId || user.ID;
+  // Find user ID and determine if user is a parent
+  const userId = user.id || user.UserID || user.userId || user.ID;
+  const userRole = user.role || user.Role || user.user_role || '';
   
-  // Fetch student information when component mounts
+  // Check if user is a parent on component mount
   useEffect(() => {
-    const fetchStudentInfo = async () => {
-      // Extract student info from user data with fallbacks
-      const firstName = user.FirstName || user.firstname || '';
-      const lastName = user.LastName || user.lastname || '';
-      const fullName = user.name || user.fullName || user.username || `${firstName} ${lastName}`.trim() || 'Học sinh';
+    const checkIfParent = () => {
+      const role = userRole.toLowerCase();
+      const isUserParent = role === 'parent' || role.includes('parent');
+      setIsParent(isUserParent);
       
-      setStudentInfo({
-        name: fullName,
-        className: user.className || user.ClassName || user.class_name || user.ClassID || 'Lớp chưa xác định',
-        studentId: studentId,
-        gender: user.gender || user.Gender || '-',
-        dob: user.DateOfBirth || user.dob || user.DOB || '-',
-        classGrade: user.classGrade || user.ClassGrade || user.Grade || '-'
-      });
-      
-      console.log('Processed student info:', {
-        name: fullName,
-        className: user.className || user.ClassName || user.class_name || user.ClassID || 'Lớp chưa xác định',
-        studentId: studentId,
-        gender: user.gender || user.Gender || '-',
-        dob: user.DateOfBirth || user.dob || user.DOB || '-',
-        classGrade: user.classGrade || user.ClassGrade || user.Grade || '-'
-      });
+      console.log('User role:', userRole);
+      console.log('Is parent:', isUserParent);
     };
     
-    if (studentId) {
+    checkIfParent();
+  }, [userRole]);
+  
+  // Fetch parent's children if user is a parent
+  useEffect(() => {
+    const fetchChildrenForParent = async () => {
+      if (!isParent || !userId) return;
+      
+      try {
+        setLoadingChildren(true);
+        console.log('Fetching children for parent with ID:', userId);
+        const childrenData = await getParentStudents(userId);
+        console.log('Children data received:', childrenData);
+        
+        if (childrenData && Array.isArray(childrenData) && childrenData.length > 0) {
+          setChildren(childrenData);
+          // Auto-select first child
+          setSelectedChildId(childrenData[0].id || childrenData[0].UserID || childrenData[0].userId || childrenData[0].ID);
+        } else {
+          setError('Không tìm thấy thông tin học sinh con. Vui lòng liên hệ quản trị viên.');
+        }
+      } catch (error) {
+        console.error('Error fetching parent\'s children:', error);
+        setError('Không thể tải thông tin học sinh con. Vui lòng thử lại sau.');
+      } finally {
+        setLoadingChildren(false);
+      }
+    };
+    
+    if (isParent) {
+      fetchChildrenForParent();
+    }
+  }, [isParent, userId]);
+  
+  // Find student ID based on user role
+  const studentId = isParent ? selectedChildId : (user.id || user.UserID || user.userId || user.student_id || user.studentId || user.ID);
+  
+  // Handle child selection change
+  const handleChildChange = (event) => {
+    setSelectedChildId(event.target.value);
+  };
+  
+  // Fetch student information when component mounts or when selectedChildId changes
+  useEffect(() => {
+    const fetchStudentInfo = async () => {
+      if (isParent && selectedChildId) {
+        // Find the selected child from the children array
+        const selectedChild = children.find(child => 
+          child.id === selectedChildId || 
+          child.UserID === selectedChildId || 
+          child.userId === selectedChildId || 
+          child.ID === selectedChildId
+        );
+        
+        if (selectedChild) {
+          const firstName = selectedChild.FirstName || selectedChild.firstname || '';
+          const lastName = selectedChild.LastName || selectedChild.lastname || '';
+          const fullName = selectedChild.name || selectedChild.fullName || selectedChild.username || `${firstName} ${lastName}`.trim() || 'Học sinh';
+          
+          setStudentInfo({
+            name: fullName,
+            className: selectedChild.className || selectedChild.ClassName || selectedChild.class_name || selectedChild.ClassID || 'Lớp chưa xác định',
+            studentId: selectedChildId,
+            gender: selectedChild.gender || selectedChild.Gender || '-',
+            dob: selectedChild.DateOfBirth || selectedChild.dob || selectedChild.DOB || '-',
+            classGrade: selectedChild.classGrade || selectedChild.ClassGrade || selectedChild.Grade || '-'
+          });
+        }
+      } else {
+        // Extract student info from user data with fallbacks (original code for non-parent users)
+        const firstName = user.FirstName || user.firstname || '';
+        const lastName = user.LastName || user.lastname || '';
+        const fullName = user.name || user.fullName || user.username || `${firstName} ${lastName}`.trim() || 'Học sinh';
+        
+        setStudentInfo({
+          name: fullName,
+          className: user.className || user.ClassName || user.class_name || user.ClassID || 'Lớp chưa xác định',
+          studentId: studentId,
+          gender: user.gender || user.Gender || '-',
+          dob: user.DateOfBirth || user.dob || user.DOB || '-',
+          classGrade: user.classGrade || user.ClassGrade || user.Grade || '-'
+        });
+      }
+    };
+    
+    if ((isParent && selectedChildId) || (!isParent && studentId)) {
       fetchStudentInfo();
-    } else {
+    } else if (isParent && !selectedChildId && children.length === 0 && !loadingChildren) {
+      setError('Không tìm thấy thông tin học sinh con. Vui lòng liên hệ quản trị viên.');
+    } else if (!isParent && !studentId) {
       setError('Không thể xác định thông tin học sinh.');
     }
-  }, [studentId, user]);
+  }, [studentId, user, isParent, selectedChildId, children, loadingChildren]);
   
   // Fetch grades by semester and academic year
   useEffect(() => {
     const fetchGrades = async () => {
+      if (!studentId) return;
+      
       try {
         setLoading(true);
         // Use semester and academic year in the API call
@@ -1171,6 +1252,53 @@ const StudentGradesViewPage = () => {
         <Divider sx={{ my: 2 }} />
       </Box>
       
+      {/* Display child selector for parents */}
+      {isParent && (
+        <Box mb={3}>
+          <Card variant="outlined">
+            <Box p={2}>
+              <Typography variant="h6">Chọn học sinh</Typography>
+              {loadingChildren ? (
+                <Box display="flex" alignItems="center" mt={1}>
+                  <CircularProgress size={24} />
+                  <Typography variant="body2" sx={{ ml: 2 }}>
+                    Đang tải danh sách học sinh...
+                  </Typography>
+                </Box>
+              ) : children.length > 0 ? (
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="child-select-label">Học sinh</InputLabel>
+                  <Select
+                    labelId="child-select-label"
+                    value={selectedChildId || ''}
+                    label="Học sinh"
+                    onChange={handleChildChange}
+                  >
+                    {children.map((child) => {
+                      const childId = child.id || child.UserID || child.userId || child.ID;
+                      const firstName = child.FirstName || child.firstname || '';
+                      const lastName = child.LastName || child.lastname || '';
+                      const fullName = child.name || child.fullName || child.username || `${firstName} ${lastName}`.trim() || 'Học sinh';
+                      const className = child.className || child.ClassName || child.class_name || child.ClassID || '';
+                      
+                      return (
+                        <MenuItem key={childId} value={childId}>
+                          {fullName} {className ? `- ${className}` : ''}
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+              ) : (
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  Không có thông tin học sinh. Vui lòng liên hệ quản trị viên.
+                </Alert>
+              )}
+            </Box>
+          </Card>
+        </Box>
+      )}
+      
       {studentInfo && (
         <Box mb={3}>
           <Card variant="outlined" sx={{ '@media print': { boxShadow: 'none', border: 'none' } }}>
@@ -1306,12 +1434,18 @@ const StudentGradesViewPage = () => {
         </Box>
       </Box>
       
-      {loading ? (
+      {loading && !isParent ? (
         <Box display="flex" justifyContent="center" padding="50px">
           <CircularProgress size={60} />
           <Typography variant="h6" style={{ marginLeft: '16px' }}>
             Đang tải dữ liệu điểm số...
           </Typography>
+        </Box>
+      ) : (isParent && !selectedChildId) ? (
+        <Box sx={{ mt: 3 }}>
+          <Alert severity="info">
+            Vui lòng chọn học sinh để xem bảng điểm.
+          </Alert>
         </Box>
       ) : (
         <Box sx={{ mt: 3 }}>
