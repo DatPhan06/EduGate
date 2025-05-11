@@ -153,13 +153,13 @@ def create_user(db: Session, user: UserCreate):
     db.refresh(db_user)
     return db_user
 
-def update_user(db: Session, user_id: int, user: UserUpdate) -> Optional[User]:
+def update_user(db: Session, user_id: int, user_payload: UserUpdate) -> Optional[User]:
     db_user = get_user_by_id(db, user_id)
     if not db_user:
         return None
     
     # Update the base user fields
-    update_data = user.dict(exclude_unset=True, exclude_none=True)
+    update_data = user_payload.model_dump(exclude_unset=True, exclude_none=True)
     
     # Handle Enum conversion for Gender and Status
     if 'Gender' in update_data and update_data['Gender'] is not None:
@@ -265,12 +265,12 @@ def create_users_from_excel(db: Session, file: UploadFile):
     results = {"success_count": 0, "errors": []}
     try:
         contents = file.file.read()
-        # Đọc cột PhoneNumber và ClassID, DepartmentID như string để tránh pandas nhận dạng sai
-        # ClassID và DepartmentID sẽ được chuyển thành int sau nếu có giá trị
+        # Đọc cột PhoneNumber, ClassID, DepartmentID, và Password như string
         df = pd.read_excel(BytesIO(contents), dtype={
             'PhoneNumber': str, 
             'ClassID': str,
-            'DepartmentID': str
+            'DepartmentID': str,
+            'Password': str  # Ensure Password is read as string
         })
 
         # Xử lý các giá trị NaN/NaT thành None hoặc giá trị mặc định nếu cần
@@ -281,19 +281,18 @@ def create_users_from_excel(db: Session, file: UploadFile):
             
             phone_number = user_data_dict.get("PhoneNumber")
             if phone_number is not None:
-                phone_number = str(phone_number).strip() # Đảm bảo là string và loại bỏ khoảng trắng
-                if phone_number.lower() == 'nan' or phone_number == '': # Xử lý thêm trường hợp 'nan' string
+                phone_number = str(phone_number).strip()
+                if phone_number.lower() == 'nan' or phone_number == '':
                     phone_number = None
             
             dob_val = user_data_dict.get("DOB")
             dob_iso = None
             if pd.notna(dob_val) and dob_val:
                 try:
-                    # Chuyển đổi sang datetime, sau đó lấy date và định dạng ISO
                     dob_iso = pd.to_datetime(dob_val).date().isoformat()
                 except ValueError:
                     results["errors"].append(f"Row {index + 2} (Email: {user_data_dict.get('Email')}, DOB: '{dob_val}'): Invalid date format.")
-                    continue # Bỏ qua dòng này nếu ngày không hợp lệ
+                    continue
             
             role_str = user_data_dict.get("role")
             if role_str:
@@ -303,19 +302,17 @@ def create_users_from_excel(db: Session, file: UploadFile):
             class_id = None
             if class_id_str and str(class_id_str).strip() and role_str == UserRole.STUDENT.value:
                 try:
-                    class_id = int(float(str(class_id_str).strip())) # Chuyển qua float rồi int để xử lý "1.0"
+                    class_id = int(float(str(class_id_str).strip()))
                 except ValueError:
                     results["errors"].append(f"Row {index + 2} (Email: {user_data_dict.get('Email')}, ClassID: '{class_id_str}'): Invalid ClassID format.")
                     continue
 
             department_id_str = user_data_dict.get("DepartmentID")
             department_id = None
-            # Chỉ gán DepartmentID nếu role là TEACHER
             if department_id_str and str(department_id_str).strip() and role_str == UserRole.TEACHER.value:
                 try:
                     department_id = int(float(str(department_id_str).strip()))
-                    # Kiểm tra phòng ban có tồn tại hay không
-                    if department_id > 0:  # Nếu = 0 thì để None, không cần kiểm tra
+                    if department_id > 0:
                         department = db.query(Department).filter(Department.DepartmentID == department_id).first()
                         if not department:
                             results["errors"].append(f"Row {index + 2} (Email: {user_data_dict.get('Email')}): Department with ID {department_id} does not exist.")
@@ -323,12 +320,21 @@ def create_users_from_excel(db: Session, file: UploadFile):
                 except ValueError:
                     results["errors"].append(f"Row {index + 2} (Email: {user_data_dict.get('Email')}, DepartmentID: '{department_id_str}'): Invalid DepartmentID format.")
                     continue
+            
+            # Ensure password is treated as a string
+            password_val = user_data_dict.get("Password")
+            if password_val is not None:
+                password_str = str(password_val).strip()
+                if not password_str: # Handle empty string after strip
+                    password_str = None 
+            else:
+                password_str = None
 
             user_payload = {
                 "FirstName": user_data_dict.get("FirstName"),
                 "LastName": user_data_dict.get("LastName"),
                 "Email": user_data_dict.get("Email"),
-                "Password": user_data_dict.get("Password"),
+                "Password": password_str, # Use the processed password string
                 "PhoneNumber": phone_number,
                 "DOB": dob_iso,
                 "Gender": user_data_dict.get("Gender"),
@@ -339,15 +345,13 @@ def create_users_from_excel(db: Session, file: UploadFile):
                 "Status": user_data_dict.get("Status", "ACTIVE"),
                 "role": role_str,
                 "ClassID": class_id,
-                "DepartmentID": department_id, # Sẽ là None cho admin dựa vào logic ở trên
+                "DepartmentID": department_id,
                 "Degree": user_data_dict.get("Degree") if role_str == UserRole.TEACHER.value else None,
                 "Graduate": user_data_dict.get("Graduate") if role_str == UserRole.TEACHER.value else None,
-                # Position vẫn có thể áp dụng cho admin và teacher
                 "Position": user_data_dict.get("Position") if role_str in [UserRole.TEACHER.value, UserRole.ADMIN.value] else None,
                 "Occupation": user_data_dict.get("Occupation") if role_str == UserRole.PARENT.value else None,
             }
             
-
             if not all([user_payload["FirstName"], user_payload["LastName"], user_payload["Email"], user_payload["Password"], user_payload["role"]]):
                 results["errors"].append(f"Row {index + 2} (Email: {user_payload.get('Email', 'N/A')}): Missing required fields (FirstName, LastName, Email, Password, role).")
                 continue

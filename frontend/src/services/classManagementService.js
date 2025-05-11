@@ -106,3 +106,16 @@ export const deleteStudent = async (studentUserId) => {
         throw error;
     }
 };
+
+export const assignMultipleStudentsToClass = async (classId, studentUserIds) => {
+    try {
+        const response = await api.post(`${API_BASE_URL}/students/direct-bulk-assign-class`, { 
+            class_id: classId, 
+            student_user_ids: studentUserIds 
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error assigning multiple students to class:', error.response ? error.response.data : error.message);
+        throw error;
+    }
+};

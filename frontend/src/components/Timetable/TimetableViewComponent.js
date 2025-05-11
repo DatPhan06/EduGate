@@ -47,7 +47,7 @@ const TimetableViewComponent = () => {
     // Filter states
     const [classFilter, setClassFilter] = useState('');
     const [semesterFilter, setSemesterFilter] = useState('HK1');
-    const [yearFilter, setYearFilter] = useState(academicYears[0]);
+    const [yearFilter, setYearFilter] = useState(academicYears[3]);
     
     // Organized timetable data
     const [timetableData, setTimetableData] = useState({});

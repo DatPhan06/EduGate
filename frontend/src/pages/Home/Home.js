@@ -357,11 +357,11 @@ const Home = () => {
                             <CardContent>
                                 <Box sx={{ mb: 2 }}>
                                     <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Năm học hiện tại</Typography>
-                                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>2022-2023</Typography>
+                                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>2025-2026</Typography>
                                 </Box>
                                 <Box sx={{ mb: 2 }}>
                                     <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Học kỳ hiện tại</Typography>
-                                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Học kỳ 2</Typography>
+                                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Học kỳ 1</Typography>
                                 </Box>
                                 <Box>
                                     <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Trạng thái hệ thống</Typography>
